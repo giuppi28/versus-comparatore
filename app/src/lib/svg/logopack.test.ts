@@ -11,6 +11,7 @@ import { MOCK_SUPPLIERS } from "../data/mock/data";
 const appDir = path.resolve(__dirname, "../../..");
 const packDir = path.resolve(appDir, "..", "logopack");
 const publicDir = path.join(appDir, "public", "logos");
+const publicBlackDir = path.join(publicDir, "black");
 
 const realSlugs = MOCK_SUPPLIERS.filter((s) => !s.is_placeholder).map((s) => s.slug);
 const read = (p: string) => readFileSync(p, "utf8");
@@ -21,7 +22,10 @@ describe("logopack", () => {
     for (const variant of ["color", "black", "white"]) {
       expect(readdirSync(path.join(packDir, variant)).sort()).toEqual(realSlugs.map((s) => `${s}.svg`).sort());
     }
-    expect(readdirSync(publicDir).sort()).toEqual(realSlugs.map((s) => `${s}.svg`).sort());
+    const expected = realSlugs.map((s) => `${s}.svg`).sort();
+    const svgsIn = (dir: string) => readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && e.name.endsWith(".svg")).map((e) => e.name).sort();
+    expect(svgsIn(publicDir)).toEqual(expected);
+    expect(svgsIn(publicBlackDir)).toEqual(expected);
   });
 
   for (const slug of realSlugs) {
@@ -38,6 +42,17 @@ describe("logopack", () => {
 
     it(`public/logos/${slug}.svg is the color variant`, () => {
       expect(read(path.join(publicDir, `${slug}.svg`))).toBe(read(path.join(packDir, "color", `${slug}.svg`)));
+    });
+
+    it(`public/logos/black/${slug}.svg is byte-identical to logopack/black and sanitizer-stable`, () => {
+      const file = path.join(publicBlackDir, `${slug}.svg`);
+      expect(readFileSync(file).equals(readFileSync(path.join(packDir, "black", `${slug}.svg`)))).toBe(true);
+      const svg = read(file);
+      const out = sanitizeSvg(svg);
+      expect(out.svg).toBe(svg);
+      expect(out.removed).toEqual([]);
+      expect(svg).toMatch(/viewBox="[-\d. ]+"/);
+      expect(svg).not.toMatch(/<image|<script|<style[^>]*>[^<]*@import|https?:\/\/(?!www\.w3\.org)/);
     });
   }
 
