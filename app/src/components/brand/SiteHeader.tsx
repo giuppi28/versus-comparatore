@@ -37,7 +37,7 @@ export function SiteHeader({ homeLink = true, className }: SiteHeaderProps) {
         {homeLink ? (
           <Link
             href="/"
-            aria-label="VERSUS, torna alla home"
+            aria-label="VERSUS comparatore luce e gas, torna alla home"
             className="-mx-1 flex items-center rounded-control px-1 py-1"
           >
             {lockup}

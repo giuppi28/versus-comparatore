@@ -103,6 +103,8 @@ describe("SiteHeader", () => {
   it("links the logo to the home page by default", () => {
     render(<SiteHeader />);
     expect(screen.getByRole("link", { name: /VERSUS/ }).getAttribute("href")).toBe("/");
+    // WCAG 2.5.3: the accessible name starts with the visible text (VERSUS, COMPARATORE, luce e gas).
+    expect(screen.getByRole("link", { name: "VERSUS comparatore luce e gas, torna alla home" })).toBeTruthy();
     expect(screen.getByRole("img", { name: LOGO_TITLE })).toBeTruthy();
   });
 

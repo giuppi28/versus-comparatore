@@ -65,15 +65,15 @@ export function BrandLockup({ size = "md", className, title = LOCKUP_TITLE }: Br
           )}
         >
           Versus
-        </span>
+        </span>{" "}
         <span
           className={cn(
             "whitespace-nowrap font-display font-extrabold uppercase leading-none tracking-[0.005em] text-ink [font-stretch:125%]",
             s.main,
           )}
         >
-          Comparatore
-          <span className={cn("ml-[0.3em] font-bold normal-case tracking-normal text-brand-700", s.sub)}>
+          Comparatore{" "}
+          <span className={cn("ml-[0.05em] font-bold normal-case tracking-normal text-brand-700", s.sub)}>
             luce e gas
           </span>
         </span>
