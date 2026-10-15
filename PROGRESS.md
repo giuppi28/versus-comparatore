@@ -116,3 +116,7 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 
 ## 2026-10-15 14:20 — T4.5 done
 - admin-settings-builder: go-live e2e asserts seed unverified offers by id (robust to parallel specs). Full suite rerun: all admin-settings green; only failure = activation 'back buttons keep the data' (cold-start flaky, 1/3 runs) → sent to activation-form-builder.
+
+## 2026-10-15 14:30 — Activation flake fixed; Phase 7 started
+- c05bfdc test(activation): /offerte RSC fetch now stubbed (root cause: glob missed ?_rsc request → real page redirect on cold compile). Orchestrator verified 32/32 on fresh server.
+- qa-tester started on T7.1–T7.4, T7.6. T7.5 BLOCKED until migrations are applied on Supabase.
