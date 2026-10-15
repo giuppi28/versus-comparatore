@@ -83,8 +83,10 @@ export const CLIMATE_ZONE_SMC_PER_SQM: Readonly<Record<ClimateZone, number>> = {
 };
 
 /**
- * Fallback for comuni whose climate zone is unknown (Comune.climate_zone === null).
- * Zone E is the most common zone in Italy (northern + inland-central plains), so it
- * keeps the heating estimate near the typical value instead of under-estimating.
+ * Last-resort fallback when neither the comune's zone nor its province capital's zone is
+ * known (e.g. unknown province code). Resolution order is: comune zone -> zone of the
+ * province capital (PROVINCE_CAPITAL_ZONES) -> this value. Zone E is the most common zone
+ * in Italy (northern + inland-central plains), so it keeps the heating estimate near the
+ * typical value instead of under-estimating.
  */
 export const FALLBACK_CLIMATE_ZONE: ClimateZone = "E";

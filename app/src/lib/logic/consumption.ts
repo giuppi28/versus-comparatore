@@ -10,7 +10,21 @@ import {
   MIN_PEOPLE,
   SQM_RANGE_VALUE,
 } from "@/config/consumption";
+import { PROVINCE_CAPITAL_ZONES } from "@/config/province-capital-zones";
 import type { ClimateZone, SqmRange } from "@/lib/data/types";
+
+/**
+ * Resolves the climate zone used for heating: the comune's own zone, else the zone of its
+ * province capital (internal only, never shown), else FALLBACK_CLIMATE_ZONE.
+ */
+export function resolveClimateZone(
+  climateZone?: ClimateZone | null,
+  provinceCode?: string | null,
+): ClimateZone {
+  if (climateZone) return climateZone;
+  const code = provinceCode?.trim().toUpperCase();
+  return (code && Object.hasOwn(PROVINCE_CAPITAL_ZONES, code) ? PROVINCE_CAPITAL_ZONES[code] : undefined) ?? FALLBACK_CLIMATE_ZONE;
+}
 
 /**
  * Normalises the household size: floored to an integer and clamped to 1..5
@@ -48,8 +62,10 @@ export interface GasEstimateInput {
   uses: readonly string[];
   /** Required for riscaldamento; if missing, heating contributes 0 (the UI must ask). */
   sqmRange?: SqmRange | null;
-  /** null/undefined (zone unknown) falls back to FALLBACK_CLIMATE_ZONE. */
+  /** Comune's own zone. null/undefined (zone unknown) falls back to the province capital's zone. */
   climateZone?: ClimateZone | null;
+  /** Comune.province_code, used only when climateZone is missing (capital's zone fallback). */
+  provinceCode?: string | null;
 }
 
 /**
@@ -57,14 +73,20 @@ export interface GasEstimateInput {
  * riscaldamento = representative m² of the range × zone coefficient.
  * All coefficients are integers, so the result is an exact integer.
  */
-export function estimateGas({ people, uses, sqmRange, climateZone }: GasEstimateInput): number {
+export function estimateGas({
+  people,
+  uses,
+  sqmRange,
+  climateZone,
+  provinceCode,
+}: GasEstimateInput): number {
   const n = normalizePeople(people);
   const selected = new Set(uses);
   let total = 0;
   if (selected.has("cucina")) total += GAS_COOKING_BASE_SMC + GAS_COOKING_PER_PERSON_SMC * n;
   if (selected.has("acqua_calda")) total += GAS_HOT_WATER_PER_PERSON_SMC * n;
   if (selected.has("riscaldamento") && sqmRange) {
-    const zone = climateZone ?? FALLBACK_CLIMATE_ZONE;
+    const zone = resolveClimateZone(climateZone, provinceCode);
     total += SQM_RANGE_VALUE[sqmRange] * CLIMATE_ZONE_SMC_PER_SQM[zone];
   }
   return total;
