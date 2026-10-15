@@ -7,6 +7,7 @@
 | `migrations/20261015120000_schema.sql` | T1.1 | Extensions (pgcrypto, unaccent, pg_trgm in `extensions`), tables `suppliers`, `offers`, `comuni`, `leads`, `settings` (single row, `id = true`), `admins`; checks, FKs, indexes, `updated_at` triggers, `normalize_search()` |
 | `migrations/20261015120100_rls_and_lead_functions.sql` | T1.2 | RLS + policies, MFA restrictive policies, `is_admin()`, lead functions `create_lead` / `update_lead` / `complete_lead`, grants |
 | `migrations/20261015121100_comuni_data_01.sql` … `_09.sql` | T1.3 | 7,894 comuni (generated, idempotent upserts, ~1,000 rows per file) |
+| `migrations/20261015130000_storage_supplier_logos.sql` | admin logos | Storage bucket `supplier-logos` (public read, `image/svg+xml` only, 200 KB); `storage.objects` policies: select/insert/update/delete only for `is_admin()` in this bucket + bucket-scoped MFA restrictive policy; no anon policy (no anon write, no listing) |
 | `seed.sql` | T1.4 | 14 suppliers (Block E list + 3 special options), the 8 test offers of TASKS.md T1.4, settings row. Idempotent |
 | `tests/rls_test.sql` | T1.2 | RLS / lead-function security test (one transaction, rolled back) |
 | `tests/data_checks.sql` | T1.3/T1.4 | Read-only checks: counts, seed values, search normalization, climate zones |
@@ -94,7 +95,8 @@ matches only (then 151 comuni have no zone).
 
 No Docker / Supabase CLI / psql on the dev machine, so the SQL is validated with PGlite
 (Postgres 18 compiled to WASM, with pgcrypto/pg_trgm/unaccent) on top of a stub that
-emulates Supabase roles, `auth.uid()`, `auth.jwt()`, `auth.users`, `auth.mfa_factors` and the
+emulates Supabase roles, `auth.uid()`, `auth.jwt()`, `auth.users`, `auth.mfa_factors`,
+`storage.buckets` / `storage.objects` (RLS enabled) and the
 default privileges:
 
 ```

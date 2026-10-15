@@ -31,6 +31,17 @@ insert into public.offers (id, supplier_id, name, commodity, energy_price, locke
   -- visible gas offer (used to test commodity mismatch)
   ('00000000-0000-4000-8000-00000000c004', '00000000-0000-4000-8000-00000000b001', 'RLS Gas Active', 'gas', 0.5, 12, true);
 
+-- storage bucket config + one pre-existing logo object (as postgres)
+do $$
+declare b storage.buckets;
+begin
+  select * into b from storage.buckets where id = 'supplier-logos';
+  if b.id is null or not b.public or b.file_size_limit <> 204800 or b.allowed_mime_types <> array['image/svg+xml'] then
+    raise exception 'FAIL: supplier-logos bucket config (%)', row_to_json(b);
+  end if;
+end $$;
+insert into storage.objects (bucket_id, name) values ('supplier-logos', '00000000-0000-4000-8000-00000000b001/1.svg');
+
 -- ================================================================ ANON
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
@@ -170,6 +181,18 @@ begin
   ok := false; begin perform public.complete_lead(v ->> 'token', '{}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: complete_lead twice (got %)', err; end if;
 
+  -- 14. storage: anon cannot write or list supplier logos
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('supplier-logos', 'anon/evil.svg'); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could upload a supplier logo'; end if;
+  update storage.objects set name = 'x.svg' where bucket_id = 'supplier-logos';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: anon updated a supplier logo'; end if;
+  delete from storage.objects where bucket_id = 'supplier-logos';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: anon deleted a supplier logo'; end if;
+  select count(*) into n from storage.objects where bucket_id = 'supplier-logos';
+  if n <> 0 then raise exception 'FAIL: anon can list supplier logos'; end if;
+
   raise notice 'ok: anon checks';
 end $$;
 
@@ -224,6 +247,11 @@ begin
   update public.leads set status = 'closed';
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL: non-admin updated leads'; end if;
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('supplier-logos', 'user/evil.svg'); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: non-admin uploaded a supplier logo'; end if;
+  delete from storage.objects where bucket_id = 'supplier-logos';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: non-admin deleted a supplier logo'; end if;
   raise notice 'ok: authenticated non-admin checks';
 end $$;
 
@@ -255,6 +283,16 @@ begin
   if n <> 1 then raise exception 'FAIL: admin should see exactly its own admins row (got %)', n; end if;
   ok := false; begin insert into public.admins (user_id) values ('00000000-0000-4000-8000-0000000000a2'); exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'FAIL: admins table writable through the API'; end if;
+  -- storage: admin can upload, list, update, delete supplier logos (only in this bucket)
+  insert into storage.objects (bucket_id, name) values ('supplier-logos', '00000000-0000-4000-8000-00000000b001/2.svg');
+  select count(*) into n from storage.objects where bucket_id = 'supplier-logos';
+  if n <> 2 then raise exception 'FAIL: admin lists % of 2 supplier logos', n; end if;
+  update storage.objects set metadata = '{"x":1}' where bucket_id = 'supplier-logos' and name like '%/2.svg';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'FAIL: admin could not update a supplier logo'; end if;
+  delete from storage.objects where bucket_id = 'supplier-logos' and name like '%/2.svg';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'FAIL: admin could not delete a supplier logo'; end if;
   raise notice 'ok: admin checks';
 end $$;
 
@@ -265,7 +303,7 @@ insert into auth.mfa_factors (user_id, status) values ('00000000-0000-4000-8000-
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal1"}';
 do $$
-declare n integer;
+declare n integer; ok boolean;
 begin
   if not public.is_admin() then raise exception 'FAIL: is_admin() must not depend on aal'; end if;
   select count(*) into n from public.leads;
@@ -273,6 +311,11 @@ begin
   update public.settings set notification_email = 'x@example.com' where id;
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL: admin on aal1 updated settings'; end if;
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('supplier-logos', 'aal1/x.svg'); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: admin on aal1 uploaded a supplier logo'; end if;
+  delete from storage.objects where bucket_id = 'supplier-logos';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: admin on aal1 deleted a supplier logo'; end if;
   raise notice 'ok: MFA aal1 blocked';
 end $$;
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}';
@@ -281,6 +324,7 @@ declare n integer;
 begin
   select count(*) into n from public.leads where id in (current_setting('rls.a_id')::uuid, current_setting('rls.b_id')::uuid);
   if n <> 2 then raise exception 'FAIL: admin on aal2 sees % of 2 leads', n; end if;
+  insert into storage.objects (bucket_id, name) values ('supplier-logos', '00000000-0000-4000-8000-00000000b001/3.svg');
   raise notice 'ok: MFA aal2 allowed';
 end $$;
 
