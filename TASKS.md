@@ -45,7 +45,7 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [ ] T3.2 Page 1 (PRD §6) → `page1-builder`
 - [x] T3.3 Loading screen (PRD §7) → `loading-builder`
 - [ ] T3.4 Page 2 results incl. Luce+Gas two-step (PRD §8) → `results-builder`
-- [ ] T3.5 Offer modal (PRD §9) → `offer-modal-builder`
+- [x] T3.5 Offer modal (PRD §9) → `offer-modal-builder`
 - [ ] T3.6 Activation form step A + B + sticky summary (PRD §10) → `activation-form-builder`
 - [ ] T3.7 Thank-you page (PRD §11) → `thankyou-builder`
 
