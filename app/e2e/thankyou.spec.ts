@@ -123,6 +123,28 @@ test.describe("thank-you page /grazie", () => {
     await page.screenshot({ path: `e2e/screenshots/${screenshotName(page.viewportSize()?.width ?? 1440, "dual")}`, fullPage: true });
   });
 
+  test("background decoration is decorative only: aria-hidden, inert, clipped, behind the card", async ({ page }) => {
+    await seedFlow(page, seededFlow({ luce: luceOffer, gas: null }));
+    await page.goto("/grazie");
+    await expect(page.getByTestId("thankyou-heading")).toBeVisible();
+
+    const decor = page.getByTestId("thankyou-decor");
+    await expect(decor).toHaveAttribute("aria-hidden", "true");
+    const style = await decor.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { pe: cs.pointerEvents, overflow: cs.overflow, z: cs.zIndex };
+    });
+    expect(style).toEqual({ pe: "none", overflow: "hidden", z: "-10" });
+    // Light bulbs and flames are both present in the DOM (some hidden per breakpoint).
+    expect(await decor.locator('svg[data-decor="bulb"]').count()).toBeGreaterThan(0);
+    expect(await decor.locator('svg[data-decor="flame"]').count()).toBeGreaterThan(0);
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
   test("supplier logo is shown when available, text chip otherwise", async ({ page }) => {
     await seedFlow(
       page,

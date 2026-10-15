@@ -8,6 +8,7 @@ import { useFlow } from "@/lib/lead/flow-context";
 import type { ChosenOfferSnapshot } from "@/lib/lead/flow-state";
 import { resolveLogoUrl } from "@/lib/data/logo";
 import { formatEuro, formatPrice } from "@/lib/logic";
+import { ThankYouDecor } from "./ThankYouDecor";
 import { thankYouSummary, type ThankYouSummary } from "./summary";
 
 /**
@@ -43,7 +44,8 @@ export default function GraziePage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex flex-1 flex-col items-center px-4 py-8 sm:py-14">
+      <main className="relative isolate flex flex-1 flex-col items-center overflow-hidden px-4 py-8 sm:py-14">
+        <ThankYouDecor />
         <Card padding="lg" className="w-full max-w-xl">
           <div className="flex flex-col items-center gap-4 text-center">
             <span className="grid size-16 place-items-center rounded-full bg-brand-600 text-white">
