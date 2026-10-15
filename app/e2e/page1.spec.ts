@@ -109,6 +109,9 @@ test.describe("Page 1 — structure and copy", () => {
     // The bulb is purely decorative.
     const bulb = page.locator('main svg[data-decor="bulb"]');
     await expect(bulb).toHaveAttribute("aria-hidden", "true");
+    // Shown from xl only (below it the bulb would be cropped or collide with the headline).
+    if (vw >= 1280) await expect(bulb).toBeVisible();
+    else await expect(bulb).toBeHidden();
     await expect(bulb).toHaveCSS("pointer-events", "none");
     // Hero headline keeps the two lines.
     await expect(page.getByRole("heading", { level: 1 })).toContainText(/comparatore\s+luce e gas/i);

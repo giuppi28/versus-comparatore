@@ -39,13 +39,13 @@ export default async function Page1() {
       <main className="flex-1 pb-section">
         {/* Hero: overflow-hidden crops the bulb; the form below never sits under it. */}
         <div className="relative overflow-hidden">
-          {/* Below lg the text spans the whole width: the bulb only peeks in from the top-right corner
-              (faded out before the headline). From lg it sits right of the headline, clear of it. */}
+          {/* xl+ only (>=1280px, bulb at most ~15% cropped by the viewport): below xl the headline spans the whole width, so no spot keeps the whole bulb clear of
+              the text; a cropped sliver would read as an artefact. Right of the headline, clear of it. */}
           <BulbIllustration
-            className="absolute -right-8 -top-12 h-40 text-brand-200 lg:text-brand-100 [mask-image:linear-gradient(to_bottom,#000_34%,transparent_62%)] sm:-right-10 sm:-top-14 sm:h-48 lg:left-[calc(50%+21.5rem)] lg:right-auto lg:top-5 lg:h-[28rem] lg:[mask-image:linear-gradient(to_bottom,#000_30%,transparent_72%)]"
+            className="absolute hidden text-brand-200 xl:left-[calc(50%+21.5rem)] xl:top-5 xl:block xl:h-[30rem] xl:[mask-image:linear-gradient(to_bottom,#000_28%,transparent_62%)]"
             strokeWidth={8}
           />
-          <header className="relative mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-8 pt-12 sm:items-center sm:gap-5 sm:px-6 sm:pb-10 sm:pt-16 sm:text-center">
+          <header className="relative mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-8 pt-8 sm:items-center sm:gap-5 sm:px-6 sm:pb-10 sm:pt-12 sm:text-center">
             <h1 className="heading-wide text-hero text-ink">
               Comparatore{" "}
               <br />
