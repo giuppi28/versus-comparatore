@@ -1,17 +1,30 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { Button, Input, SelectCard, SelectCardGroup } from "@/components/ui";
+import type { FormEvent, ReactNode } from "react";
+import {
+  Button,
+  Input,
+  OtherIcon,
+  OwnerIcon,
+  SelectCard,
+  SelectCardGroup,
+  TenantIcon,
+  UsufructuaryIcon,
+} from "@/components/ui";
 import type { HousingTitle } from "@/lib/data/types";
 import { normalizeCodiceFiscale } from "@/lib/logic/validators";
 import { GroupError, GroupLabel } from "./FieldError";
 import type { StepProps } from "./types";
 
-const HOUSING_OPTIONS: ReadonlyArray<{ value: HousingTitle; label: string }> = [
-  { value: "proprietario", label: "Proprietario" },
-  { value: "inquilino", label: "Inquilino" },
-  { value: "usufruttuario", label: "Usufruttuario" },
-  { value: "altro", label: "Altro" },
+const HOUSING_OPTIONS: ReadonlyArray<{
+  value: HousingTitle;
+  label: string;
+  icon: ReactNode;
+}> = [
+  { value: "proprietario", label: "Proprietario", icon: <OwnerIcon /> },
+  { value: "inquilino", label: "Inquilino", icon: <TenantIcon /> },
+  { value: "usufruttuario", label: "Usufruttuario", icon: <UsufructuaryIcon /> },
+  { value: "altro", label: "Altro", icon: <OtherIcon /> },
 ];
 
 /** Step A — "Dati intestatario" (PRD §10). */
@@ -156,7 +169,7 @@ export function StepA({
         >
           {HOUSING_OPTIONS.map((o) => (
             <div key={o.value} data-testid={`housing_title-${o.value}`}>
-              <SelectCard value={o.value} title={o.label} />
+              <SelectCard value={o.value} title={o.label} icon={o.icon} />
             </div>
           ))}
         </SelectCardGroup>

@@ -596,6 +596,24 @@ test.describe("activation form", () => {
     await expect(page).toHaveURL(/\/offerte/);
   });
 
+  test("every option card in steps A and B has a decorative icon", async ({ page }) => {
+    await open(page, businessDual());
+    const expectIcons = async (ids: string[]) => {
+      for (const id of ids) {
+        const card = page.getByTestId(id).locator('[role="radio"], [role="checkbox"]');
+        // Icon wrapper is aria-hidden and holds an svg; the label stays plain text.
+        await expect(card.locator('span[aria-hidden="true"] svg').first()).toBeVisible();
+      }
+    };
+    await expectIcons(["proprietario", "inquilino", "usufruttuario", "altro"].map((v) => `housing_title-${v}`));
+    await fillStepA(page, { cf: CF_GIULIA_BIANCHI, piva: PIVA });
+    await page.getByTestId("activation-next").click();
+    await expect(page.getByTestId("activation-step-b")).toBeVisible();
+    await expectIcons(["is_resident-yes", "is_resident-no", "voltage-220", "voltage-380"]);
+    await expectIcons(["cucina", "riscaldamento", "acqua_calda"].map((u) => `gas-use-${u}`));
+    await expectNoOverflow(page);
+  });
+
   test("summary details and no forbidden wording", async ({ page }, testInfo) => {
     await open(page, businessDual());
     if (testInfo.project.name === "mobile") {

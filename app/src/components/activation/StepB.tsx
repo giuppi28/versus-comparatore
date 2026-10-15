@@ -2,7 +2,20 @@
 
 import type { FormEvent, ReactNode } from "react";
 import { GAS_USES, type GasUseId } from "@/config/consumption";
-import { Button, Input, Select, SelectCard, SelectCardGroup } from "@/components/ui";
+import {
+  Button,
+  CookingIcon,
+  DropletIcon,
+  Input,
+  NoIcon,
+  RadiatorIcon,
+  Select,
+  SelectCard,
+  SelectCardGroup,
+  SinglePhaseIcon,
+  ThreePhaseIcon,
+  YesIcon,
+} from "@/components/ui";
 import type { Voltage } from "@/lib/data/types";
 import { serviceTypeFor } from "@/lib/lead/flow-state";
 import { includesGas, includesLuce, needsCurrentSupplier, needsMeterCode } from "@/lib/lead/rules";
@@ -17,6 +30,13 @@ import {
   supplierOptions,
 } from "./logic";
 import type { StepBProps } from "./types";
+
+/** Same icons as the gas-use cards on Page 1. */
+const GAS_USE_ICONS: Record<GasUseId, ReactNode> = {
+  cucina: <CookingIcon />,
+  riscaldamento: <RadiatorIcon />,
+  acqua_calda: <DropletIcon />,
+};
 
 function Section({ title, testId, children }: { title: string; testId: string; children: ReactNode }) {
   return (
@@ -158,10 +178,10 @@ export function StepB({
             className="grid grid-cols-2 gap-3 sm:max-w-sm"
           >
             <div data-testid="is_resident-yes">
-              <SelectCard value="yes" title="Sì" />
+              <SelectCard value="yes" title="Sì" icon={<YesIcon />} />
             </div>
             <div data-testid="is_resident-no">
-              <SelectCard value="no" title="No" />
+              <SelectCard value="no" title="No" icon={<NoIcon />} />
             </div>
           </SelectCardGroup>
           <GroupError id="resident-error" message={errorFor("is_resident")} />
@@ -240,10 +260,10 @@ export function StepB({
               className="grid grid-cols-2 gap-3 sm:max-w-md"
             >
               <div data-testid="voltage-220">
-                <SelectCard value="220" title="220 V" description="Monofase" />
+                <SelectCard value="220" title="220 V" description="Monofase" icon={<SinglePhaseIcon />} />
               </div>
               <div data-testid="voltage-380">
-                <SelectCard value="380" title="380 V" description="Trifase" />
+                <SelectCard value="380" title="380 V" description="Trifase" icon={<ThreePhaseIcon />} />
               </div>
             </SelectCardGroup>
             <GroupError id="voltage-error" message={errorFor("voltage")} />
@@ -311,7 +331,7 @@ export function StepB({
             >
               {GAS_USES.map((u) => (
                 <div key={u.id} data-testid={`gas-use-${u.id}`}>
-                  <SelectCard value={u.id} title={u.label} />
+                  <SelectCard value={u.id} title={u.label} icon={GAS_USE_ICONS[u.id]} />
                 </div>
               ))}
             </SelectCardGroup>
