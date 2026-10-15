@@ -60,3 +60,55 @@ Status legend: `[ ]` open · `[x] fixed in <commit>`.
 - Page 1 preselection is applied by Page 1 itself after hydration (only while `serviceType` is null), so a service already chosen is never overridden; the lead created at consent now carries `service_type = cambio_fornitore`. The "service required" validation stays in the code (unreachable from the UI, still unit-tested).
 - Admin login/MFA keep the full-width lg submit ("ACCEDI"): entry screens, not CRUD forms.
 - The offers admin filter got the same segmented style as the leads filter, for consistency.
+
+## Phase 10 — round 1 (design-reviewer, T10.7, 2026-10-15)
+
+Method: matrix screenshot spec (`app/e2e/screenshots/*-1440.png|*-390.png`, regenerated) + own Playwright runs (header at 1440/1024/768/700/640/390, loading at ~1.5 s and ~3 s at 1440/390, reduced-motion at 1440/390; scratch shots in the session scratchpad). Checked against PHASE10_BRIEF B1–B6, ui-ux-pro-max priorities 1→10 (a11y, touch, layout/responsive, style consistency, typography/colour, animation) and the frontend-design restraint rules.
+
+Overall: B1–B6 are delivered and the result is clean and coherent (lockup, tinted header, centred Page 1, loading ring + marquee, green "PER TE", icon cards, decorated thank-you, footer). Loading screen, results, modal, activation and admin need no change. One real responsive bug (P10-1) and a handful of polish items.
+
+### Findings
+
+- [ ] **P10-1 — high — all public pages, 640–~800px (tablet / large phone landscape): header trust line overflows and creates horizontal page scroll.**
+  Measured `scrollWidth - clientWidth` on `/`: 768px = 12px, 700px = 80px, 640px = 140px (0 at 390 and ≥1024). The header row (lockup ≈440px + trust line "Confronto gratuito · 100% online" ≈240px + gap) does not fit between the `sm` breakpoint (640) and ~800px; the trust text is cut at the right edge at 768 ("100% onlin").
+  Fix: in `components/brand/SiteHeader.tsx` show the trust line only from `lg` (`hidden lg:flex` instead of `hidden sm:flex`); keep `sm:h-16`. (Alternative: `min-w-0` + shorter text at `md`, but hiding is simplest and matches the 390px behaviour.) Re-check 640, 700, 768, 800, 1024 for `scrollWidth == clientWidth`.
+  Owner: `setup-builder`. Rule: ui-ux-pro-max §5 Layout & Responsive "No horizontal scroll"; brief global constraint "no horizontal scroll".
+
+- [ ] **P10-2 — medium — Page 1, 1024–1440px: header is narrowed to `lg:max-w-2xl`, its content overflows that box and sits off-centre, and the header jumps horizontally between Page 1 and every other screen.**
+  `app/(public)/page.tsx` passes `className="lg:max-w-2xl"`; the inner row is 672px but lockup + trust line need ≈700px, so the content spills to the right (centre of the group at x≈787 at 1440 instead of 720) and the lockup starts at x≈410 on Page 1 vs x≈170 on loading, results, activation, thank-you and the footer. The brief asks to centre the Page 1 hero and form, not to shrink the header; the narrow header also makes Page 1's own footer (x≈170) misaligned with its header.
+  Fix: remove the `className="lg:max-w-2xl"` override so Page 1 uses the same `max-w-6xl` header as all other pages (hero and form stay centred below). Verify at 1440 and 1024.
+  Owner: `page1-builder` (file `app/src/app/(public)/page.tsx`). Rule: ui-ux-pro-max §4 Style consistency / §9 predictable navigation chrome; frontend-design "visual structure is information".
+
+- [ ] **P10-3 — medium — Page 1 "Confrontiamo le offerte di" strip, 1440 + 390: colour logos forced to greyscale at 75% opacity look washed-out and uneven.**
+  `components/page1/LandingSections.tsx` uses the colour SVG with `opacity-75 grayscale`: Plenitude, Iberdrola, A2A and Acea become faint grey, Acea reads as an anonymous "Q", while Enel/E.ON/Edison are heavy. The normalised black set (`/logos/black/*.svg`, already used by the loading marquee) renders crisp and consistent at the same box size.
+  Fix: reuse the loading screen's `blackLogoUrl()` logic (move it to a shared helper, e.g. `lib/logos.ts`, and import it in both places): local `/logos/<slug>.svg` → `/logos/black/<slug>.svg`, no `grayscale` filter; fallback for non-local URLs `brightness-0`; use a uniform `opacity-80` (or 100) and keep the 28/32px box heights. Keep placeholders (Tutela/Altro/Non lo so) excluded.
+  Owner: `page1-builder`. Rule: ui-ux-pro-max §6 colour/"gray-on-gray" and §4 consistency; brief B2 ("real supplier logos, black/greyscale").
+
+- [ ] **P10-4 — low — Page 1 hero bulb, 1440 / 768 / 390: decoration touches or sits under the headline.**
+  At 1440 the bulb's left ray starts exactly at the right edge of the "E" of COMPARATORE; at 768 and 390 the bulb outline runs behind the last letters of COMPARATORE and behind the first lines of the subtitle ("mostriamo", "casa o"). Contrast is not reduced (the tint is very pale) but the headline should read on clean grey. Size/strength at desktop are fine (visible but low emphasis): keep.
+  Fix: desktop (`lg`+) shift the bulb ≈60–80px further right or down so no ray touches the H1; below `lg` crop it to the top-right corner above/beside the H1 (e.g. top offset so it ends before the subtitle) or drop its opacity ≈30% on `<md`; it must never overlap the subtitle or the first card.
+  Owner: `page1-builder`. Rule: brief global "decorations never under text", ui-ux-pro-max §1 contrast.
+
+- [ ] **P10-5 — low — Loading screen, reduced motion, 390px: static logo grid is off-centre.**
+  Each `LogoItem` carries `pr-10 sm:pr-14`, so the centred wrapped row has a right-heavy gap (≈76px left margin vs ≈156px right inside the card at 390).
+  Fix: in the reduced-motion branch of `SupplierMarquee` add negative end margin to compensate (`-mr-10 sm:-mr-14` on the `<ul>`) or switch the items to symmetric `px-5 sm:px-7` for the static variant only; leave the animated marquee spacing unchanged.
+  Owner: `loading-builder`. Rule: ui-ux-pro-max §5 layout polish; brief B3 (static row for reduced motion).
+
+- [ ] **P10-6 — low/medium — Thank-you page, 1440 + 390: background decoration is busier than "subtle", and at 390 only cropped slivers show behind the card edges.**
+  At 1440 there are 4 flames + a house outline on the left and 2 bulbs + a drop on the right (≈8 mid-green pieces); the brief says "subtle, never busy" and the frontend-design rule is one memorable element. At 390 the cropped pieces peek out at the card's top and bottom corners and read like rendering artefacts.
+  Fix: desktop keep one large flame (left) and one large bulb (right), plus at most one small accent per side (drop or small flame), and soften the fill ≈20% (lighter than today). Mobile: hide the decoration below `sm` (`hidden sm:block`) or show a single piece fully in the top margin above the card, never cropped by the card edge. Decoration stays `aria-hidden`, static, behind the card.
+  Owner: `thankyou-builder`. Rule: frontend-design "Restraint and self-critique"; brief B6 and global "keep it clean".
+
+### Checked and dismissed (no action)
+- Footer (1440 + 390): lockup, Privacy link (44px tall tap area), © VERSUS 2026; consistent on Page 1, results, activation, thank-you, privacy. Fine.
+- Admin login and admin header with the new lockup: white admin header with the compact lockup, tidy at 1440 and 390 (nav wraps below the lockup on mobile, no clipping). Fine; admin is deliberately not tinted green.
+- Bulb "too faint/small": acceptable and correct for "low emphasis"; only its position needs P10-4.
+- Selected "380 V" card looking semi-transparent in `activation-dual-b-filled-1440.png`: screenshot taken mid colour-transition (`transition-colors` only, no opacity); the selected state is solid in the 390 shot. Not a bug.
+- Loading screen (1.5 s / 3 s, normal and reduced motion, 1440 + 390): ring, green keywords, black logos, edge fades, current supplier absent, no CLS or overflow. Good.
+- Results luce / gas / dual step 1 + 2, offer modal: "PER TE" green in all variants, centred title, step pill, cards and modal clean at both widths. Good.
+- Activation step A/B (casa and Partita IVA, dual): option icons consistent with Page 1 icon style, labels intact, 390 layout clean. Good.
+- Copy rules: no call wording before the thank-you page, no "demo", no Facile.it elements, no invented numbers on any screen reviewed.
+- Note (not design, already known): the privacy page still shows legal placeholders in square brackets (`[Ragione sociale del titolare]`, etc.). Must be filled before go-live.
+
+### Verdict round 1
+Needs fixes: P10-1 (high) must be fixed; P10-2 and P10-3 (medium) should be fixed; P10-4/5/6 are polish. After fixes the result is ready.
