@@ -143,3 +143,9 @@ Blocked (needs Giuseppe / reviewer):
 - T5.1 logo pack → Q2 "ready".
 - Decisions: Q3 notification email, Q4 gas "monoraria", Q5 climate-zone source licence, Q6 anon RPC Turnstile bypass, Q7 notification recipient in Supabase mode, Q8 placeholder suppliers flag, Q9 privacy text, Q10 Workers plan.
 Known limitations: real Supabase flow (auth/MFA, RLS, storage) untested until migrations applied; in-memory rate limits per isolate (WAF rule in DEPLOY.md); minor Lighthouse color-contrast on small text (scores 96–97); privacy page has placeholders.
+
+## 2026-10-15 16:00 — T8.5 Go-live checklist additions
+- Agent: admin-settings-builder (sonnet).
+- Changed: 'Verifiche manuali' block (sign-up disabled, Aldo admin row, bootstrap function dropped) — informational, not part of the automatic Pronto status; DEPLOY.md: Q10 decision (Workers Free, monitor 1102), LEAD_API_SECRET as Cloudflare secret, manual items with SQL.
+- Verified by orchestrator: vitest 14/14 ✓, eslint ✓ (agent: e2e admin-settings 6/6).
+- Commit: 825fda9
