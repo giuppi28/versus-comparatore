@@ -101,3 +101,9 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Decisions: edits to result-affecting inputs reset chosen offers; privacy link → /privacy (page not yet built, PRD §13.1 open); Partita IVA not asked "Hai già il gas".
 - Verified by orchestrator: vitest 29/29 ✓, eslint ✓. Agent ran e2e 61 passed / 1 skipped in a scratch copy (dev-server lock).
 - Commit: b3b7fc0
+
+## 2026-10-15 13:55 — T4.2 Admin leads (unit-verified; e2e pending consolidated run)
+- Agent: admin-leads-builder (sonnet).
+- Changed: /admin/leads (Completati/Parziali/Tutti tabs, URL-driven filters + search + pagination), /admin/leads/[id] (grouped fields, offer names resolved, no token rendered), status + notes server action (requireAdmin, zod).
+- Verified by orchestrator: vitest 12/12 ✓, eslint ✓. Agent ran e2e 12/12 in a scratch copy.
+- Commit: cbff07b
