@@ -107,3 +107,9 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Changed: /admin/leads (Completati/Parziali/Tutti tabs, URL-driven filters + search + pagination), /admin/leads/[id] (grouped fields, offer names resolved, no token rendered), status + notes server action (requireAdmin, zod).
 - Verified by orchestrator: vitest 12/12 ✓, eslint ✓. Agent ran e2e 12/12 in a scratch copy.
 - Commit: cbff07b
+
+## 2026-10-15 14:10 — Consolidated verification + T3.4 server offers + /privacy
+- T3.4 follow-up (e5b2ae7, results-builder): /offerte loads offers server-side (force-dynamic) → admin changes reach customers; new e2e proves it.
+- /privacy (26dad34, page1-builder): GDPR structure with placeholders (Q9).
+- Orchestrator consolidated run on a single clean dev server: typecheck ✓, lint ✓ (0 errors), vitest 681/681 ✓, Playwright full suite 182 passed / 1 skipped / 1 failed (admin-settings exact offer count, test-isolation issue with parallel specs → sent back to admin-settings-builder).
+- T3.2, T4.2, T4.3, T4.4 marked done (their e2e green in the consolidated run).

@@ -42,7 +42,7 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 
 ## Phase 3 — Customer screens (one agent per screen)
 - [x] T3.1 Lead API (server routes → lead functions, httpOnly token cookie, Turnstile, rate limit) → `lead-api-builder`
-- [~] T3.2 Page 1 (PRD §6) → `page1-builder`
+- [x] T3.2 Page 1 (PRD §6) → `page1-builder`
 - [x] T3.3 Loading screen (PRD §7) → `loading-builder`
 - [x] T3.4 Page 2 results incl. Luce+Gas two-step (PRD §8) → `results-builder`
 - [x] T3.5 Offer modal (PRD §9) → `offer-modal-builder`
@@ -51,9 +51,9 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 
 ## Phase 4 — Admin screens (one agent per screen)
 - [x] T4.1 Login + server-side protection + optional TOTP MFA → `admin-auth-builder`
-- [~] T4.2 Leads list/detail/status/notes → `admin-leads-builder`
-- [~] T4.3 Suppliers CRUD + sanitized SVG upload → `admin-suppliers-builder`
-- [~] T4.4 Offers CRUD (all PRD §5.3 fields, month/year toggle) → `admin-offers-builder`
+- [x] T4.2 Leads list/detail/status/notes → `admin-leads-builder`
+- [x] T4.3 Suppliers CRUD + sanitized SVG upload → `admin-suppliers-builder`
+- [x] T4.4 Offers CRUD (all PRD §5.3 fields, month/year toggle) → `admin-offers-builder`
 - [~] T4.5 Settings (notification email) + go-live checklist (unverified offers) + Resend notification (log-only when no key) → `admin-settings-builder`
 
 ## Phase 5 — Logo pack  → agent: `logopack-builder`

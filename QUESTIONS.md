@@ -87,5 +87,5 @@ They are supplier rows without offers and nothing distinguishes them, so they ap
 **Answer:**
 
 ## Q9 (PRD §13.1) — Privacy notice text
-Page 1's consent links to `/privacy`, which doesn't exist yet. Please provide the informativa privacy text (data controller, purpose = being contacted about the chosen offer, retention, rights). Until then the orchestrator will add a `/privacy` page with the section structure and the go-live checklist will flag it as missing.
+Page 1's consent links to `/privacy`, which doesn't exist yet. Please provide the informativa privacy text (data controller, purpose = being contacted about the chosen offer, retention, rights). A `/privacy` page now exists (commit 26dad34) with the full structure and these placeholders to fill: [Ragione sociale del titolare], [Indirizzo completo del titolare], [Partita IVA del titolare], [Indirizzo email di contatto privacy], [Periodo di conservazione dei dati], [Data di aggiornamento]. Please also confirm the "Destinatari" section (data shared with the chosen supplier) and the legal basis (consent + art. 6.1.b pre-contractual measures).
 **Answer:**
