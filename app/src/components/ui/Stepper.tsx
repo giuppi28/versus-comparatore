@@ -34,7 +34,7 @@ export function Stepper({
                 "flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold",
                 done && "border-brand-600 bg-brand-600 text-white",
                 isCurrent && "border-brand-600 bg-brand-50 text-brand-800",
-                !done && !isCurrent && "border-line-strong bg-surface text-ink-subtle",
+                !done && !isCurrent && "border-control bg-surface text-ink-subtle",
               )}
             >
               {done ? <CheckIcon width={14} height={14} strokeWidth={3} /> : i + 1}

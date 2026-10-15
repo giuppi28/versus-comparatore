@@ -16,21 +16,26 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 disabled:bg-brand-200 disabled:text-brand-900/70",
+    "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 disabled:bg-disabled disabled:text-ink-subtle disabled:hover:bg-disabled",
   secondary:
-    "border border-line-strong bg-surface text-ink hover:border-ink disabled:text-ink-subtle disabled:hover:border-line-strong",
+    "border border-control bg-surface text-ink hover:border-ink disabled:text-ink-subtle disabled:hover:border-control",
   ghost:
     "bg-transparent text-brand-700 hover:bg-brand-50 active:bg-brand-100 disabled:text-ink-subtle disabled:hover:bg-transparent",
 };
 
 const sizes: Record<ButtonSize, string> = {
   md: "min-h-11 px-5 text-base",
-  lg: "min-h-13 px-6 text-base",
+  lg: "min-h-13 px-4 text-base",
 };
 
-/** Main CTA (primary + lg): wide uppercase display label, like the VERSUS headings. */
-const mainCta =
-  "heading-wide px-4 text-[12.5px] font-semibold leading-tight tracking-[0.04em] [font-stretch:110%]";
+/**
+ * Large buttons (primary AND secondary, so rows like "Indietro" / "Prosegui" match): wide
+ * uppercase display label, 14px minimum. Stretch/tracking are tuned so
+ * "ATTIVA ONLINE IN 1 MINUTO" stays on one line in the results-card CTA (~220px inner width)
+ * and in a full-width button at 390px. md stays normal case.
+ */
+const largeLabel =
+  "heading-wide text-sm font-bold leading-tight tracking-[0.01em] [font-stretch:108%]";
 
 export function Button({
   variant = "primary",
@@ -54,7 +59,7 @@ export function Button({
         "inline-flex items-center justify-center gap-2 rounded-control text-center font-semibold transition-colors disabled:cursor-not-allowed",
         variants[variant],
         sizes[size],
-        variant === "primary" && size === "lg" && mainCta,
+        size === "lg" && largeLabel,
         fullWidth && "w-full",
         className,
       )}

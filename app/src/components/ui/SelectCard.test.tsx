@@ -103,4 +103,26 @@ describe("standalone SelectCard", () => {
     await userEvent.click(screen.getByRole("checkbox"));
     expect(onChange).toHaveBeenLastCalledWith(false);
   });
+
+  it("never fades a selected card, even when disabled", () => {
+    render(
+      <>
+        <SelectCard type="checkbox" title="Sel" selected disabled />
+        <SelectCard type="checkbox" title="Unsel" disabled />
+      </>,
+    );
+    expect(screen.getByRole("checkbox", { name: /Sel/ }).className).not.toContain("opacity");
+    expect(screen.getByRole("checkbox", { name: /Unsel/ }).className).toContain("disabled:opacity-50");
+  });
+
+  it("reserves room under the indicator for text-only cards, not for icon cards", () => {
+    render(
+      <>
+        <SelectCard type="checkbox" title="Usufruttuario" />
+        <SelectCard type="checkbox" title="Con icona" icon={<svg />} />
+      </>,
+    );
+    expect(screen.getByRole("checkbox", { name: /Usufruttuario/ }).className).toContain("pt-9");
+    expect(screen.getByRole("checkbox", { name: /Con icona/ }).className).toContain("pt-4");
+  });
 });

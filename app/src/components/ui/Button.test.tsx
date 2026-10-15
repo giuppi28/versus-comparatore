@@ -10,7 +10,7 @@ describe("Button", () => {
     expect(btn).toHaveAttribute("type", "button");
     expect(btn.className).toContain("bg-brand-600");
     rerender(<Button variant="secondary">Vai</Button>);
-    expect(screen.getByRole("button").className).toContain("border-line-strong");
+    expect(screen.getByRole("button").className).toContain("border-control");
     rerender(<Button variant="ghost">Vai</Button>);
     expect(screen.getByRole("button").className).toContain("bg-transparent");
   });
@@ -59,5 +59,26 @@ describe("Button", () => {
     );
     await userEvent.click(screen.getByRole("button"));
     expect(onSubmit).toHaveBeenCalled();
+  });
+
+  it("lg size uses the wide uppercase label for primary and secondary; md stays normal case", () => {
+    const { rerender } = render(<Button size="lg">Vai</Button>);
+    expect(screen.getByRole("button").className).toContain("heading-wide");
+    rerender(
+      <Button size="lg" variant="secondary">
+        Vai
+      </Button>,
+    );
+    expect(screen.getByRole("button").className).toContain("heading-wide");
+    rerender(<Button variant="secondary">Vai</Button>);
+    expect(screen.getByRole("button").className).not.toContain("heading-wide");
+  });
+
+  it("disabled primary uses the neutral grey fill, not pale green", () => {
+    render(<Button disabled>Vai</Button>);
+    const cls = screen.getByRole("button").className;
+    expect(cls).toContain("disabled:bg-disabled");
+    expect(cls).not.toContain("disabled:bg-brand");
+    expect(cls).toContain("disabled:cursor-not-allowed");
   });
 });

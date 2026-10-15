@@ -4,6 +4,8 @@ export { Card } from "./Card";
 export type { CardProps } from "./Card";
 export { SelectCard, SelectCardGroup } from "./SelectCard";
 export type { SelectCardProps, SelectCardGroupProps } from "./SelectCard";
+export { FieldGroup } from "./FieldGroup";
+export type { FieldGroupProps } from "./FieldGroup";
 export { Input } from "./Input";
 export type { InputProps } from "./Input";
 export { Select } from "./Select";

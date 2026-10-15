@@ -155,11 +155,15 @@ export function SelectCard({
       onClick={onClick}
       data-selected={selected}
       className={cn(
-        "relative flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-card border-[1.5px] bg-surface px-3 py-4 text-center transition-colors",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        "relative flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-card border-[1.5px] px-3 pb-4 text-center transition-colors",
+        // The top-right indicator (size-5 at top-2.5) must never touch the label: text-only cards
+        // start their content below it (pt-9 = 36px > 10 + 20); with an icon the title is far below
+        // the indicator and the icon sits in the middle, so the normal padding is enough.
+        icon ? "pt-4" : "pt-9",
+        // Selected cards are always fully opaque; only unselected disabled cards fade.
         selected
-          ? "border-brand-600 bg-brand-50"
-          : "border-line hover:border-[#aeb7c6] disabled:hover:border-line",
+          ? "border-brand-600 bg-brand-50 disabled:cursor-not-allowed"
+          : "border-line bg-surface hover:border-[#aeb7c6] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line",
         className,
       )}
     >
@@ -174,14 +178,14 @@ export function SelectCard({
           {icon}
         </span>
       )}
-      <span className="text-base font-semibold text-ink">{title}</span>
+      <span className="max-w-full text-balance break-words text-base font-semibold leading-snug text-ink">{title}</span>
       {description && <span className="text-sm text-ink-muted">{description}</span>}
       <span
         aria-hidden="true"
         className={cn(
           "absolute right-2.5 top-2.5 flex size-5 items-center justify-center border-[1.5px] text-white transition-colors",
           type === "radio" ? "rounded-full" : "rounded-[6px]",
-          selected ? "border-brand-600 bg-brand-600" : "border-line-strong bg-surface",
+          selected ? "border-brand-600 bg-brand-600" : "border-control bg-surface",
         )}
       >
         {selected && <CheckIcon width={12} height={12} strokeWidth={3} />}
