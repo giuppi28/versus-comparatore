@@ -79,3 +79,10 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Note: dual luce choice PATCHes chosen_offer_luce without step change; offer_chosen set after gas choice.
 - Verified by orchestrator: vitest 19/19 ✓, eslint ✓, tsc ✓, playwright results 22/22 (desktop+mobile) ✓. Infra note: parallel Playwright runs collide on app/test-results → use `--output` per run.
 - Commit: 2ae0417
+
+## 2026-10-15 13:20 — T3.6 Activation form
+- Agent: activation-form-builder (sonnet).
+- Changed: `(public)/attivazione` + `src/components/activation` — Step A (CF with check char + name consistency, P.IVA for business, housing title), Step B (comune/CAP, address, residente, Luce POD/potenza/tensione, Gas PDR/usi; supplier hidden for subentro/primo allaccio; POD/PDR optional for primo allaccio), sticky summary (dual total), Turnstile, server 422 field mapping, 429/5xx/expired session messages; sets leadCompleted before /grazie; step persisted in `versus.activation.step.v1`.
+- Verified by orchestrator: vitest 25/25 ✓, eslint ✓, playwright activation 32/32 (desktop+mobile) ✓.
+- Infra: Next 16 refuses a second `next dev` in the same folder → parallel e2e runs must reuse the running server's PORT and use a private `--output`.
+- Commit: a328514
