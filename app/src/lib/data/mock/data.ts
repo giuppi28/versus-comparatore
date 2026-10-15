@@ -16,7 +16,8 @@ function supplier(
     id: slug,
     name,
     slug,
-    logo_path: null,
+    // Real suppliers ship a normalized logo from logopack/ (app/public/logos); placeholders have none.
+    logo_path: opts.is_placeholder ? null : `/logos/${slug}.svg`,
     sells_luce: opts.sells_luce ?? true,
     sells_gas: opts.sells_gas ?? true,
     show_in_dropdown: true,
