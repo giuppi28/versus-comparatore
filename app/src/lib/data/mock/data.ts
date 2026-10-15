@@ -2,7 +2,7 @@
  * MOCK data. Used while NEXT_PUBLIC_DATA_SOURCE=mock.
  * - Suppliers: PRD §6 Block E dropdown list (+ special options).
  * - Offers: the 8 test offers of TASKS.md T1.4 (invented names, price_verified = false).
- * - Comuni: a SMALL SAMPLE (not the full ISTAT dataset) covering climate zones A-F.
+ * - Comuni: a SMALL SAMPLE (not the full ISTAT dataset) covering climate zones A-F (+ one comune with an unknown zone, null).
  */
 import type { Comune, Offer, Supplier } from "../types";
 
@@ -112,7 +112,7 @@ function comune(
 
 /** Small sample of real comuni (ISTAT codes) across climate zones A-F. */
 export const MOCK_COMUNI: Comune[] = [
-  comune("084041", "Lampedusa e Linosa", "AG", "Agrigento", "Sicilia", ["92010"], "A"),
+  comune("084020", "Lampedusa e Linosa", "AG", "Agrigento", "Sicilia", ["92010"], "A"),
   comune("080063", "Reggio di Calabria", "RC", "Reggio di Calabria", "Calabria", ["89121", "89122", "89123", "89124", "89125", "89126", "89127", "89128", "89129", "89131", "89132", "89133", "89134", "89135"], "B"),
   comune("082053", "Palermo", "PA", "Palermo", "Sicilia", ["90121", "90122", "90123", "90124", "90125", "90126", "90127", "90128", "90129", "90131"], "B"),
   comune("087015", "Catania", "CT", "Catania", "Sicilia", ["95121", "95122", "95123", "95124", "95125", "95126", "95127", "95128", "95129", "95131"], "B"),
@@ -132,7 +132,9 @@ export const MOCK_COMUNI: Comune[] = [
   comune("066049", "L'Aquila", "AQ", "L'Aquila", "Abruzzo", ["67100"], "E"),
   comune("035033", "Reggio nell'Emilia", "RE", "Reggio nell'Emilia", "Emilia-Romagna", ["42121", "42122", "42123", "42124"], "E"),
   comune("025006", "Belluno", "BL", "Belluno", "Veneto", ["32100"], "F"),
-  comune("025018", "Cortina d'Ampezzo", "BL", "Belluno", "Veneto", ["32043"], "F"),
-  comune("007003", "Aosta", "AO", "Aosta", "Valle d'Aosta", ["11100"], "F"),
-  comune("021008", "Bolzano", "BZ", "Bolzano", "Trentino-Alto Adige", ["39100"], "F"),
+  comune("025016", "Cortina d'Ampezzo", "BL", "Belluno", "Veneto", ["32043"], "F"),
+  // Zone unknown in the DB dataset (merger of comuni in different zones): exercises the UI fallback.
+  comune("025074", "Borgo Valbelluna", "BL", "Belluno", "Veneto", ["32026"], null),
+  comune("007003", "Aosta", "AO", "Aosta", "Valle d'Aosta", ["11100"], "E"),
+  comune("021008", "Bolzano", "BZ", "Bolzano", "Trentino-Alto Adige", ["39100"], "E"),
 ];

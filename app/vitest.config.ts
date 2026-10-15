@@ -5,7 +5,11 @@ import path from "node:path";
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { "@": path.resolve(__dirname, "src") },
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+      // `server-only` throws outside the React server graph; neutralise it in unit tests.
+      "server-only": path.resolve(__dirname, "vitest.server-only.ts"),
+    },
   },
   test: {
     environment: "jsdom",

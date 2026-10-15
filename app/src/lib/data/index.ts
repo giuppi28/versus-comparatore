@@ -7,8 +7,16 @@ export { normalizeSearch } from "./normalize";
 export {
   LeadNotFoundError,
   PrivacyConsentRequiredError,
+  SupplierNotFoundError,
+  OfferNotFoundError,
+  SupplierSlugTakenError,
+  InvalidLogoError,
+  assertSafeSvg,
+  MAX_LOGO_BYTES,
+  SUPPLIER_LOGO_BUCKET,
   DEFAULT_COMUNI_LIMIT,
 } from "./repository";
+export { resolveLogoUrl } from "./logo";
 export type { Repository } from "./repository";
 export { createMockRepository } from "./mock/mock-repository";
 export { createSupabaseRepository, createSupabaseClient } from "./supabase/supabase-repository";
@@ -57,4 +65,20 @@ export function getRepository(): Repository {
 /** Test helper: drop the cached repository. */
 export function resetRepositoryCache() {
   globalForRepo.__versusRepo = undefined;
+}
+
+/**
+ * Test hook: replaces the process-wide mock repository with a fresh one
+ * (seed data restored, leads/admin edits dropped). Refused in production and
+ * when the data source is not "mock".
+ */
+export function resetMockRepository(): Repository {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("resetMockRepository() is not available in production");
+  }
+  if (getDataSource() !== "mock") {
+    throw new Error("resetMockRepository() only works with NEXT_PUBLIC_DATA_SOURCE=mock");
+  }
+  resetRepositoryCache();
+  return getRepository();
 }

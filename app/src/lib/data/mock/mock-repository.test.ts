@@ -106,6 +106,15 @@ describe("comuni", () => {
     expect(zones).toEqual(["A", "B", "C", "D", "E", "F"]);
   });
 
+  it("matches the DB dataset: ISTAT codes, Aosta/Bolzano zone E, one comune with unknown zone", async () => {
+    expect((await repo.getComune("084020"))?.name).toBe("Lampedusa e Linosa");
+    expect((await repo.getComune("025016"))?.name).toBe("Cortina d'Ampezzo");
+    expect((await repo.searchComuni("Aosta"))[0].climate_zone).toBe("E");
+    expect((await repo.searchComuni("Bolzano"))[0].climate_zone).toBe("E");
+    expect((await repo.searchComuni("Belluno"))[0].climate_zone).toBe("F");
+    expect((await repo.getComune("025074"))?.climate_zone).toBeNull();
+  });
+
   it("searches case-insensitively", async () => {
     expect((await repo.searchComuni("MILANO"))[0].name).toBe("Milano");
     expect((await repo.searchComuni("milano"))[0].name).toBe("Milano");

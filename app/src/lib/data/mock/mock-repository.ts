@@ -1,8 +1,12 @@
 import { normalizeSearch } from "../normalize";
 import {
+  assertSafeSvg,
   DEFAULT_COMUNI_LIMIT,
   LeadNotFoundError,
+  OfferNotFoundError,
   PrivacyConsentRequiredError,
+  SupplierNotFoundError,
+  SupplierSlugTakenError,
   type Repository,
 } from "../repository";
 import type {
@@ -12,11 +16,13 @@ import type {
   LeadRef,
   Offer,
   OfferInput,
+  LeadQuery,
   OfferWithSupplier,
   Settings,
   Supplier,
   SupplierInput,
 } from "../types";
+import { LEAD_PAGE_SIZE_DEFAULT, LEAD_PAGE_SIZE_MAX } from "../types";
 import { MOCK_COMUNI, MOCK_OFFERS, MOCK_SUPPLIERS } from "./data";
 
 export interface MockSeed {
@@ -81,6 +87,27 @@ function sanitize(data: LeadData): LeadData {
   return copy as LeadData;
 }
 
+const LEAD_SEARCH_FIELDS = [
+  "first_name",
+  "last_name",
+  "company_name",
+  "phone",
+  "tax_code",
+  "vat_number",
+  "pod",
+  "pdr",
+] as const satisfies ReadonlyArray<keyof Lead>;
+
+/** Lowercased whitespace-separated terms; each must match at least one field. */
+function searchTerms(search: string | undefined): string[] {
+  return (search ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+/** Drops undefined values so partial patches never blank a field. */
+function definedOnly<T extends object>(patch: T): T {
+  return Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as T;
+}
+
 /** Fresh, isolated in-memory repository (use in tests). */
 export function createMockRepository(seed: MockSeed = {}): Repository {
   const suppliers = structuredClone(seed.suppliers ?? MOCK_SUPPLIERS);
@@ -90,6 +117,18 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
   const leads: Lead[] = [];
 
   const supplierById = (id: string) => suppliers.find((s) => s.id === id);
+
+  function assertSlugFree(slug: string, exceptId?: string) {
+    if (suppliers.some((s) => s.slug === slug && s.id !== exceptId)) throw new SupplierSlugTakenError();
+  }
+
+  const bySupplierOrder = (a: Supplier, b: Supplier) =>
+    a.sort_order - b.sort_order || a.name.localeCompare(b.name, "it");
+
+  const byOfferOrder = (a: OfferWithSupplier, b: OfferWithSupplier) =>
+    bySupplierOrder(a.supplier, b.supplier) ||
+    a.commodity.localeCompare(b.commodity) ||
+    a.name.localeCompare(b.name, "it");
 
   function withSupplier(o: Offer): OfferWithSupplier | null {
     const s = supplierById(o.supplier_id);
@@ -108,7 +147,7 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
     });
   }
 
-  return {
+  const repo: Repository = {
     async listActiveSuppliers() {
       return suppliers
         .filter((s) => s.active)
@@ -174,9 +213,36 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
     },
 
     async listLeads() {
-      return leads
-        .map((l) => structuredClone(l))
-        .sort((a, b) => b.created_at.localeCompare(a.created_at));
+      return [...leads]
+        .reverse()
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .map((l) => structuredClone(l));
+    },
+
+    async queryLeads(query: LeadQuery = {}) {
+      const pageSize = Math.min(
+        Math.max(Math.floor(query.pageSize ?? LEAD_PAGE_SIZE_DEFAULT), 1),
+        LEAD_PAGE_SIZE_MAX,
+      );
+      const terms = searchTerms(query.search);
+      const matching = [...leads]
+        .reverse()
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .filter(
+          (l) =>
+            (!query.step_reached || l.step_reached === query.step_reached) &&
+            (!query.status || l.status === query.status) &&
+            terms.every((t) =>
+              LEAD_SEARCH_FIELDS.some((f) => (l[f] ?? "").toString().toLowerCase().includes(t)),
+            ),
+        );
+      const page = Math.max(Math.floor(query.page ?? 1), 1);
+      return {
+        items: matching.slice((page - 1) * pageSize, page * pageSize).map((l) => structuredClone(l)),
+        total: matching.length,
+        page,
+        pageSize,
+      };
     },
 
     async getLead(id) {
@@ -194,22 +260,94 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
     },
 
     async listAllSuppliers() {
-      return suppliers.map((s) => ({ ...s })).sort((a, b) => a.sort_order - b.sort_order);
+      return [...suppliers].sort(bySupplierOrder).map((s) => ({ ...s }));
+    },
+
+    async getSupplier(id) {
+      const s = supplierById(id);
+      return s ? { ...s } : null;
+    },
+
+    async createSupplier(input) {
+      assertSlugFree(input.slug);
+      const created: Supplier = {
+        sells_luce: false,
+        sells_gas: false,
+        show_in_dropdown: true,
+        sort_order: 0,
+        active: true,
+        logo_path: null,
+        ...input,
+        id: crypto.randomUUID(),
+      };
+      suppliers.push(created);
+      return { ...created };
+    },
+
+    async updateSupplier(id, patch) {
+      const existing = supplierById(id);
+      if (!existing) throw new SupplierNotFoundError();
+      if (patch.slug !== undefined) assertSlugFree(patch.slug, id);
+      Object.assign(existing, definedOnly(patch));
+      return { ...existing };
     },
 
     async saveSupplier(input: SupplierInput) {
       const existing = input.id ? supplierById(input.id) : undefined;
       if (existing) {
+        assertSlugFree(input.slug, existing.id);
         Object.assign(existing, input);
         return { ...existing };
       }
+      assertSlugFree(input.slug);
       const created: Supplier = { ...input, id: input.id ?? crypto.randomUUID() };
       suppliers.push(created);
       return { ...created };
     },
 
+    async uploadSupplierLogo(supplierId, svg) {
+      if (!supplierById(supplierId)) throw new SupplierNotFoundError();
+      assertSafeSvg(svg);
+      return `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`;
+    },
+
     async listAllOffers() {
-      return offers.map(withSupplier).filter((o): o is OfferWithSupplier => o !== null);
+      return offers
+        .map(withSupplier)
+        .filter((o): o is OfferWithSupplier => o !== null)
+        .sort(byOfferOrder);
+    },
+
+    async getOffer(id) {
+      const o = offers.find((x) => x.id === id);
+      return o ? withSupplier(structuredClone(o)) : null;
+    },
+
+    async createOffer(input) {
+      if (!supplierById(input.supplier_id)) throw new SupplierNotFoundError();
+      const created: Offer = {
+        ...structuredClone(input),
+        id: crypto.randomUUID(),
+        updated_at: new Date().toISOString(),
+      };
+      offers.push(created);
+      return withSupplier(created)!;
+    },
+
+    async updateOffer(id, patch) {
+      const existing = offers.find((o) => o.id === id);
+      if (!existing) throw new OfferNotFoundError();
+      if (patch.supplier_id !== undefined && !supplierById(patch.supplier_id)) {
+        throw new SupplierNotFoundError();
+      }
+      Object.assign(existing, structuredClone(definedOnly(patch)), {
+        updated_at: new Date().toISOString(),
+      });
+      return withSupplier(existing)!;
+    },
+
+    async setOfferFlags(id, flags) {
+      return repo.updateOffer(id, definedOnly(flags));
     },
 
     async saveOffer(input: OfferInput) {
@@ -224,6 +362,10 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       return structuredClone(created);
     },
 
+    async listUnverifiedActiveOffers() {
+      return (await repo.listAllOffers()).filter((o) => o.active && !o.price_verified);
+    },
+
     async getSettings() {
       return { ...settings };
     },
@@ -233,4 +375,5 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       return { ...settings };
     },
   };
+  return repo;
 }

@@ -140,3 +140,38 @@ Typical sequence: Page 1 consent → `createLead(toLeadCreateData(state), token)
 `updateLead(toLeadPatchData(state, "offer_chosen"))`; activation submit →
 `completeLead(toLeadCompleteData(state), token)` → `update({ leadCompleted: true })` →
 thank-you page (renders from `state`).
+
+## Admin data access
+
+All admin pages, server actions and `/admin` route handlers get their data from one
+server-only entry point (`src/lib/data/admin.ts`, imports `server-only`):
+
+```ts
+import { getAdminRepository } from "@/lib/data/admin";
+const repo = await getAdminRepository(); // async: checks the admin session first
+```
+
+- It calls `requireAdmin()` first (redirects when not an admin), so the mock repository
+  (no RLS) is unreachable without a session.
+- **mock mode**: returns the same process-wide singleton as `getRepository()` (kept on
+  `globalThis`, survives Next dev module reloads). An admin edit (deactivate, featured, ...)
+  is therefore visible on the public site served by the same server. State is lost on
+  server restart. Unit tests can call `resetMockRepository()` (refused in production and
+  outside mock mode).
+- **supabase mode**: `createSupabaseRepository(await createSupabaseServerClient())`, a new
+  repository per call bound to the admin's cookie session, so every query runs as the
+  authenticated admin under RLS. Never cache it across requests.
+
+Admin methods on `Repository` (`src/lib/data/repository.ts`): `queryLeads`, `getLead`,
+`updateLeadAdmin`, `listAllSuppliers`, `getSupplier`, `createSupplier`, `updateSupplier`,
+`uploadSupplierLogo`, `listAllOffers`, `getOffer`, `createOffer`, `updateOffer`,
+`setOfferFlags`, `listUnverifiedActiveOffers`, `getSettings`, `updateSettings`.
+Typed errors: `LeadNotFoundError`, `SupplierNotFoundError`, `OfferNotFoundError`,
+`SupplierSlugTakenError`, `InvalidLogoError`.
+
+Logos: `uploadSupplierLogo(supplierId, svg)` expects an already **sanitized** SVG (it
+only rejects scripts/handlers/external refs as defence in depth) and returns a `logo_path`
+(mock: `data:` URL; Supabase: object path `<supplier_id>/<ts>.svg` in the public
+`supplier-logos` bucket). Store it with `updateSupplier(id, { logo_path })`. Public screens
+turn any `logo_path` into an `<img src>` with `resolveLogoUrl(logo_path)` from `@/lib/data`.
+The Storage bucket and its policies need a migration (not part of the current ones).

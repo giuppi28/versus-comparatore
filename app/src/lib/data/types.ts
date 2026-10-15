@@ -149,3 +149,54 @@ export interface Settings {
 
 export type SupplierInput = Omit<Supplier, "id"> & { id?: string };
 export type OfferInput = Omit<Offer, "id" | "updated_at"> & { id?: string };
+
+// ---------------------------------------------------------------------------
+// Admin API types
+// ---------------------------------------------------------------------------
+
+export const LEAD_PAGE_SIZE_DEFAULT = 25;
+export const LEAD_PAGE_SIZE_MAX = 100;
+
+/** Filters for the admin lead list. All optional; combined with AND. */
+export interface LeadQuery {
+  step_reached?: LeadStepReached;
+  status?: LeadStatus;
+  /**
+   * Case/accent-insensitive search on first/last name, company name, phone,
+   * tax code, VAT number and POD/PDR.
+   */
+  search?: string;
+  /** 1-based page number (default 1). */
+  page?: number;
+  /** Rows per page (default 25, max 100). */
+  pageSize?: number;
+}
+
+export interface LeadPage {
+  items: Lead[];
+  /** Total rows matching the filters (across all pages). */
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** Admin-editable lead fields (everything else is customer data, read-only). */
+export interface LeadAdminPatch {
+  status?: LeadStatus;
+  notes?: string | null;
+}
+
+/** Fields of a supplier the admin can change (id is the key). */
+export type SupplierPatch = Partial<Omit<Supplier, "id">>;
+/** New supplier: slug and name required, flags default to the values below. */
+export type SupplierCreateInput = Pick<Supplier, "name" | "slug"> &
+  Partial<Omit<Supplier, "id" | "name" | "slug">>;
+
+export type OfferCreateInput = Omit<Offer, "id" | "updated_at">;
+export type OfferPatch = Partial<OfferCreateInput>;
+/** Quick toggles on the offer list. */
+export interface OfferFlags {
+  active?: boolean;
+  featured?: boolean;
+  price_verified?: boolean;
+}
