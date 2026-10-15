@@ -1,12 +1,11 @@
 /**
  * New-lead notification hook (PRD §5.1, §10: email to Aldo on each completed lead).
- * SERVER ONLY.
- *
- * STUB: logs the lead id only (never personal data). admin-settings-builder replaces the
- * body with the Resend email to `settings.notification_email`, keeping this signature.
+ * SERVER ONLY. Implementation in `@/lib/notify` (Resend via fetch; log-only without
+ * RESEND_API_KEY / RESEND_FROM / recipient). Never throws.
  * The lead API awaits it but never fails the customer's request if it throws.
  */
 import type { LeadData } from "@/lib/data/types";
+import { sendNewLeadNotification } from "@/lib/notify";
 
 export interface NewLeadNotification {
   /** leads.id */
@@ -20,5 +19,5 @@ export interface NewLeadNotification {
 export type NotifyNewLead = (lead: NewLeadNotification) => Promise<void>;
 
 export const notifyNewLead: NotifyNewLead = async (lead) => {
-  console.info(`[lead] completed lead ${lead.id} at ${lead.completedAt} (notification stub)`);
+  await sendNewLeadNotification(lead);
 };
