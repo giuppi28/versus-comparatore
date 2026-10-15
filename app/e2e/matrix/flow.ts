@@ -467,7 +467,11 @@ export async function checkThankYou(page: Page, c: MatrixCase, chosen: { luce: C
       await expect(block).toHaveCount(0);
       continue;
     }
-    await expect(block).toContainText(supplierName(ch.offer.supplier_id));
+    // The supplier must be identifiable: either the visible text chip or the logo <img> with the supplier name as alt.
+    const sName = supplierName(ch.offer.supplier_id);
+    const asText = block.getByText(sName, { exact: false });
+    const asLogo = block.locator(`img[alt="${sName}"]`);
+    await expect(asText.or(asLogo).first(), `thank-you supplier ${key}: ${sName}`).toBeVisible();
     await expect(block).toContainText(ch.offer.name);
     await expect(block).toContainText(formatEuro(ch.cost));
     await expect(block).toContainText(`${ch.offer.locked_months} mesi`);

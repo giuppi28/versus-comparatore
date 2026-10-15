@@ -124,3 +124,6 @@ Minor finding: `lead_not_found` (SQLSTATE P0002) is returned by PostgREST as HTT
 ## APPLY: 20261015160000_supplier_logo_paths.sql
 T5.1 (logopack-builder, 2026-10-15). Data-only: sets `suppliers.logo_path = '/logos/<slug>.svg'` for the 11 real suppliers (the files ship with the app in `app/public/logos/`, so the app must be deployed for the logos to resolve; the app already renders root-relative paths and falls back to the text chip when `logo_path` is null). Idempotent and non-destructive: only touches rows where `logo_path is null` and `not is_placeholder`, so logos uploaded through the admin area are never overwritten. No schema/RLS change, no advisor impact.
 **Answer (reviewer, 2026-10-15 14:50):** applied — 11 real suppliers have `/logos/<slug>.svg`, placeholders null.
+
+## NOTE (orchestrator, 2026-10-15) — Phase 9
+Cloudflare removed (Giuseppe's decision): hosting is Vercel. Q10 (Workers Free CPU limit) is obsolete. Turnstile no longer exists; lead functions stay protected by the hashed LEAD_API_SECRET + per-IP rate limiting (client IP from Vercel headers only). Go-live on Vercel needs `CRON_SECRET` (Production) for the daily keep-alive cron and the stale `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` env vars can be deleted from the Vercel project (Giuseppe; no code reads them). Steps in app/DEPLOY.md.
