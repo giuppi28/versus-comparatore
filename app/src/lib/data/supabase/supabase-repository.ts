@@ -130,6 +130,7 @@ function toSupplier(row: Record<string, unknown>): Supplier {
     show_in_dropdown: row.show_in_dropdown as boolean,
     sort_order: row.sort_order as number,
     active: row.active as boolean,
+    is_placeholder: (row.is_placeholder as boolean | undefined) ?? false,
   };
 }
 
@@ -194,7 +195,7 @@ export function createSupabaseRepository(
         .eq("active", true)
         .order("sort_order");
       if (error) fail(error);
-      return (data ?? []) as Supplier[];
+      return (data ?? []).map(toSupplier);
     },
 
     async listActiveOffers(commodity, customerType) {

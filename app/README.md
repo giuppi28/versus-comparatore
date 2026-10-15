@@ -34,9 +34,19 @@ shown for the current results) and `versus.activation.step.v1` (current activati
 ## Notifications
 
 The new-lead email to Aldo is sent through Resend via `fetch`. Without `RESEND_API_KEY`,
-`RESEND_FROM` or a recipient it is log-only (the submit never fails). Recipient: the admin settings in
-mock mode; the `NOTIFICATION_EMAIL` env var in supabase mode (RLS prevents reading settings
-anonymously, see QUESTIONS Q7).
+`RESEND_FROM` or a recipient it is log-only (the submit never fails).
+
+Recipient order: (1) `notification_email` returned by the `complete_lead` RPC (the admin setting
+`settings.notification_email`, supabase mode, QUESTIONS Q7); (2) the `NOTIFICATION_EMAIL` env var,
+now only a **fallback** (used when the RPC returns null); (3) the admin settings in mock mode.
+
+## Environment: server-only lead secret
+
+`LEAD_API_SECRET` (server-only, never `NEXT_PUBLIC_*`, never sent to the browser) is passed as the first
+argument of `create_lead` / `update_lead` / `complete_lead` by the server routes. It is 32 random bytes
+(hex) and **must match the SHA-256 stored by migration `20261015140000_lead_secret_notification_placeholders.sql`**
+in `private.app_secrets` (name `lead_api_secret`); otherwise the RPCs raise `invalid_secret`.
+Rotation steps: see `supabase/README.md`.
 
 ## Customer flow state & lead API
 

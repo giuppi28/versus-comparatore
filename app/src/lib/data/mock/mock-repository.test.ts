@@ -3,6 +3,9 @@ import { createMockRepository } from "./mock-repository";
 import { MOCK_OFFERS, MOCK_SUPPLIERS } from "./data";
 import { LeadNotFoundError, PrivacyConsentRequiredError, type Repository } from "../repository";
 import { normalizeSearch } from "../normalize";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { isRealSupplier } from "../types";
 import { getDataSource, getRepository, resetRepositoryCache } from "../index";
 
 let repo: Repository;
@@ -19,6 +22,27 @@ describe("suppliers", () => {
     ]);
     expect(list.map((s) => s.name)).toContain("Non lo so");
     expect(list.every((s) => s.active)).toBe(true);
+  });
+
+  it("flags only tutela / altro-fornitore / non-lo-so as placeholders", async () => {
+    const list = await repo.listActiveSuppliers();
+    expect(list.filter((s) => s.is_placeholder).map((s) => s.slug)).toEqual(["tutela", "altro-fornitore", "non-lo-so"]);
+    expect(list.filter(isRealSupplier)).toHaveLength(11);
+    // Placeholders stay in the Page 1 dropdown list.
+    expect(list.map((s) => s.slug)).toContain("non-lo-so");
+  });
+
+  it("createSupplier / saveSupplier default is_placeholder to false and accept true", async () => {
+    const a = await repo.createSupplier({ name: "Nuovo", slug: "nuovo" });
+    expect(a.is_placeholder).toBe(false);
+    const b = await repo.createSupplier({ name: "Speciale", slug: "speciale", is_placeholder: true });
+    expect(b.is_placeholder).toBe(true);
+    expect((await repo.updateSupplier(a.id, { is_placeholder: true })).is_placeholder).toBe(true);
+    const c = await repo.saveSupplier({
+      name: "Salvato", slug: "salvato", logo_path: null, sells_luce: true, sells_gas: true,
+      show_in_dropdown: true, sort_order: 1, active: true,
+    });
+    expect(c.is_placeholder).toBe(false);
   });
 
   it("hides inactive suppliers from public reads but not from admin", async () => {
@@ -54,6 +78,18 @@ describe("offers", () => {
       "Attivala **online** con noi, **gratis** e in **1 minuto**",
       "Puoi **revocare** il contratto entro 14 giorni",
     ]);
+  });
+
+  it("uses the gas / luce advantage wording of seed.sql (Q4)", () => {
+    const seed = readFileSync(join(process.cwd(), "supabase/seed.sql"), "utf8");
+    const gasLine = "Prezzo **fisso** per tutta la durata del blocco";
+    const luceLine = "Tariffa **monoraria**";
+    expect(seed).toContain(`'${gasLine}'`);
+    expect(seed).toContain(`'${luceLine}'`);
+    for (const o of MOCK_OFFERS) {
+      expect(o.advantages[1]).toBe(o.commodity === "gas" ? gasLine : luceLine);
+      expect(o.advantages.join(" ")).not.toContain(o.commodity === "gas" ? "monoraria" : "per tutta la durata");
+    }
   });
 
   it("has exactly one featured offer per commodity in the seed", () => {

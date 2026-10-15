@@ -10,7 +10,7 @@ function supplier(
   slug: string,
   name: string,
   sort_order: number,
-  opts: { sells_luce?: boolean; sells_gas?: boolean } = {},
+  opts: { sells_luce?: boolean; sells_gas?: boolean; is_placeholder?: boolean } = {},
 ): Supplier {
   return {
     id: slug,
@@ -22,6 +22,7 @@ function supplier(
     show_in_dropdown: true,
     sort_order,
     active: true,
+    is_placeholder: opts.is_placeholder ?? false,
   };
 }
 
@@ -38,9 +39,9 @@ export const MOCK_SUPPLIERS: Supplier[] = [
   supplier("eon-energia", "E.ON Energia", 10),
   supplier("iberdrola", "Iberdrola", 11),
   // Special dropdown options: no offers, never excluded from results.
-  supplier("tutela", "Servizio di Tutela / Tutele Graduali", 100),
-  supplier("altro-fornitore", "Altro fornitore", 101),
-  supplier("non-lo-so", "Non lo so", 102),
+  supplier("tutela", "Servizio di Tutela / Tutele Graduali", 100, { is_placeholder: true }),
+  supplier("altro-fornitore", "Altro fornitore", 101, { is_placeholder: true }),
+  supplier("non-lo-so", "Non lo so", 102, { is_placeholder: true }),
 ];
 
 const MOCK_UPDATED_AT = "2026-10-15T00:00:00.000Z";
@@ -59,7 +60,7 @@ interface OfferSpec {
 function offer(spec: OfferSpec): Offer {
   const advantages = [
     `Prezzo **bloccato** ${spec.months} mesi`,
-    "Tariffa **monoraria**",
+    spec.commodity === "gas" ? "Prezzo **fisso** per tutta la durata del blocco" : "Tariffa **monoraria**",
     ...(spec.promo ? [spec.promo] : []),
     "Attivala **online** con noi, **gratis** e in **1 minuto**",
     "Puoi **revocare** il contratto entro 14 giorni",

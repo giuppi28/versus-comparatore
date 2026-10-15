@@ -22,6 +22,16 @@ export interface Supplier {
   show_in_dropdown: boolean;
   sort_order: number;
   active: boolean;
+  /**
+   * Special "Fornitore attuale" option (Tutela / Altro fornitore / Non lo so): never has offers,
+   * hidden from admin offer-supplier selects and the loading orbit. Use `isRealSupplier`.
+   */
+  is_placeholder: boolean;
+}
+
+/** True for real suppliers (not one of the special dropdown placeholders). */
+export function isRealSupplier(s: Pick<Supplier, "is_placeholder">): boolean {
+  return !s.is_placeholder;
 }
 
 export interface Offer {
@@ -155,7 +165,7 @@ export interface Settings {
   notification_email: string | null;
 }
 
-export type SupplierInput = Omit<Supplier, "id"> & { id?: string };
+export type SupplierInput = Omit<Supplier, "id" | "is_placeholder"> & { id?: string; is_placeholder?: boolean };
 export type OfferInput = Omit<Offer, "id" | "updated_at"> & { id?: string };
 
 // ---------------------------------------------------------------------------

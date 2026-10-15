@@ -278,6 +278,7 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
         sort_order: 0,
         active: true,
         logo_path: null,
+        is_placeholder: false,
         ...input,
         id: crypto.randomUUID(),
       };
@@ -301,7 +302,7 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
         return { ...existing };
       }
       assertSlugFree(input.slug);
-      const created: Supplier = { ...input, id: input.id ?? crypto.randomUUID() };
+      const created: Supplier = { is_placeholder: false, ...input, id: input.id ?? crypto.randomUUID() };
       suppliers.push(created);
       return { ...created };
     },
