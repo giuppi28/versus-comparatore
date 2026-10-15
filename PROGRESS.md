@@ -128,3 +128,18 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Risk: Workers Free 10 ms CPU likely insufficient for SSR → Q10.
 - Verified by orchestrator: vitest cloudflare 13/13 ✓, eslint ✓, tsc 0 errors ✓; no deploy script present.
 - Commit: 3f9d086
+
+## 2026-10-15 15:30 — Phase 7 test matrix (T7.1–T7.4, T7.6) — commit 6db8d34
+- Agent: qa-tester (sonnet); config/README follow-up by setup-builder.
+- Run: `PORT=<port> npm run e2e:matrix` (app/playwright.matrix.config.ts; parallel phase + @serial admin CRUD phase).
+- Matrix: T7.1 flow cases 218 desktop + 42 mobile (luce 28, gas 74, dual 116; every commodity × customer × service on both viewports; gas uses incl. riscaldamento zones A–F + null-zone fallback; estimated + manual consumption; Edison/Eni Plenitude exclusion). Pruning rules in e2e/matrix/cases.ts, checked by cases.spec.ts. Each case: Page 1 → consent (POST 201) → results (exact rankOffers order, exclusion, cents cost) → modal → activation A+B → thank-you; lead read back via admin at page1 / offer_chosen / completed.
+- T7.2 validation 32 desktop / 29 mobile; T7.3 copy (MutationObserver over full flows, no call/demo/Facile.it terms, no orange, callback only on thank-you); T7.4 admin (13 routes blocked anon, CRUD, malicious SVG, deactivate/feature reflected publicly); T7.6 screenshots of every screen at 390/1440 + Lighthouse a11y ≥ 96 everywhere (100 on /, /offerte, /privacy).
+- Orchestrator verification: typecheck ✓, lint ✓, vitest 694/694 ✓, matrix 382/382 parallel + 6/6 serial = 388/388 (100%) ✓. Agent: 2 consecutive green runs, no flaky tests.
+
+## 2026-10-15 15:35 — LOOP SUMMARY (orchestrator stopping: no unblocked task left)
+Done: Phase 0–4, T6.1, T7.1–T7.4, T7.6. All checks green (typecheck, lint, 694 unit tests, 388 e2e matrix tests + area specs).
+Blocked (needs Giuseppe / reviewer):
+- APPLY: 11 migrations + seed.sql + storage migration (QUESTIONS.md) → then T7.5 (security tests against real Supabase) and T7.7 final sign-off.
+- T5.1 logo pack → Q2 "ready".
+- Decisions: Q3 notification email, Q4 gas "monoraria", Q5 climate-zone source licence, Q6 anon RPC Turnstile bypass, Q7 notification recipient in Supabase mode, Q8 placeholder suppliers flag, Q9 privacy text, Q10 Workers plan.
+Known limitations: real Supabase flow (auth/MFA, RLS, storage) untested until migrations applied; in-memory rate limits per isolate (WAF rule in DEPLOY.md); minor Lighthouse color-contrast on small text (scores 96–97); privacy page has placeholders.

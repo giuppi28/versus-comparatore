@@ -69,4 +69,4 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [x] T7.4 Admin e2e: login/logout, unauthenticated access blocked, leads list/detail/status, supplier CRUD + malicious SVG rejected/sanitized, offer CRUD incl. deactivate → disappears from results, featured → appears first.
 - [ ] T7.5 BLOCKED: needs migrations applied on Supabase (QUESTIONS APPLY entries) — Security: anon cannot read leads or inactive offers via the Supabase API directly; token cannot update another lead.
 - [x] T7.6 Mobile (390px) and desktop (1440px) screenshots of every screen in `app/e2e/screenshots/`; Lighthouse ≥ 90 accessibility on public pages.
-- [ ] T7.7 Final report in PROGRESS.md: matrix size, pass rate (must be 100%), known limitations.
+- [ ] T7.7 BLOCKED: final 100% sign-off needs T7.5 (and T5.1 logos) — interim report in PROGRESS.md — Final report in PROGRESS.md: matrix size, pass rate (must be 100%), known limitations.
