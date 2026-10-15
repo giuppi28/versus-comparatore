@@ -63,10 +63,10 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [x] T6.1 OpenNext Cloudflare config, build passing. Supabase keep-alive job design. `DEPLOY.md` with exact steps.
 
 ## Phase 7 — Full test matrix (definition of done)  → agent: `qa-tester` (+ fixes via the owning builder)
-- [~] T7.1 Playwright parametrized suite over **every combination**: commodity {luce, gas, dual} × customer {casa, partita IVA} × service {cambio fornitore, subentro, voltura, primo allaccio} × gas {già presente sì/no} × gas uses {each, all, with riscaldamento in zones A/C/E/F} × consumption {estimated, manual}. Each run goes from Page 1 to thank-you page and asserts: lead saved at consent, correct estimate, current supplier's offers excluded (test with Edison luce / Eni Plenitude gas), featured first + cost ordering, correct monthly cost, summary correctness, lead completed with all fields.
-- [~] T7.2 Validation paths: every required field empty, invalid CF, CF not matching name, invalid P.IVA/POD/PDR/phone, back buttons keep data, refresh mid-flow.
-- [~] T7.3 Copy checks: no call/callback wording before thank-you page; no "demo"; no Facile.it elements.
-- [~] T7.4 Admin e2e: login/logout, unauthenticated access blocked, leads list/detail/status, supplier CRUD + malicious SVG rejected/sanitized, offer CRUD incl. deactivate → disappears from results, featured → appears first.
+- [x] T7.1 Playwright parametrized suite over **every combination**: commodity {luce, gas, dual} × customer {casa, partita IVA} × service {cambio fornitore, subentro, voltura, primo allaccio} × gas {già presente sì/no} × gas uses {each, all, with riscaldamento in zones A/C/E/F} × consumption {estimated, manual}. Each run goes from Page 1 to thank-you page and asserts: lead saved at consent, correct estimate, current supplier's offers excluded (test with Edison luce / Eni Plenitude gas), featured first + cost ordering, correct monthly cost, summary correctness, lead completed with all fields.
+- [x] T7.2 Validation paths: every required field empty, invalid CF, CF not matching name, invalid P.IVA/POD/PDR/phone, back buttons keep data, refresh mid-flow.
+- [x] T7.3 Copy checks: no call/callback wording before thank-you page; no "demo"; no Facile.it elements.
+- [x] T7.4 Admin e2e: login/logout, unauthenticated access blocked, leads list/detail/status, supplier CRUD + malicious SVG rejected/sanitized, offer CRUD incl. deactivate → disappears from results, featured → appears first.
 - [ ] T7.5 BLOCKED: needs migrations applied on Supabase (QUESTIONS APPLY entries) — Security: anon cannot read leads or inactive offers via the Supabase API directly; token cannot update another lead.
-- [~] T7.6 Mobile (390px) and desktop (1440px) screenshots of every screen in `app/e2e/screenshots/`; Lighthouse ≥ 90 accessibility on public pages.
+- [x] T7.6 Mobile (390px) and desktop (1440px) screenshots of every screen in `app/e2e/screenshots/`; Lighthouse ≥ 90 accessibility on public pages.
 - [ ] T7.7 Final report in PROGRESS.md: matrix size, pass rate (must be 100%), known limitations.

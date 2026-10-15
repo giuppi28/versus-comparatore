@@ -1,39 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VERSUS app
 
-## Getting Started
+Next.js (App Router, TypeScript strict) + Tailwind, Supabase (or the in-memory mock data layer).
+Deployment is documented in `DEPLOY.md` (nothing here deploys by itself).
 
-First, run the development server:
+## Scripts
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+| Script | What it does |
+|---|---|
+| `npm run dev` | Dev server (`NEXT_PUBLIC_DATA_SOURCE=mock` uses the mock repository). |
+| `npm run typecheck` / `lint` / `test` | `tsc --noEmit`, ESLint, Vitest. |
+| `npm run test:coverage` | Vitest with v8 coverage. |
+| `npm run e2e` | Playwright specs (desktop 1440px + mobile 390px); the `e2e/matrix/` specs are ignored. |
+| `PORT=<port> npm run e2e:matrix` | Phase 7 matrix (`playwright.matrix.config.ts`), two phases against the same server: everything not tagged `@serial` in parallel, then the `@serial` admin CRUD tests with one worker. Extra args are forwarded to both phases. Env: `MATRIX_WORKERS` (default 4), `MATRIX_OUTPUT` (Playwright output dir, default `./test-results/matrix`), `MATRIX_JSON` (JSON report path). The matrix cases are documented in `e2e/matrix/cases.ts`. |
+| `npm run build:cf` / `preview:cf` | OpenNext Cloudflare build (+ bundle env check) / local preview of it. Neither deploys; see `DEPLOY.md`. |
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Running e2e locally
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Next 16 allows only one `next dev` per folder: when a server is already running, reuse it by setting
+`PORT` to its port (Playwright reuses an existing server outside CI). When running several e2e runs in
+parallel, pass a distinct `--output` per run (or `MATRIX_OUTPUT` for the matrix) so they do not
+overwrite each other's results.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Results page and loading
 
-## Learn More
+`/offerte` loads the active offers on the server on every request (`force-dynamic`, `getRepository()`),
+so admin changes reach customers immediately. In mock mode admin and public pages share the same
+server-side mock singleton.
 
-To learn more about Next.js, take a look at the following resources:
+The loading screen lasts 4000 ms by default; `NEXT_PUBLIC_LOADING_MS` overrides it and `?fast=1`
+forces 250 ms. Browser storage keys: `sessionStorage` `versus.results.loaded.v1` (loading already
+shown for the current results) and `versus.activation.step.v1` (current activation step).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notifications
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The new-lead email to Aldo is sent through Resend via `fetch`. Without `RESEND_API_KEY`,
+`RESEND_FROM` or a recipient it is log-only (the submit never fails). Recipient: the admin settings in
+mock mode; the `NOTIFICATION_EMAIL` env var in supabase mode (RLS prevents reading settings
+anonymously, see QUESTIONS Q7).
 
 ## Customer flow state & lead API
 
@@ -89,9 +92,8 @@ after a 403 / success the widget must be reset for a new token.
 route: create 10 / complete 10 / update 60 / delete 30 per 10 minutes. Per instance only — add a
 Cloudflare WAF rate-limiting rule on `/api/lead*` at deploy.
 
-**Notification**: `notifyNewLead({ id, data, completedAt })` in `src/lib/lead/notify.ts` is a stub
-(logs the id); `admin-settings-builder` implements the Resend email keeping the signature.
-A failing notification never fails the submit.
+**Notification**: `notifyNewLead({ id, data, completedAt })` in `src/lib/lead/notify.ts` sends the new-lead email
+(see the "Notifications" section above). A failing notification never fails the submit.
 
 ### Browser helpers (`src/lib/lead/client.ts`)
 

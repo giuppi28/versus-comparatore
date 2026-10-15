@@ -5,6 +5,8 @@ const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",
+  // Matrix specs run via `npm run e2e:matrix` (playwright.matrix.config.ts).
+  testIgnore: "**/matrix/**",
   outputDir: "./test-results",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
