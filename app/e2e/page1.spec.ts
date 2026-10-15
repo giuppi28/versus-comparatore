@@ -21,6 +21,13 @@ async function open(page: Page) {
   await expect(page.getByTestId("page1-form")).toHaveAttribute("data-hydrated", "true");
 }
 
+/** Waits until every reveal/transition animation has ended so full-page screenshots never catch a block mid-fade. */
+async function settleAnimations(page: Page) {
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
+  // Two frames so the final painted state is what the screenshot captures.
+  await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+}
+
 /** Clicks the SelectCard inside the element with the given data-testid. */
 function card(page: Page, testId: string) {
   return page.getByTestId(testId).locator("button");
@@ -93,6 +100,8 @@ test.describe("Page 1 — structure and copy", () => {
     expect(text).not.toMatch(/telefonat|chiamat|call center|richiam|ricontatt|callback|demo|facile\.it/);
     await noOverflow(page);
 
+    await expect(page.getByTestId("supplier-luce")).toBeVisible();
+    await settleAnimations(page);
     await page.screenshot({ path: path.join(SHOTS, `page1-${testInfo.project.name}-start.png`), fullPage: true });
   });
 
@@ -362,6 +371,7 @@ test.describe("Page 1 — validation", () => {
     await expect(page.getByTestId("error-commodity")).toBeInViewport();
     await expect(page).toHaveURL(/\/$/);
 
+    await settleAnimations(page);
     await page.screenshot({ path: path.join(SHOTS, `page1-${testInfo.project.name}-errors.png`), fullPage: true });
 
     // Errors clear live as the fields get valid.
@@ -645,6 +655,7 @@ test.describe("Page 1 — layout screenshots", () => {
     await page.getByTestId("supplier-gas").selectOption({ label: "Eni Plenitude" });
     await consent(page);
     await noOverflow(page);
+    await settleAnimations(page);
     await page.screenshot({ path: path.join(SHOTS, `page1-${testInfo.project.name}-filled.png`), fullPage: true });
   });
 
@@ -652,6 +663,7 @@ test.describe("Page 1 — layout screenshots", () => {
     await open(page);
     await pick(page, "commodity-dual", "customer-business", "service-voltura");
     await noOverflow(page);
+    await settleAnimations(page);
     await page.screenshot({ path: path.join(SHOTS, `page1-${testInfo.project.name}-business.png`), fullPage: true });
   });
 });
