@@ -36,9 +36,9 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
   Advantages for every offer: "Prezzo **bloccato** N mesi", "Tariffa **monoraria**", the promo (if any), "Attivala **online** con noi, **gratis** e in **1 minuto**", "Puoi **revocare** il contratto entro 14 giorni".
 
 ## Phase 2 — Core logic  → agent: `logic-builder`
-- [~] T2.1 `config/consumption.ts` (all PRD §6 coefficients), `estimateLuce()`, `estimateGas()`.
-- [~] T2.2 `monthlyCost()` (PRD §8), ranking (featured first, then cost asc), current-supplier exclusion.
-- [~] T2.3 Validators: codice fiscale (format, check char, consistency with name/surname), P.IVA checksum, POD, PDR, Italian mobile. 100% branch coverage on this module.
+- [x] T2.1 `config/consumption.ts` (all PRD §6 coefficients), `estimateLuce()`, `estimateGas()`.
+- [x] T2.2 `monthlyCost()` (PRD §8), ranking (featured first, then cost asc), current-supplier exclusion.
+- [x] T2.3 Validators: codice fiscale (format, check char, consistency with name/surname), P.IVA checksum, POD, PDR, Italian mobile. 100% branch coverage on this module.
 
 ## Phase 3 — Customer screens (one agent per screen)
 - [ ] T3.1 Lead API (server routes → lead functions, httpOnly token cookie, Turnstile, rate limit) → `lead-api-builder`

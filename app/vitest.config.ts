@@ -13,5 +13,14 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     css: false,
+    coverage: {
+      provider: "v8",
+      include: ["src/lib/logic/**/*.ts"],
+      exclude: ["src/lib/logic/**/*.test.ts", "src/lib/logic/**/index.ts"],
+      // 100% on the validators module (TASKS.md T2.3); the rest of logic is reported only.
+      thresholds: {
+        "src/lib/logic/validators/**": { statements: 100, branches: 100, functions: 100, lines: 100 },
+      },
+    },
   },
 });
