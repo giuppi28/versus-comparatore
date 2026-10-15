@@ -66,3 +66,9 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Changed: `src/lib/data/admin.ts` getAdminRepository() (requireAdmin + session client under RLS; mock = shared singleton), admin CRUD methods in both repos, typed errors, resolveLogoUrl, resetMockRepository (non-prod mock only); mock comuni fixed (ISTAT codes, Aosta/Bolzano zone E, a null-zone comune added); server-only dep.
 - Verified by orchestrator: tsc ✓, eslint ✓, vitest src/lib 315/315 ✓.
 - Commit: 3bc7dc3
+
+## 2026-10-15 13:10 — Storage bucket migration (T4.3 support)
+- Agent: db-builder (opus).
+- Changed: migration 20261015130000_storage_supplier_logos.sql (public bucket, SVG only, 200 KB, admin-only write + MFA restrictive policy); storage stub + RLS assertions; APPLY request.
+- Verified by orchestrator: PGlite runner → ALL DATA CHECKS PASSED, ALL RLS TESTS PASSED.
+- Commit: 4d3a8e9
