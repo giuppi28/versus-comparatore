@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildSupplierChoices,
   DEFAULT_OFFER_VALUES,
   offerToFormValues,
   parseDecimal,
   parseOfferForm,
+  PLACEHOLDER_SUPPLIER_ERROR,
+  placeholderAssignmentError,
   toInputDecimal,
   yearlyToMonthly,
   type OfferFormValues,
 } from "./offer-form-schema";
 import { isVisibleToCustomers } from "./visibility";
-import { MOCK_OFFERS } from "@/lib/data/mock/data";
+import { MOCK_OFFERS, MOCK_SUPPLIERS } from "@/lib/data/mock/data";
 
 const valid = (patch: Partial<OfferFormValues> = {}): OfferFormValues => ({
   ...DEFAULT_OFFER_VALUES,
@@ -139,5 +142,46 @@ describe("isVisibleToCustomers", () => {
     expect(isVisibleToCustomers({ active: true, supplier: { active: true } })).toBe(true);
     expect(isVisibleToCustomers({ active: false, supplier: { active: true } })).toBe(false);
     expect(isVisibleToCustomers({ active: true, supplier: { active: false } })).toBe(false);
+  });
+});
+
+describe("supplier choices and placeholder suppliers", () => {
+  const placeholders = MOCK_SUPPLIERS.filter((s) => s.is_placeholder);
+  const real = MOCK_SUPPLIERS.filter((s) => !s.is_placeholder);
+
+  it("has the three placeholder suppliers in the mock data", () => {
+    expect(placeholders.map((s) => s.slug).sort()).toEqual(["altro-fornitore", "non-lo-so", "tutela"]);
+  });
+
+  it("create: lists real suppliers only", () => {
+    const choices = buildSupplierChoices(MOCK_SUPPLIERS);
+    expect(choices).toHaveLength(real.length);
+    expect(choices.some((c) => c.placeholder)).toBe(false);
+  });
+
+  it("edit: keeps a current placeholder supplier, flagged, and no other placeholder", () => {
+    const current = placeholders[0];
+    const choices = buildSupplierChoices(MOCK_SUPPLIERS, current.id);
+    expect(choices.filter((c) => c.placeholder).map((c) => c.id)).toEqual([current.id]);
+    expect(choices).toHaveLength(real.length + 1);
+  });
+
+  it("edit: a current real supplier adds nothing extra", () => {
+    expect(buildSupplierChoices(MOCK_SUPPLIERS, real[0].id)).toHaveLength(real.length);
+  });
+
+  it("rejects a placeholder for a new assignment (create, or edit changing supplier)", () => {
+    const p = placeholders[0];
+    expect(placeholderAssignmentError(p, null)).toBe(PLACEHOLDER_SUPPLIER_ERROR);
+    expect(placeholderAssignmentError(p, real[0].id)).toBe(PLACEHOLDER_SUPPLIER_ERROR);
+    expect(placeholderAssignmentError(p, placeholders[1].id)).toBe(PLACEHOLDER_SUPPLIER_ERROR);
+  });
+
+  it("allows keeping the placeholder already assigned, and any real supplier", () => {
+    const p = placeholders[0];
+    expect(placeholderAssignmentError(p, p.id)).toBeNull();
+    expect(placeholderAssignmentError(real[0], null)).toBeNull();
+    expect(placeholderAssignmentError(real[0], p.id)).toBeNull();
+    expect(placeholderAssignmentError(null, null)).toBeNull();
   });
 });

@@ -2,14 +2,14 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import { OfferForm } from "../OfferForm";
-import { DEFAULT_OFFER_VALUES } from "../offer-form-schema";
+import { buildSupplierChoices, DEFAULT_OFFER_VALUES } from "../offer-form-schema";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewOfferPage() {
   await requireAdmin();
   const repo = await getAdminRepository();
-  const suppliers = (await repo.listAllSuppliers()).map((s) => ({ id: s.id, name: s.name, active: s.active }));
+  const suppliers = buildSupplierChoices(await repo.listAllSuppliers());
   return (
     <div className="flex flex-col gap-6">
       <div>

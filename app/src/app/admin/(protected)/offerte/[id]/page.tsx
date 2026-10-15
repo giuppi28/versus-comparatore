@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import { OfferForm } from "../OfferForm";
-import { offerToFormValues } from "../offer-form-schema";
+import { buildSupplierChoices, offerToFormValues } from "../offer-form-schema";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export default async function EditOfferPage({
   const repo = await getAdminRepository();
   const offer = await repo.getOffer(id);
   if (!offer) notFound();
-  const suppliers = (await repo.listAllSuppliers()).map((s) => ({ id: s.id, name: s.name, active: s.active }));
+  const suppliers = buildSupplierChoices(await repo.listAllSuppliers(), offer.supplier_id);
 
   return (
     <div className="flex flex-col gap-6">

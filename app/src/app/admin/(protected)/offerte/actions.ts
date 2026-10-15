@@ -5,7 +5,12 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import { OfferNotFoundError, SupplierNotFoundError } from "@/lib/data/repository";
-import { formDataToValues, parseOfferForm, type OfferFormState } from "./offer-form-schema";
+import {
+  formDataToValues,
+  parseOfferForm,
+  placeholderAssignmentError,
+  type OfferFormState,
+} from "./offer-form-schema";
 
 const LIST_PATH = "/admin/offerte";
 
@@ -33,6 +38,19 @@ export async function saveOfferAction(
   }
 
   const repo = await getAdminRepository();
+
+  // A placeholder supplier (Tutela / Altro fornitore / Non lo so) can only be kept, never newly assigned.
+  const chosen = await repo.getSupplier(parsed.data.supplier_id);
+  const current = id ? await repo.getOffer(id) : null;
+  const placeholderError = placeholderAssignmentError(chosen, current?.supplier_id ?? null);
+  if (placeholderError) {
+    return {
+      errors: { supplier_id: placeholderError },
+      message: "Controlla i campi evidenziati.",
+      attempt: prev.attempt + 1,
+    };
+  }
+
   let savedId: string;
   try {
     const saved = id ? await repo.updateOffer(id, parsed.data) : await repo.createOffer(parsed.data);

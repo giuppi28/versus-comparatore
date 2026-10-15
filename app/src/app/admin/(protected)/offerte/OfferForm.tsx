@@ -15,16 +15,11 @@ import {
   MAX_PROMO_LENGTH,
   parseDecimal,
   roundTo,
+  type SupplierChoice,
   yearlyToMonthly,
   type FeePeriod,
   type OfferFormValues,
 } from "./offer-form-schema";
-
-export interface SupplierChoice {
-  id: string;
-  name: string;
-  active: boolean;
-}
 
 /** Sample yearly consumption used by the live cost preview. */
 export const PREVIEW_CONSUMPTION = { luce: 2700, gas: 1400 } as const;
@@ -129,7 +124,10 @@ export function OfferForm({
             placeholder="Seleziona un fornitore"
             value={v.supplier_id}
             onChange={(e) => set("supplier_id", e.target.value)}
-            options={suppliers.map((s) => ({ value: s.id, label: s.active ? s.name : `${s.name} (non attivo)` }))}
+            options={suppliers.map((s) => ({
+              value: s.id,
+              label: `${s.name}${s.placeholder ? " (segnaposto)" : ""}${s.active ? "" : " (non attivo)"}`,
+            }))}
             error={errors.supplier_id}
           />
           <Input

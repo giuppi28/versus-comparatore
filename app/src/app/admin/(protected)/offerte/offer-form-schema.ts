@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { Commodity, Offer, OfferCreateInput, OfferCustomerType } from "@/lib/data/types";
+import { isRealSupplier } from "@/lib/data/types";
+import type { Commodity, Offer, OfferCreateInput, OfferCustomerType, Supplier } from "@/lib/data/types";
 
 /** Raw (string) values of the offer form: what the browser posts. */
 export type FeePeriod = "month" | "year";
@@ -290,3 +291,36 @@ export interface OfferFormState {
 }
 
 export const INITIAL_OFFER_FORM_STATE: OfferFormState = { errors: {}, attempt: 0 };
+
+export const PLACEHOLDER_SUPPLIER_ERROR =
+  "Questo fornitore è un segnaposto e non può avere offerte. Scegli un fornitore reale.";
+
+export interface SupplierChoice {
+  id: string;
+  name: string;
+  active: boolean;
+  /** Placeholder (Tutela / Altro fornitore / Non lo so): only listed when it is the offer's current supplier. */
+  placeholder: boolean;
+}
+
+/**
+ * Suppliers offered by the offer form's select: real suppliers only, plus the supplier the
+ * offer already references (even a placeholder) so the form never silently changes it.
+ */
+export function buildSupplierChoices(suppliers: Supplier[], currentSupplierId?: string | null): SupplierChoice[] {
+  return suppliers
+    .filter((s) => isRealSupplier(s) || s.id === currentSupplierId)
+    .map((s) => ({ id: s.id, name: s.name, active: s.active, placeholder: !isRealSupplier(s) }));
+}
+
+/**
+ * Server-side rule: a placeholder supplier cannot be assigned to an offer, unless the offer
+ * already references it (an unchanged assignment on edit). Returns the Italian error or null.
+ */
+export function placeholderAssignmentError(
+  chosen: Pick<Supplier, "id" | "is_placeholder"> | null,
+  currentSupplierId: string | null,
+): string | null {
+  if (!chosen || isRealSupplier(chosen)) return null;
+  return chosen.id === currentSupplierId ? null : PLACEHOLDER_SUPPLIER_ERROR;
+}

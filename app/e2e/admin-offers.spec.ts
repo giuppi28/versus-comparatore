@@ -321,6 +321,43 @@ test.describe("admin offers", () => {
     await page.screenshot({ path: `${SHOTS}/admin-offers-${info.project.name}-errors.png`, fullPage: true });
   });
 
+  test("supplier select hides placeholder suppliers and the server rejects forged ones", async ({ page }, info) => {
+    await login(page);
+    const placeholders = ["tutela", "altro-fornitore", "non-lo-so"];
+    const select = page.locator("[name=supplier_id]");
+    const optionValues = () => select.locator("option").evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
+
+    // Create form: real suppliers only.
+    await page.goto("/admin/offerte/nuova");
+    const createValues = await optionValues();
+    expect(createValues).toContain("iren");
+    for (const p of placeholders) expect(createValues).not.toContain(p);
+    await expect(select.locator("option", { hasText: "segnaposto" })).toHaveCount(0);
+
+    // A forged POST choosing a placeholder is refused with an Italian field error.
+    await select.evaluate((el) => {
+      const o = document.createElement("option");
+      o.value = "tutela";
+      o.textContent = "forzato";
+      (el as HTMLSelectElement).appendChild(o);
+    });
+    await select.selectOption("tutela");
+    await page.locator("[name=name]").fill(uniqueName("placeholder", info));
+    await page.locator("[name=energy_price]").fill("0,1290");
+    await page.locator("[name=fixed_fee]").fill("9");
+    await page.getByRole("button", { name: "Crea offerta" }).click();
+    await expect(page.getByTestId("offer-form")).toHaveAttribute("data-attempt", "1");
+    await expect(page.getByText("Questo fornitore è un segnaposto e non può avere offerte.")).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/offerte\/nuova$/);
+
+    // Edit form of an offer with a real supplier: still no placeholder options.
+    const id = await createOffer(page, { name: uniqueName("no-placeholder", info), active: false });
+    await page.goto(`/admin/offerte/${id}`);
+    const editValues = await optionValues();
+    for (const p of placeholders) expect(editValues).not.toContain(p);
+    await expect(select).toHaveValue("iren");
+  });
+
   test("unknown offer id shows a not-found page", async ({ page }) => {
     await login(page);
     const res = await page.goto("/admin/offerte/non-esiste");
