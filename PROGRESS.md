@@ -170,3 +170,8 @@ Known limitations: real Supabase flow (auth/MFA, RLS, storage) untested until mi
 
 ## 2026-10-15 17:10 — LOOP SUMMARY (stopping: no unblocked task left)
 Blocked on reviewer/Giuseppe: APPLY 20261015140000 (then T7.5 + T7.7 final sign-off; also drop bootstrap_load_comuni); T5.1 logos (Q2 "ready"); Q3 Aldo's email; Q9 privacy text.
+
+## 2026-10-15 17:45 — T7.5 + go-live/DB follow-ups
+- T7.5 (qa-tester, 31fb197): `npm run test:security` — standalone Vitest suite against the REAL Supabase project with the publishable key: public read rules (comuni 7894, only active suppliers/offers), leads/settings/admins/app_secrets unreachable, admin writes rejected, private RPCs unreachable, 8 bad-secret variants × 3 functions → invalid_secret (secret checked first), old signatures 404, create_lead input rules, token isolation (13 forged tokens, completed-lead lock), storage writes rejected. Orchestrator run: 74 passed / 1 skipped (no bucket object yet). Creates exactly 2 TEST-SECURITY leads per run (cleanup SQL in QUESTIONS.md). Note: lead_not_found surfaces as HTTP 500 from PostgREST (P0002) — app maps by message; possible future errcode change.
+- 14243a0 (admin-settings): bootstrap removal shown done; privacy placeholders as manual go-live item; DEPLOY.md notification-email note (Q3).
+- 5a13cd1 (db-builder): idempotent doc migration 20261015150000 for the reviewer's disable-and-move of old functions; Q11 asks to confirm names. PGlite ✓.
