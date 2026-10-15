@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { SiteHeader } from "@/components/brand";
 import { Button, Card, CheckIcon } from "@/components/ui";
 import { useFlow } from "@/lib/lead/flow-context";
 import type { ChosenOfferSnapshot } from "@/lib/lead/flow-state";
@@ -40,63 +40,59 @@ export default function GraziePage() {
   const dual = view.offers.length > 1;
 
   return (
-    <main className="flex flex-1 flex-col items-center bg-gradient-to-b from-brand-50 to-surface px-5 py-10 sm:py-16">
-      <Image
-        src="/brand/versus_logo_nero.svg"
-        alt="VERSUS"
-        width={286}
-        height={90}
-        className="mb-8 h-auto w-44 sm:w-56"
-      />
-      <Card padding="lg" className="w-full max-w-xl">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <span className="grid size-16 place-items-center rounded-full bg-brand-600 text-white">
-            <CheckIcon width={32} height={32} />
-          </span>
-          <h1 data-testid="thankyou-heading" className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Grazie, {view.firstName}!
-          </h1>
-          <p className="text-base text-ink-muted">
-            Sarai ricontattato a breve da un nostro consulente per confermare l&apos;attivazione della
-            tua offerta.
-          </p>
-        </div>
-
-        <section
-          data-testid="thankyou-summary"
-          aria-label="Riepilogo offerta scelta"
-          className="mt-8 flex flex-col gap-4"
-        >
-          {view.offers.map((offer) => (
-            <OfferSummary key={offer.commodity} offer={offer} />
-          ))}
-        </section>
-
-        {dual && view.totalMonthly !== null && (
-          <div
-            data-testid="thankyou-total"
-            className="mt-4 flex items-center justify-between rounded-control bg-brand-50 px-5 py-4"
-          >
-            <span className="font-semibold">Spesa mensile totale stimata</span>
-            <span className="text-xl font-bold text-brand-700">{formatEuro(view.totalMonthly)}</span>
+    <>
+      <SiteHeader />
+      <main className="flex flex-1 flex-col items-center px-4 py-8 sm:py-14">
+        <Card padding="lg" className="w-full max-w-xl">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <span className="grid size-16 place-items-center rounded-full bg-brand-600 text-white">
+              <CheckIcon width={32} height={32} />
+            </span>
+            <h1 data-testid="thankyou-heading" className="heading-wide text-title sm:text-display">
+              Grazie, {view.firstName}!
+            </h1>
+            <p className="text-base text-ink-muted">
+              Sarai ricontattato a breve da un nostro consulente per confermare l&apos;attivazione della
+              tua offerta.
+            </p>
           </div>
-        )}
 
-        <p className="mt-4 text-sm text-ink-subtle">Stima IVA esclusa.</p>
+          <section
+            data-testid="thankyou-summary"
+            aria-label="Riepilogo offerta scelta"
+            className="mt-8 flex flex-col gap-4"
+          >
+            {view.offers.map((offer) => (
+              <OfferSummary key={offer.commodity} offer={offer} />
+            ))}
+          </section>
 
-        <Button
-          fullWidth
-          size="lg"
-          className="mt-8"
-          onClick={() => {
-            reset();
-            router.push("/");
-          }}
-        >
-          Torna alla home
-        </Button>
-      </Card>
-    </main>
+          {dual && view.totalMonthly !== null && (
+            <div
+              data-testid="thankyou-total"
+              className="mt-4 flex items-center justify-between rounded-control bg-brand-50 px-5 py-4"
+            >
+              <span className="font-semibold">Spesa mensile totale stimata</span>
+              <span className="text-xl font-bold text-brand-700">{formatEuro(view.totalMonthly)}</span>
+            </div>
+          )}
+
+          <p className="mt-4 text-sm text-ink-subtle">Stima IVA esclusa.</p>
+
+          <Button
+            fullWidth
+            size="lg"
+            className="mt-8"
+            onClick={() => {
+              reset();
+              router.push("/");
+            }}
+          >
+            Torna alla home
+          </Button>
+        </Card>
+      </main>
+    </>
   );
 }
 

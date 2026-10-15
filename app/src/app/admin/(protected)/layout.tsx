@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { VersusLogo } from "@/components/brand";
 import { requireAdmin } from "@/lib/auth";
 import { logoutAction } from "@/lib/auth/actions";
 
@@ -26,7 +26,7 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3">
           <Link href="/admin" className="shrink-0" aria-label="Dashboard">
-            <Image src="/brand/versus_logo_nero.svg" alt="VERSUS" width={286} height={90} className="h-auto w-28" />
+            <VersusLogo className="h-8 w-auto" />
           </Link>
           <nav aria-label="Area riservata" className="order-last w-full overflow-x-auto sm:order-none sm:w-auto sm:flex-1">
             <ul className="flex gap-1">

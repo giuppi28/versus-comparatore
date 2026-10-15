@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SiteHeader } from "@/components/brand";
 import { LoadingScreen, type LoadingSupplier } from "@/components/loading";
 import { OfferModal, type OfferModalOffer } from "@/components/offer-modal";
 import { Button, SpinnerIcon } from "@/components/ui";
@@ -61,14 +61,7 @@ function bestEffort(promise: Promise<void>) {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-1 flex-col bg-surface-muted">
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center px-4 sm:px-6">
-          <Link href="/" aria-label="VERSUS, torna all'inizio">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/versus_logo_nero.svg" alt="VERSUS" className="h-8 w-auto" />
-          </Link>
-        </div>
-      </header>
+      <SiteHeader />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-10">{children}</main>
     </div>
   );

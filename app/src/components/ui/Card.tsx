@@ -7,7 +7,7 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   highlighted?: boolean;
 }
 
-const paddings = { none: "", md: "p-5", lg: "p-6 sm:p-8" } as const;
+const paddings = { none: "", md: "p-5", lg: "p-5 sm:p-8" } as const;
 
 export function Card({
   padding = "md",

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SiteHeader } from "@/components/brand";
 import { Page1Form, type SupplierOption } from "@/components/page1";
 import { getRepository } from "@/lib/data";
 
@@ -18,29 +18,26 @@ async function loadSupplierOptions(): Promise<SupplierOption[]> {
 export default async function Page1() {
   const suppliers = await loadSupplierOptions();
   return (
-    <main className="flex-1 bg-gradient-to-b from-brand-50 to-surface pb-section">
-      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-        <header className="flex flex-col gap-5 py-8 sm:py-12 lg:max-w-2xl">
-          <Image
-            src="/brand/versus_logo_nero.svg"
-            alt="VERSUS"
-            width={286}
-            height={90}
-            priority
-            className="h-auto w-40 sm:w-52"
-          />
-          <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-display">
-            Confronta le offerte luce e gas
-          </h1>
-          <p className="text-lg text-ink-muted">
-            Rispondi a poche domande: ti mostriamo le offerte più convenienti per la tua casa o la
-            tua attività.
-          </p>
-        </header>
-        <div className="lg:max-w-2xl">
-          <Page1Form suppliers={suppliers} />
+    <>
+      <SiteHeader homeLink={false} />
+      <main className="flex-1 pb-section">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
+          <header className="flex flex-col gap-4 pb-8 pt-8 sm:gap-5 sm:pb-10 sm:pt-12 lg:max-w-2xl">
+            <h1 className="heading-wide text-hero text-ink">
+              Comparatore{" "}
+              <br />
+              <span className="text-brand-600">luce e gas</span>
+            </h1>
+            <p className="text-lg text-ink-muted">
+              Rispondi a poche domande: ti mostriamo le offerte più convenienti per la tua casa o la
+              tua attività.
+            </p>
+          </header>
+          <div className="lg:max-w-2xl">
+            <Page1Form suppliers={suppliers} />
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }

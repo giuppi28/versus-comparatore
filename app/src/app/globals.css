@@ -2,17 +2,25 @@
 
 /*
  * VERSUS design tokens.
- * Green palette (brand-*), ink/neutral semantic colors, radii, shadows, type scale.
+ * Aesthetic: light grey page, white cards with thin borders and almost no shadow,
+ * wide uppercase display headings (Archivo) + Inter body, GREEN accent (brand-*).
  * Utility names are generated from these: bg-brand-600, text-ink, border-line,
- * rounded-card, rounded-control, shadow-card, ...
- * brand-600 on white = 5.0:1 contrast (AA for normal text) -> primary buttons/links.
+ * rounded-card, rounded-control, shadow-card, font-display, text-hero, ...
+ *
+ * Contrast (WCAG AA, normal text >= 4.5:1):
+ *   ink #0B0F1A            19.1 on white / 16.9 on page grey
+ *   ink-muted #4A5263       7.8 on white /  6.9 on page grey
+ *   ink-subtle #5F6878      5.6 on white /  5.0 on page grey
+ *   brand-700 #0a6a3a       6.7 on white /  5.9 on page grey  (text/links)
+ *   brand-600 #0a8045       5.0 on white (4.4 on page grey: large text / fills only; white on it 5.0)
  */
 @theme {
-  /* Typography: system stack, no network font dependency */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+  /* Typography: self-hosted at build via next/font (layout.tsx sets the variables) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-archivo), "Arial Black", ui-sans-serif, system-ui, sans-serif;
 
-  /* Green scale */
+  /* Green scale (accent) */
   --color-brand-50: #effaf4;
   --color-brand-100: #d6f5e3;
   --color-brand-200: #b0ebc9;
@@ -25,14 +33,14 @@
   --color-brand-900: #0a4527;
   --color-brand-950: #04281a;
 
-  /* Neutrals (slightly green-tinted ink) */
-  --color-ink: #0f1c15;
-  --color-ink-muted: #4a5a51;
-  --color-ink-subtle: #6b7a71;
-  --color-line: #dbe5df;
-  --color-line-strong: #b9c9c0;
+  /* Neutrals (cool, not green-tinted) */
+  --color-ink: #0b0f1a;
+  --color-ink-muted: #4a5263;
+  --color-ink-subtle: #5f6878;
+  --color-line: #dce0e7;
+  --color-line-strong: #c5cbd5;
   --color-surface: #ffffff;
-  --color-surface-muted: #f5f8f6;
+  --color-surface-muted: #eff1f4;
 
   /* Feedback */
   --color-success: #0a8045;
@@ -42,31 +50,44 @@
   --color-warning: #b54708;
   --color-warning-soft: #fffaeb;
 
-  /* Radii: rounded cards */
-  --radius-control: 0.75rem;
-  --radius-card: 1rem;
-  --radius-card-lg: 1.5rem;
+  /* Radii: 10px cards, 8px controls */
+  --radius-control: 0.5rem;
+  --radius-card: 0.625rem;
+  --radius-card-lg: 0.875rem;
 
-  /* Shadows */
-  --shadow-card: 0 1px 2px rgb(15 28 21 / 0.05), 0 4px 16px rgb(15 28 21 / 0.06);
-  --shadow-pop: 0 8px 32px rgb(15 28 21 / 0.18);
+  /* Shadows: border-driven look, shadow only for floating layers */
+  --shadow-card: 0 1px 2px rgb(11 15 26 / 0.04);
+  --shadow-pop: 0 8px 32px rgb(11 15 26 / 0.18);
 
   /* Type scale (mobile-first, fluid headings) */
-  --text-display: clamp(1.875rem, 1.4rem + 2vw, 2.75rem);
-  --text-display--line-height: 1.15;
-  --text-title: clamp(1.375rem, 1.15rem + 1vw, 1.75rem);
-  --text-title--line-height: 1.25;
+  /* "COMPARATORE" in wide Archivo is ~10.2em: 8.6vw keeps it inside 16px gutters from 320px up */
+  --text-hero: clamp(1.7rem, 8.6vw, 4rem);
+  --text-hero--line-height: 1.02;
+  --text-display: clamp(1.75rem, 1.35rem + 1.8vw, 2.5rem);
+  --text-display--line-height: 1.1;
+  --text-title: clamp(1.25rem, 1.1rem + 0.8vw, 1.625rem);
+  --text-title--line-height: 1.2;
 
   /* Spacing base is Tailwind's 0.25rem; section rhythm token */
   --spacing-section: 3rem;
 }
 
+/* Wide uppercase display style (headings, main CTA). */
+@utility heading-wide {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
 :root {
-  --background: var(--color-surface);
+  --background: var(--color-surface-muted);
   --foreground: var(--color-ink);
 }
 
 html {
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -76,6 +97,12 @@ body {
   font-family: var(--font-sans);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
 }
 
 :focus-visible {

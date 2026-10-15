@@ -155,11 +155,11 @@ export function SelectCard({
       onClick={onClick}
       data-selected={selected}
       className={cn(
-        "relative flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-card border-2 bg-surface px-3 py-4 text-center transition-colors",
+        "relative flex min-h-24 w-full flex-col items-center justify-center gap-2 rounded-card border-[1.5px] bg-surface px-3 py-4 text-center transition-colors",
         "disabled:cursor-not-allowed disabled:opacity-50",
         selected
           ? "border-brand-600 bg-brand-50"
-          : "border-line hover:border-brand-300 hover:bg-surface-muted",
+          : "border-line hover:border-[#aeb7c6] disabled:hover:border-line",
         className,
       )}
     >
@@ -167,8 +167,8 @@ export function SelectCard({
         <span
           aria-hidden="true"
           className={cn(
-            "flex size-10 items-center justify-center",
-            selected ? "text-brand-700" : "text-ink-muted",
+            "flex size-10 items-center justify-center rounded-[9px] transition-colors",
+            selected ? "bg-brand-600 text-white" : "bg-surface-muted text-ink-muted",
           )}
         >
           {icon}
@@ -179,8 +179,8 @@ export function SelectCard({
       <span
         aria-hidden="true"
         className={cn(
-          "absolute right-2.5 top-2.5 flex size-5 items-center justify-center border-2 text-white transition-colors",
-          type === "radio" ? "rounded-full" : "rounded-md",
+          "absolute right-2.5 top-2.5 flex size-5 items-center justify-center border-[1.5px] text-white transition-colors",
+          type === "radio" ? "rounded-full" : "rounded-[6px]",
           selected ? "border-brand-600 bg-brand-600" : "border-line-strong bg-surface",
         )}
       >

@@ -94,7 +94,7 @@ export function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/60 sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/55 sm:items-center sm:p-6"
       onMouseDown={(e) => {
         if (closeOnOverlay && e.target === e.currentTarget) onCloseRef.current();
       }}
@@ -107,13 +107,13 @@ export function Modal({
         tabIndex={-1}
         onKeyDown={onKeyDown}
         className={cn(
-          "flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-card-lg bg-surface shadow-pop focus:outline-none sm:max-w-lg sm:rounded-card-lg",
+          "flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-card-lg border border-line bg-surface shadow-pop focus:outline-none sm:max-w-lg sm:rounded-card-lg",
           className,
         )}
       >
         <div className="flex items-start gap-3 border-b border-line px-5 py-4 sm:px-6">
           {header}
-          <h2 id={titleId} className="flex-1 text-title font-bold">
+          <h2 id={titleId} className="heading-wide flex-1 text-base leading-snug sm:text-lg">
             {title}
           </h2>
           <button

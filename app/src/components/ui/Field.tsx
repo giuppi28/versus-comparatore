@@ -60,8 +60,8 @@ export function FieldChrome({
 
 export const controlClasses = (invalid: boolean) =>
   cn(
-    "min-h-12 w-full rounded-control border bg-surface px-4 text-base text-ink placeholder:text-ink-subtle transition-colors",
-    "focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30",
-    "disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-subtle",
-    invalid ? "border-danger" : "border-line-strong",
+    "min-h-12 w-full rounded-control border-[1.5px] bg-surface px-3.5 py-2.5 text-base text-ink placeholder:text-ink-subtle transition-colors",
+    "hover:border-ink-subtle/60 focus:border-brand-600 focus:outline-none focus:ring-[3px] focus:ring-brand-100",
+    "disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-subtle disabled:hover:border-line-strong",
+    invalid ? "border-danger hover:border-danger" : "border-line-strong",
   );

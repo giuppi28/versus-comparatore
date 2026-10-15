@@ -16,17 +16,21 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800 disabled:bg-brand-200 disabled:text-brand-800/60",
+    "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 disabled:bg-brand-200 disabled:text-brand-900/70",
   secondary:
-    "border border-line-strong bg-surface text-ink hover:border-brand-600 hover:bg-brand-50 disabled:text-ink-subtle disabled:hover:border-line-strong disabled:hover:bg-surface",
+    "border border-line-strong bg-surface text-ink hover:border-ink disabled:text-ink-subtle disabled:hover:border-line-strong",
   ghost:
     "bg-transparent text-brand-700 hover:bg-brand-50 active:bg-brand-100 disabled:text-ink-subtle disabled:hover:bg-transparent",
 };
 
 const sizes: Record<ButtonSize, string> = {
   md: "min-h-11 px-5 text-base",
-  lg: "min-h-14 px-7 text-lg",
+  lg: "min-h-13 px-6 text-base",
 };
+
+/** Main CTA (primary + lg): wide uppercase display label, like the VERSUS headings. */
+const mainCta =
+  "heading-wide px-4 text-[12.5px] font-semibold leading-tight tracking-[0.04em] [font-stretch:110%]";
 
 export function Button({
   variant = "primary",
@@ -47,9 +51,10 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-colors disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 rounded-control text-center font-semibold transition-colors disabled:cursor-not-allowed",
         variants[variant],
         sizes[size],
+        variant === "primary" && size === "lg" && mainCta,
         fullWidth && "w-full",
         className,
       )}
