@@ -23,8 +23,22 @@ describe("mock session signing", () => {
 
   it("rejects a tampered signature", async () => {
     const token = await signMockSession(payload, SECRET);
-    const last = token.at(-1) === "A" ? "B" : "A";
-    expect(await verifyMockSession(token.slice(0, -1) + last, SECRET)).toBeNull();
+    const [body, sig] = token.split(".");
+    // Flip a middle char (all 6 bits significant) to one from a different 4-bit group.
+    const i = sig.length - 10;
+    const swapped = sig[i] === "A" ? "z" : "A";
+    const tampered = `${body}.${sig.slice(0, i)}${swapped}${sig.slice(i + 1)}`;
+    expect(await verifyMockSession(tampered, SECRET)).toBeNull();
+  });
+
+  it("rejects a non-canonical signature encoding (padding bits changed)", async () => {
+    const token = await signMockSession(payload, SECRET);
+    const [body, sig] = token.split(".");
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    // 32 bytes -> 43 chars: the last char carries 2 unused low bits.
+    const last = alphabet.indexOf(sig.at(-1)!);
+    const alias = alphabet[last ^ 1];
+    expect(await verifyMockSession(`${body}.${sig.slice(0, -1)}${alias}`, SECRET)).toBeNull();
   });
 
   it("rejects a token signed with another secret", async () => {

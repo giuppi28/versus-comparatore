@@ -63,6 +63,8 @@ export async function verifyMockSession(
   const sig = fromBase64Url(sigPart);
   const bodyBytes = fromBase64Url(body);
   if (!sig || !bodyBytes) return null;
+  // Reject non-canonical encodings (e.g. different padding bits that decode to the same bytes).
+  if (toBase64Url(sig) !== sigPart || toBase64Url(bodyBytes) !== body) return null;
   // crypto.subtle.verify compares in constant time.
   const ok = await crypto.subtle.verify(
     "HMAC",
