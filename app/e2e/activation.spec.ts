@@ -77,6 +77,9 @@ function casaLuce(over: Json = {}): Json {
     currentSupplierLuce: "enel-energia",
     people: 2,
     gasUses: [],
+    // Page 1 results the real /offerte screen needs (its guard redirects to "/" without them).
+    estimatedKwhYear: 1600,
+    estimatedSmcYear: 500,
     chosenOffers: { luce: luceOffer, gas: null },
     leadCreated: true,
     ...over,
@@ -100,6 +103,17 @@ function businessDual(over: Json = {}): Json {
 
 /** Seeds sessionStorage once per browser context (a reload keeps what the page left). */
 async function open(page: Page, flow: Json | null, path = "/attivazione") {
+  // /offerte belongs to another screen. router.push first fetches an RSC payload
+  // ("/offerte?_rsc=..."), which a plain "**/offerte" glob does not match: match on the
+  // pathname, abort the RSC fetch (Next then falls back to a document navigation) and
+  // serve a stub document, so no test depends on that screen or on its cold compile.
+  await page.route(
+    (url) => url.pathname === "/offerte",
+    (route) =>
+      route.request().resourceType() === "document"
+        ? route.fulfill({ contentType: "text/html", body: "<html><body>offerte</body></html>" })
+        : route.abort(),
+  );
   await page.route("https://challenges.cloudflare.com/**", (route) =>
     route.fulfill({
       contentType: "application/javascript",
@@ -439,10 +453,6 @@ test.describe("activation form", () => {
 
   test("back buttons keep the data", async ({ page }) => {
     await mockComplete(page);
-    // /offerte belongs to another screen: serve a stub so the navigation is deterministic.
-    await page.route("**/offerte", (route) =>
-      route.fulfill({ contentType: "text/html", body: "<html><body>offerte</body></html>" }),
-    );
     await open(page, casaLuce());
     await fillStepA(page, { housing: "usufruttuario" });
     await field(page, "last_name").fill("Rossi Verdi");
