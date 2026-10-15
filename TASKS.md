@@ -60,7 +60,7 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [ ] T5.1 BLOCKED: waits for "ready" in QUESTIONS.md Q2. Normalize SVGs from `/Users/pippo/Desktop/versus elementi/loghi energia /` (folder name ends with a space) and `/Users/pippo/Desktop/versus elementi/logopack/originali/` (see its MANIFEST.md) (clean, tight viewBox, consistent height/padding), produce `logopack/color/`, `logopack/black/`, `logopack/white/`, `logopack/preview.html`. Never alter logo shapes. Wire into the app.
 
 ## Phase 6 — Deploy preparation (NO deploy)  → agent: `deploy-prep-builder`
-- [ ] T6.1 OpenNext Cloudflare config, build passing. Supabase keep-alive job design. `DEPLOY.md` with exact steps.
+- [x] T6.1 OpenNext Cloudflare config, build passing. Supabase keep-alive job design. `DEPLOY.md` with exact steps.
 
 ## Phase 7 — Full test matrix (definition of done)  → agent: `qa-tester` (+ fixes via the owning builder)
 - [~] T7.1 Playwright parametrized suite over **every combination**: commodity {luce, gas, dual} × customer {casa, partita IVA} × service {cambio fornitore, subentro, voltura, primo allaccio} × gas {già presente sì/no} × gas uses {each, all, with riscaldamento in zones A/C/E/F} × consumption {estimated, manual}. Each run goes from Page 1 to thank-you page and asserts: lead saved at consent, correct estimate, current supplier's offers excluded (test with Edison luce / Eni Plenitude gas), featured first + cost ordering, correct monthly cost, summary correctness, lead completed with all fields.

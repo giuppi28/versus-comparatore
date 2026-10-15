@@ -20,3 +20,9 @@ test-results/
 playwright-report/
 coverage/
 blob-report/
+
+# Cloudflare / OpenNext / Wrangler (local build output and local secrets)
+.open-next/
+.wrangler/
+.dev.vars
+.dev.vars.*

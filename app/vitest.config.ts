@@ -15,7 +15,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: false,
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "cloudflare/**/*.test.ts"],
     css: false,
     coverage: {
       provider: "v8",

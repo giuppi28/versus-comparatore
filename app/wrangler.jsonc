@@ -1,0 +1,61 @@
+// Cloudflare Worker configuration for VERSUS (OpenNext adapter).
+// Nothing here deploys anything: deploying is a manual step done by Giuseppe, see DEPLOY.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "versus-comparatore",
+
+  // Our wrapper around the generated OpenNext worker (adds the optional scheduled keep-alive).
+  // It re-exports the generated `.open-next/worker.js`, so `npm run build:cf` must run first.
+  "main": "cloudflare/worker.ts",
+
+  "compatibility_date": "2026-10-01",
+  // nodejs_compat is required by the OpenNext adapter (Node APIs used by Next.js and @supabase/*).
+  // global_fetch_strictly_public: fetch() to other zones behaves like the public internet.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+
+  // Self-reference binding required by OpenNext (used for internal revalidation requests).
+  // The service name must match "name" above.
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "versus-comparatore"
+    }
+  ],
+
+  "observability": { "enabled": true },
+
+  // Do not wipe variables/secrets configured in the Cloudflare dashboard when deploying.
+  "keep_vars": true,
+
+  // ---------------------------------------------------------------------------------------
+  // Runtime variables. Only NON-secret values may ever be placed here.
+  // - The NEXT_PUBLIC_* values the site needs are inlined at BUILD time from
+  //   app/.env.production.local (see DEPLOY.md), so nothing is required here for the site.
+  // - They are needed here ONLY for the keep-alive cron below, whose scheduled() handler reads
+  //   the Worker env bindings directly. All three are public by design (the same values are
+  //   visible in every page), so they can be committed. Uncomment together with "triggers".
+  // - Secrets (TURNSTILE_SECRET_KEY, RESEND_API_KEY) are NEVER put here: use Cloudflare secrets
+  //   (`wrangler secret put` or the dashboard); DEPLOY.md configures NOTIFICATION_EMAIL and
+  //   RESEND_FROM the same way, so every non-NEXT_PUBLIC value lives outside the repository.
+  // ---------------------------------------------------------------------------------------
+  // "vars": {
+  //   "NEXT_PUBLIC_SUPABASE_URL": "https://<ref>.supabase.co",
+  //   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_...",
+  //   "NEXT_PUBLIC_DATA_SOURCE": "supabase"
+  // },
+
+  // ---------------------------------------------------------------------------------------
+  // Supabase keep-alive (free projects pause after 7 days of inactivity).
+  // DISABLED on purpose. To enable (Giuseppe only, see DEPLOY.md > Keep-alive): uncomment,
+  // then deploy. The scheduled() handler is in cloudflare/worker.ts / cloudflare/keepalive.ts.
+  // Cron is UTC. "17 4 * * *" = every day at 04:17 UTC.
+  // ---------------------------------------------------------------------------------------
+  // "triggers": {
+  //   "crons": ["17 4 * * *"]
+  // }
+}
