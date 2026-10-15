@@ -125,10 +125,13 @@ function LogoItem({
   supplier,
   testId,
   hidden,
+  spaced = true,
 }: {
   supplier: LoadingSupplier;
   testId: string;
   hidden: boolean;
+  /** Per-item right padding (marquee: keeps the -50% loop exact). The static row uses container gaps instead. */
+  spaced?: boolean;
 }) {
   const logo = supplier.logoUrl ? blackLogoUrl(supplier.logoUrl) : null;
   return (
@@ -136,7 +139,7 @@ function LogoItem({
       data-testid={testId}
       data-supplier-id={supplier.id}
       aria-hidden={hidden ? "true" : undefined}
-      className="flex h-8 shrink-0 items-center pr-10 sm:h-10 sm:pr-14"
+      className={cn("flex h-8 shrink-0 items-center sm:h-10", spaced && "pr-10 sm:pr-14")}
     >
       {logo ? (
         <>
@@ -171,10 +174,10 @@ function SupplierMarquee({ suppliers, reducedMotion }: { suppliers: LoadingSuppl
         <ul
           aria-label="Fornitori confrontati"
           data-testid="loading-suppliers"
-          className="flex flex-wrap items-center justify-center gap-y-4"
+          className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 sm:gap-x-14"
         >
           {suppliers.map((s) => (
-            <LogoItem key={s.id} supplier={s} testId="loading-supplier" hidden={false} />
+            <LogoItem key={s.id} supplier={s} testId="loading-supplier" hidden={false} spaced={false} />
           ))}
         </ul>
       </div>

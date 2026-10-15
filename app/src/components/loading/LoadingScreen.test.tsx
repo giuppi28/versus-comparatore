@@ -209,7 +209,12 @@ describe("LoadingScreen", () => {
     expect(container.querySelector(".vs-marquee-track")).toBeNull();
     expect(screen.queryAllByTestId("loading-supplier-copy")).toHaveLength(0);
     expect(realIds()).toEqual(["a", "b", "c", "d"]);
-    expect(screen.getByTestId("loading-suppliers").className).toContain("flex-wrap");
+    const row = screen.getByTestId("loading-suppliers");
+    expect(row.className).toContain("flex-wrap");
+    expect(row.className).toContain("justify-center");
+    expect(row.className).toContain("gap-x-10");
+    // Symmetric: gaps live on the container, no per-item right padding (would shift the row left).
+    screen.getAllByTestId("loading-supplier").forEach((li) => expect(li.className).not.toMatch(/(^|\s)(sm:)?pr-/));
     advance(500);
     expect(screen.getByTestId("loading-ring")).toHaveAttribute("stroke-dashoffset", "50");
     advance(200);
