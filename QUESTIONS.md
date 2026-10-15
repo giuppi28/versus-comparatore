@@ -113,3 +113,12 @@ T8.2 (Q6 + Q7 + Q8, one migration): `private.app_secrets` with ONLY the SHA-256 
 ## Q11 — Confirm names of the disabled functions in the real DB
 Migration `20261015150000_disable_old_lead_functions.sql` (documentation only, no APPLY) assumes the reviewer's renamed functions are `private.old_create_lead_disabled(jsonb)`, `private.old_update_lead_disabled(text, jsonb)`, `private.old_complete_lead_disabled(text, jsonb)` and `private.bootstrap_load_comuni_disabled(text)`. Please confirm or give the actual names so the repo matches the real DB.
 **Answer:**
+
+
+## REQUEST: run rls_test.sql and data_checks.sql on the real DB
+T7.5 (qa-tester, 2026-10-15). The HTTP security suite (`npm run test:security` in `app/`, 74 assertions, anon role only) cannot run SQL against the real project. Reviewer: please run `app/supabase/tests/data_checks.sql` and `app/supabase/tests/rls_test.sql` through the connector (both are rolled-back / read-only; they must end with `ALL DATA CHECKS PASSED` / `ALL RLS TESTS PASSED`) and answer here.
+Also: the test runs leave `TEST-SECURITY` leads in the real DB (2 per run; 4 runs so far = 8 rows: 4 completed, 4 in progress). Delete them from the admin leads list (or `delete from public.leads where first_name = 'TEST-SECURITY'`).
+Minor finding: `lead_not_found` (SQLSTATE P0002) is returned by PostgREST as HTTP 500, not 4xx. Functionally correct and the app must map it by `message`; consider `errcode = 'PT404'` in a future migration if 5xx noise matters.
+
+## APPLY: 20261015160000_supplier_logo_paths.sql
+T5.1 (logopack-builder, 2026-10-15). Data-only: sets `suppliers.logo_path = '/logos/<slug>.svg'` for the 11 real suppliers (the files ship with the app in `app/public/logos/`, so the app must be deployed for the logos to resolve; the app already renders root-relative paths and falls back to the text chip when `logo_path` is null). Idempotent and non-destructive: only touches rows where `logo_path is null` and `not is_placeholder`, so logos uploaded through the admin area are never overwritten. No schema/RLS change, no advisor impact.
