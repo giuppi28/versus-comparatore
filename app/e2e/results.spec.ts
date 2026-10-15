@@ -104,6 +104,21 @@ test.describe("results page", () => {
     await page.waitForURL((url) => url.pathname === "/");
   });
 
+  test("loading screen of a luce+gas comparison hides both current suppliers and keeps the others", async ({
+    page,
+  }) => {
+    await setup(page, dualCasa());
+    await page.goto("/offerte");
+    await expect(page.getByTestId("loading-screen")).toBeVisible();
+    await expect(page.getByTestId("loading-supplier").first()).toBeVisible();
+    const shownIds = await ids(page.getByTestId("loading-supplier"), "data-supplier-id");
+    expect(shownIds).not.toContain("edison-energia");
+    expect(shownIds).not.toContain("eni-plenitude");
+    expect(shownIds).toContain("engie");
+    expect(shownIds).toContain("enel-energia");
+    expect(shownIds.length).toBeGreaterThan(5);
+  });
+
   test("loading screen (~4 s) hides the current supplier and updates the lead, then shows results", async ({
     page,
   }, info) => {
@@ -115,8 +130,17 @@ test.describe("results page", () => {
     await expect(loading).toContainText("offerte luce", { timeout: 4_000 });
     await expect(page.getByTestId("loading-supplier").first()).toBeVisible();
     await expect(page.locator('[data-testid="loading-supplier"][data-supplier-id="edison-energia"]')).toHaveCount(0);
-    // Only suppliers with luce offers (not gas-only ones) are orbiting.
-    await expect(page.locator('[data-testid="loading-supplier"][data-supplier-id="engie"]')).toHaveCount(0);
+    // All active real suppliers with a logo are shown, not only those with luce offers (engie has none).
+    await expect(page.locator('[data-testid="loading-supplier"][data-supplier-id="engie"]')).toHaveCount(1);
+    await expect(page.locator('[data-testid="loading-supplier"][data-supplier-id="enel-energia"]')).toHaveCount(1);
+    // Placeholders (Tutela / Altro fornitore / Non lo so) never appear.
+    for (const id of ["tutela", "altro-fornitore", "non-lo-so"]) {
+      await expect(page.locator(`[data-testid="loading-supplier"][data-supplier-id="${id}"]`)).toHaveCount(0);
+    }
+    // More logos than the few suppliers having a luce offer (3 in the mock data); no duplicate ids.
+    const shownIds = await ids(page.getByTestId("loading-supplier"), "data-supplier-id");
+    expect(shownIds.length).toBeGreaterThan(5);
+    expect(new Set(shownIds).size).toBe(shownIds.length);
     await page.waitForTimeout(800);
     await shot(page, info, "loading");
     await noOverflow(page);

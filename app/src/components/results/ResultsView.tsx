@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/brand";
 import { LoadingScreen, type LoadingSupplier } from "@/components/loading";
 import { OfferModal, type OfferModalOffer } from "@/components/offer-modal";
 import { Button, SpinnerIcon } from "@/components/ui";
-import type { Commodity, LeadCustomerType, OfferWithSupplier } from "@/lib/data/types";
+import type { Commodity, LeadCustomerType, OfferWithSupplier, Supplier } from "@/lib/data/types";
 import { useFlow } from "@/lib/lead/flow-context";
 import { updateLead } from "@/lib/lead/client";
 import { annualKwh, annualSmc, applyFlowPatch, snapshotOffer, toLeadPatchData } from "@/lib/lead/flow-state";
@@ -18,6 +18,7 @@ import { OfferCard } from "./OfferCard";
 import { supplierLogoSrc } from "./logo-src";
 import {
   LOADED_SIGNATURE_KEY,
+  buildLoadingSuppliers,
   buildOrbitSuppliers,
   commodityLabel,
   currentSupplierFor,
@@ -35,6 +36,11 @@ export type ServerOffers = Record<Commodity, Record<LeadCustomerType, OfferWithS
 export interface ResultsViewProps {
   /** null when the server could not load the offers (the page shows a retry). */
   offers: ServerOffers | null;
+  /**
+   * Active suppliers for the loading marquee (all real ones with a logo). When null/omitted
+   * (the server could not load them) the marquee falls back to the suppliers of the offers.
+   */
+  suppliers?: Supplier[] | null;
 }
 
 function readLoadedSignature(): string | null {
@@ -71,7 +77,7 @@ function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col items-center gap-4 py-20 text-center text-ink-muted">{children}</div>;
 }
 
-export function ResultsView({ offers: serverOffers }: ResultsViewProps) {
+export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers = null }: ResultsViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { state, hydrated, update } = useFlow();
@@ -146,10 +152,13 @@ export function ResultsView({ offers: serverOffers }: ResultsViewProps) {
     envMs: process.env.NEXT_PUBLIC_LOADING_MS ?? null,
   });
 
-  const loadingSuppliers = useMemo<LoadingSupplier[]>(
-    () => buildOrbitSuppliers(offers, steps, supplierLogoSrc),
-    [offers, steps],
-  );
+  const loadingSuppliers = useMemo<LoadingSupplier[]>(() => {
+    if (serverSuppliers) {
+      const all = buildLoadingSuppliers(serverSuppliers, currentSupplierIds(state), supplierLogoSrc);
+      if (all.length > 0) return all;
+    }
+    return buildOrbitSuppliers(offers, steps, supplierLogoSrc);
+  }, [serverSuppliers, state, offers, steps]);
 
   const handleLoadingStart = () => {
     const patch = {

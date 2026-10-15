@@ -2,7 +2,7 @@
  * Pure helpers of the results page (PRD §8). No React, no browser APIs:
  * unit-tested in results-logic.test.ts.
  */
-import { isRealSupplier, type Commodity, type OfferWithSupplier } from "@/lib/data/types";
+import { isRealSupplier, type Commodity, type OfferWithSupplier, type Supplier } from "@/lib/data/types";
 import { annualKwh, annualSmc, serviceTypeFor, type FlowState } from "@/lib/lead/flow-state";
 import { commoditiesOf, needsCurrentSupplier } from "@/lib/lead/rules";
 
@@ -129,4 +129,27 @@ export function buildOrbitSuppliers(
     }
   }
   return [...seen.values()];
+}
+
+/**
+ * Loading marquee list: every active REAL supplier that has a logo (placeholders and suppliers
+ * without a resolvable logo are dropped), minus the customer's current supplier(s), no duplicates.
+ * Order follows the input (the repository returns suppliers by sort_order).
+ */
+export function buildLoadingSuppliers(
+  suppliers: Pick<Supplier, "id" | "name" | "logo_path" | "active" | "is_placeholder">[] | null | undefined,
+  excludeIds: readonly string[],
+  logoSrc: (supplier: Pick<Supplier, "logo_path">) => string | null,
+): OrbitSupplier[] {
+  const excluded = new Set(excludeIds);
+  const seen = new Set<string>();
+  const result: OrbitSupplier[] = [];
+  for (const s of suppliers ?? []) {
+    if (!s.active || !isRealSupplier(s) || excluded.has(s.id) || seen.has(s.id)) continue;
+    const logoUrl = logoSrc(s);
+    if (!logoUrl) continue;
+    seen.add(s.id);
+    result.push({ id: s.id, name: s.name, logoUrl });
+  }
+  return result;
 }

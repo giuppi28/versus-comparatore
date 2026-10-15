@@ -4,6 +4,7 @@ import type { OfferWithSupplier } from "@/lib/data/types";
 import { INITIAL_FLOW_STATE, type FlowState } from "@/lib/lead/flow-state";
 import {
   DEFAULT_LOADING_MS,
+  buildLoadingSuppliers,
   buildOrbitSuppliers,
   FAST_LOADING_MS,
   currentSupplierFor,
@@ -142,5 +143,57 @@ describe("buildOrbitSuppliers", () => {
   it("uses the logo resolver", () => {
     const [first] = buildOrbitSuppliers({ luce: real }, ["luce"], () => "/x.svg");
     expect(first.logoUrl).toBe("/x.svg");
+  });
+});
+
+describe("buildLoadingSuppliers", () => {
+  const logoSrc = (s: { logo_path: string | null }) => s.logo_path;
+  const realWithLogo = MOCK_SUPPLIERS.filter((s) => s.active && !s.is_placeholder && s.logo_path);
+
+  it("lists every active real supplier with a logo, regardless of offers", () => {
+    const list = buildLoadingSuppliers(MOCK_SUPPLIERS, [], logoSrc);
+    expect(list.map((s) => s.id)).toEqual(realWithLogo.map((s) => s.id));
+    expect(list.length).toBeGreaterThan(3);
+  });
+
+  it("drops placeholders", () => {
+    const placeholders = MOCK_SUPPLIERS.filter((s) => s.is_placeholder);
+    expect(placeholders.length).toBeGreaterThan(0);
+    // even with a logo they stay out
+    const withLogo = placeholders.map((s) => ({ ...s, logo_path: "/x.svg" }));
+    const ids = buildLoadingSuppliers([...MOCK_SUPPLIERS, ...withLogo], [], logoSrc).map((s) => s.id);
+    for (const p of placeholders) expect(ids).not.toContain(p.id);
+  });
+
+  it("drops inactive suppliers and suppliers without a logo", () => {
+    const [a, b, c] = realWithLogo;
+    const list = buildLoadingSuppliers(
+      [{ ...a, active: false }, { ...b, logo_path: null }, c],
+      [],
+      logoSrc,
+    );
+    expect(list.map((s) => s.id)).toEqual([c.id]);
+  });
+
+  it("excludes the current supplier(s): one for luce, both for luce+gas", () => {
+    const [a, b, c] = realWithLogo;
+    expect(buildLoadingSuppliers(MOCK_SUPPLIERS, [a.id], logoSrc).map((s) => s.id)).not.toContain(a.id);
+    const both = buildLoadingSuppliers(MOCK_SUPPLIERS, [a.id, b.id], logoSrc).map((s) => s.id);
+    expect(both).not.toContain(a.id);
+    expect(both).not.toContain(b.id);
+    expect(both).toContain(c.id);
+    expect(both).toHaveLength(realWithLogo.length - 2);
+  });
+
+  it("has no duplicates and tolerates null input", () => {
+    const [a] = realWithLogo;
+    const list = buildLoadingSuppliers([a, a, a], [], logoSrc);
+    expect(list).toHaveLength(1);
+    expect(buildLoadingSuppliers(null, [], logoSrc)).toEqual([]);
+  });
+
+  it("uses the logo resolver output", () => {
+    const [first] = buildLoadingSuppliers(MOCK_SUPPLIERS, [], () => "/y.svg");
+    expect(first.logoUrl).toBe("/y.svg");
   });
 });

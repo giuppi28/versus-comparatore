@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ResultsView, type ServerOffers } from "@/components/results";
 import { getRepository } from "@/lib/data";
+import type { Supplier } from "@/lib/data/types";
 
 export const metadata: Metadata = {
   title: "Le tue offerte — VERSUS",
@@ -36,12 +37,22 @@ async function loadOffers(): Promise<ServerOffers | null> {
   }
 }
 
+/** All active suppliers for the loading marquee; null on error (the view falls back to offer suppliers). */
+async function loadSuppliers(): Promise<Supplier[] | null> {
+  try {
+    return await getRepository().listActiveSuppliers();
+  } catch (error) {
+    console.error("offerte: could not load the active suppliers", error);
+    return null;
+  }
+}
+
 export default async function OffertePage() {
-  const offers = await loadOffers();
+  const [offers, suppliers] = await Promise.all([loadOffers(), loadSuppliers()]);
   // useSearchParams (?fast=1) needs a Suspense boundary.
   return (
     <Suspense fallback={null}>
-      <ResultsView offers={offers} />
+      <ResultsView offers={offers} suppliers={suppliers} />
     </Suspense>
   );
 }
