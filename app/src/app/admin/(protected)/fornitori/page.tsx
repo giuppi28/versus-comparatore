@@ -4,6 +4,7 @@ import { Card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { resolveLogoUrl } from "@/lib/data";
 import { getAdminRepository } from "@/lib/data/admin";
+import { DeleteSupplierButton } from "./DeleteSupplierButton";
 
 export const metadata: Metadata = { title: "Fornitori — Area riservata" };
 export const dynamic = "force-dynamic";
@@ -18,9 +19,18 @@ function Badge({ on, children }: { on: boolean; children: string }) {
   );
 }
 
-export default async function SuppliersPage() {
+export default async function SuppliersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ eliminato?: string; offerte?: string; logo?: string }>;
+}) {
   await requireAdmin();
-  const suppliers = await (await getAdminRepository()).listAllSuppliers();
+  const query = await searchParams;
+  const repo = await getAdminRepository();
+  const [suppliers, offers] = await Promise.all([repo.listAllSuppliers(), repo.listAllOffers()]);
+  const offerCounts = new Map<string, number>();
+  for (const o of offers) offerCounts.set(o.supplier_id, (offerCounts.get(o.supplier_id) ?? 0) + 1);
+  const deletedOffers = Number(query.offerte);
   const sorted = [...suppliers].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "it"));
 
   return (
@@ -38,6 +48,23 @@ export default async function SuppliersPage() {
         </Link>
       </div>
 
+      {query.eliminato && (
+        <div
+          role="status"
+          data-testid="deleted-banner"
+          className="rounded-control border border-success bg-success-soft px-4 py-3 text-sm font-medium text-brand-800"
+        >
+          Fornitore «{query.eliminato}» eliminato.
+          {deletedOffers > 0 && (
+            <>
+              {" "}
+              {deletedOffers === 1 ? "Eliminata anche 1 offerta." : `Eliminate anche ${deletedOffers} offerte.`}
+            </>
+          )}
+          {query.logo === "errore" && " Il file del logo non è stato rimosso dall'archivio."}
+        </div>
+      )}
+
       {sorted.length === 0 ? (
         <Card>Nessun fornitore presente.</Card>
       ) : (
@@ -45,8 +72,15 @@ export default async function SuppliersPage() {
           {sorted.map((s) => {
             const logo = resolveLogoUrl(s.logo_path);
             return (
-              <li key={s.id} data-testid="supplier-row" data-slug={s.slug} data-active={s.active}>
-                <Link href={`/admin/fornitori/${s.id}`} className="block">
+              <li
+                key={s.id}
+                data-testid="supplier-row"
+                data-slug={s.slug}
+                data-active={s.active}
+                data-offers={offerCounts.get(s.id) ?? 0}
+                className="flex flex-col gap-2 sm:flex-row sm:items-center"
+              >
+                <Link href={`/admin/fornitori/${s.id}`} className="block min-w-0 sm:flex-1">
                   <Card
                     padding="none"
                     className={`flex flex-wrap items-center gap-x-4 gap-y-3 p-4 transition-colors hover:border-brand-600 ${s.active ? "" : "opacity-70"}`}
@@ -80,6 +114,9 @@ export default async function SuppliersPage() {
                     </span>
                   </Card>
                 </Link>
+                {!s.is_placeholder && (
+                  <DeleteSupplierButton id={s.id} name={s.name} offerCount={offerCounts.get(s.id) ?? 0} />
+                )}
               </li>
             );
           })}

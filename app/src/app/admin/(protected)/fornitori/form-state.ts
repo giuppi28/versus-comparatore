@@ -12,3 +12,8 @@ export interface SupplierFormState {
 }
 
 export const INITIAL_SUPPLIER_STATE: SupplierFormState = { status: "idle" };
+
+/** Result of deleteSupplierAction (called imperatively from the confirm dialog). */
+export type SupplierDeleteResult =
+  | { status: "success"; name: string; deletedOffers: number; logoCleanupFailed: boolean }
+  | { status: "error"; message: string };

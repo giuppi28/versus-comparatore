@@ -2,11 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
-import { InvalidLogoError, SupplierNotFoundError, SupplierSlugTakenError } from "@/lib/data";
+import {
+  InvalidLogoError,
+  PlaceholderSupplierError,
+  SupplierHasOffersError,
+  SupplierNotFoundError,
+  SupplierSlugTakenError,
+} from "@/lib/data";
 import { sanitizeSvg, SvgSanitizeError } from "@/lib/svg/sanitize";
-import type { SupplierFormState } from "./form-state";
+import type { SupplierDeleteResult, SupplierFormState } from "./form-state";
 import { parseSupplierForm } from "./validation";
 
 const GENERIC_ERROR = "Impossibile salvare il fornitore. Riprova tra qualche istante.";
@@ -107,4 +114,70 @@ export async function saveSupplierAction(_prev: SupplierFormState, formData: For
     notice: clean ? (removedNotice(clean.removed) ?? "Logo aggiornato.") : removeLogo ? "Logo rimosso." : undefined,
     savedAt: Date.now(),
   };
+}
+
+// A UUID in the database; the in-memory mock also uses slugs as ids for its seeded suppliers.
+const supplierIdSchema = z.union([z.uuid(), z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)]);
+
+const DELETE_GENERIC_ERROR = "Impossibile eliminare il fornitore. Riprova tra qualche istante.";
+
+/**
+ * Permanently deletes a supplier together with its offers (offers first, then the supplier,
+ * then its Storage logo). Placeholder suppliers are refused here as well as in the repository
+ * and in the database. Existing leads keep their snapshot of the supplier/offer data.
+ * Returns a result for the confirm dialog; the client navigates afterwards.
+ */
+export async function deleteSupplierAction(id: string): Promise<SupplierDeleteResult> {
+  await requireAdmin();
+  const parsed = supplierIdSchema.safeParse(id);
+  if (!parsed.success) return { status: "error", message: "Fornitore non valido." };
+
+  const repo = await getAdminRepository();
+  const supplier = await repo.getSupplier(parsed.data);
+  if (!supplier) {
+    return { status: "error", message: "Fornitore non trovato: potrebbe essere già stato eliminato." };
+  }
+  if (supplier.is_placeholder) {
+    return {
+      status: "error",
+      message: "Questo fornitore è una voce di sistema (usata nel modulo) e non può essere eliminato.",
+    };
+  }
+
+  try {
+    const result = await repo.deleteSupplier(supplier.id);
+    revalidatePath("/admin/fornitori");
+    revalidatePath("/admin/offerte", "layout");
+    return {
+      status: "success",
+      name: supplier.name,
+      deletedOffers: result.deletedOffers,
+      logoCleanupFailed: result.logoCleanupFailed,
+    };
+  } catch (e) {
+    if (e instanceof SupplierNotFoundError) {
+      revalidatePath("/admin/fornitori");
+      return { status: "error", message: "Fornitore non trovato: potrebbe essere già stato eliminato." };
+    }
+    if (e instanceof PlaceholderSupplierError) {
+      return {
+        status: "error",
+        message: "Questo fornitore è una voce di sistema (usata nel modulo) e non può essere eliminato.",
+      };
+    }
+    if (e instanceof SupplierHasOffersError) {
+      // Some offers may already be gone: refresh the views.
+      revalidatePath("/admin/fornitori");
+      revalidatePath("/admin/offerte", "layout");
+      return {
+        status: "error",
+        message:
+          "Il fornitore ha ancora delle offerte (forse ne è stata aggiunta una proprio ora), quindi non è stato eliminato. Riprova.",
+      };
+    }
+    console.error("deleteSupplier failed", e);
+    revalidatePath("/admin/fornitori");
+    revalidatePath("/admin/offerte", "layout");
+    return { status: "error", message: DELETE_GENERIC_ERROR };
+  }
 }

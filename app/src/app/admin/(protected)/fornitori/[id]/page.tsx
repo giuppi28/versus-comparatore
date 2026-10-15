@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { resolveLogoUrl } from "@/lib/data";
 import { getAdminRepository } from "@/lib/data/admin";
+import { DeleteSupplierButton } from "../DeleteSupplierButton";
 import { SupplierForm } from "../SupplierForm";
 
 export const metadata: Metadata = { title: "Modifica fornitore — Area riservata" };
@@ -18,8 +19,10 @@ export default async function EditSupplierPage({
 }) {
   await requireAdmin();
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const supplier = await (await getAdminRepository()).getSupplier(id);
+  const repo = await getAdminRepository();
+  const supplier = await repo.getSupplier(id);
   if (!supplier) notFound();
+  const offerCount = supplier.is_placeholder ? 0 : await repo.countOffersBySupplier(supplier.id);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -50,6 +53,24 @@ export default async function EditSupplierPage({
         logoUrl={resolveLogoUrl(supplier.logo_path)}
         defaultSortOrder={supplier.sort_order}
       />
+      {!supplier.is_placeholder && (
+        <section
+          aria-labelledby="delete-supplier-heading"
+          className="flex flex-col gap-3 rounded-card border border-danger/30 bg-danger-soft/40 p-5 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <h2 id="delete-supplier-heading" className="heading-section">
+              Elimina fornitore
+            </h2>
+            <p className="text-sm text-ink-muted">
+              {offerCount > 0
+                ? `Verranno eliminate anche le sue ${offerCount} ${offerCount === 1 ? "offerta" : "offerte"}. In alternativa puoi disattivarlo con l'opzione «Attivo».`
+                : "In alternativa puoi disattivarlo con l'opzione «Attivo»."}
+            </p>
+          </div>
+          <DeleteSupplierButton id={supplier.id} name={supplier.name} offerCount={offerCount} tone="solid" />
+        </section>
+      )}
     </div>
   );
 }
