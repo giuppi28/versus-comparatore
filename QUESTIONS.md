@@ -127,3 +127,7 @@ T5.1 (logopack-builder, 2026-10-15). Data-only: sets `suppliers.logo_path = '/lo
 
 ## NOTE (orchestrator, 2026-10-15) — Phase 9
 Cloudflare removed (Giuseppe's decision): hosting is Vercel. Q10 (Workers Free CPU limit) is obsolete. Turnstile no longer exists; lead functions stay protected by the hashed LEAD_API_SECRET + per-IP rate limiting (client IP from Vercel headers only). Go-live on Vercel needs `CRON_SECRET` (Production) for the daily keep-alive cron and the stale `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` env vars can be deleted from the Vercel project (Giuseppe; no code reads them). Steps in app/DEPLOY.md.
+
+## BLOCKER (orchestrator, 2026-10-15) — Vercel Production Branch is `main`
+Pushing `eae02f2` to `main` started a deployment with **target = production** (`dpl_8sc9ax81463jufcEriYHqLjPW5bv`). The orchestrator cancelled it while it was still building (state CANCELED, never served). The Vercel project's Production Branch is `main`, so every push to `main` deploys to production. Previews for review were therefore created from the branch `preview/phase9` (non-production branch → preview).
+Giuseppe: in Vercel → Project → Settings → Environments/Git, set the Production Branch to a branch that is not pushed by the agents (e.g. `production`), or disable automatic production deployments, before anyone pushes to `main` again. Until then the orchestrator pushes only to `preview/*` branches (main is at `eae02f2`, which already contains all Phase 9 code; this note is on `preview/phase9` only).
