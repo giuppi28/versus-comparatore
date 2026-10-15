@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/*
+ * VERSUS design tokens.
+ * Green palette (brand-*), ink/neutral semantic colors, radii, shadows, type scale.
+ * Utility names are generated from these: bg-brand-600, text-ink, border-line,
+ * rounded-card, rounded-control, shadow-card, ...
+ * brand-600 on white = 5.0:1 contrast (AA for normal text) -> primary buttons/links.
+ */
+@theme {
+  /* Typography: system stack, no network font dependency */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  /* Green scale */
+  --color-brand-50: #effaf4;
+  --color-brand-100: #d6f5e3;
+  --color-brand-200: #b0ebc9;
+  --color-brand-300: #7bdba5;
+  --color-brand-400: #3cc07a;
+  --color-brand-500: #12a15a;
+  --color-brand-600: #0a8045;
+  --color-brand-700: #0a6a3a;
+  --color-brand-800: #0b552f;
+  --color-brand-900: #0a4527;
+  --color-brand-950: #04281a;
+
+  /* Neutrals (slightly green-tinted ink) */
+  --color-ink: #0f1c15;
+  --color-ink-muted: #4a5a51;
+  --color-ink-subtle: #6b7a71;
+  --color-line: #dbe5df;
+  --color-line-strong: #b9c9c0;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f8f6;
+
+  /* Feedback */
+  --color-success: #0a8045;
+  --color-success-soft: #effaf4;
+  --color-danger: #b42318;
+  --color-danger-soft: #fef3f2;
+  --color-warning: #b54708;
+  --color-warning-soft: #fffaeb;
+
+  /* Radii: rounded cards */
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-card-lg: 1.5rem;
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgb(15 28 21 / 0.05), 0 4px 16px rgb(15 28 21 / 0.06);
+  --shadow-pop: 0 8px 32px rgb(15 28 21 / 0.18);
+
+  /* Type scale (mobile-first, fluid headings) */
+  --text-display: clamp(1.875rem, 1.4rem + 2vw, 2.75rem);
+  --text-display--line-height: 1.15;
+  --text-title: clamp(1.375rem, 1.15rem + 1vw, 1.75rem);
+  --text-title--line-height: 1.25;
+
+  /* Spacing base is Tailwind's 0.25rem; section rhythm token */
+  --spacing-section: 3rem;
+}
+
+:root {
+  --background: var(--color-surface);
+  --foreground: var(--color-ink);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
