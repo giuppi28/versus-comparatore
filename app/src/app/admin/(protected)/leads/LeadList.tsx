@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Button, Card, ConfirmDialog } from "@/components/ui";
 import { deleteLeadsAction } from "./actions";
 import type { LeadRowData } from "./row-data";
-import { confirmTitle, deletedMessage } from "./delete-notice";
+import { confirmTitle, deletedMessage, selectedMessage } from "./delete-notice";
 import { StatusBadge, StepBadge } from "./LeadBadges";
 import { COMMODITY_LABELS, CUSTOMER_TYPE_LABELS, formatDateTime, formatEuro } from "./labels";
 import { leadDisplayName } from "./list-params";
+import { useHydrated } from "./use-hydrated";
 
 export interface LeadListRow {
   lead: LeadRowData;
@@ -17,23 +18,38 @@ export interface LeadListRow {
 
 const dash = (v: string | null | undefined) => (v && v.trim() ? v : "—");
 
-/** Checkbox with a >= 44px hit area (label wraps the native input). */
+/**
+ * Checkbox with a >= 44px hit area (label wraps the native input).
+ * `disabled` until React has hydrated: a click before hydration would flip only the DOM state
+ * and leave the controlled React state (and the other checkboxes) out of sync.
+ * `indeterminate` is a DOM-only property, so it is set through a ref.
+ */
 function RowCheck({
   checked,
+  indeterminate = false,
+  disabled = false,
   onChange,
   label,
   testId = "lead-select",
 }: {
   checked: boolean;
+  indeterminate?: boolean;
+  disabled?: boolean;
   onChange: (v: boolean) => void;
   label: string;
   testId?: string;
 }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
   return (
     <label className="-m-2 inline-flex size-11 shrink-0 cursor-pointer items-center justify-center">
       <input
+        ref={ref}
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
         aria-label={label}
         data-testid={testId}
@@ -55,10 +71,28 @@ export function LeadList({ rows, initialNotice = null }: { rows: LeadListRow[]; 
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const hydrated = useHydrated();
+
   const nameById = new Map(rows.map(({ lead }) => [lead.id, leadDisplayName(lead)]));
-  // Only rows that are still visible can be selected (rows vanish after a delete + refresh).
-  const selectedIds = rows.map(({ lead }) => lead.id).filter((id) => selected.has(id));
+  const rowIds = rows.map(({ lead }) => lead.id);
+  const rowIdsKey = rowIds.join(",");
+
+  // Prune selected ids that are no longer in the rendered rows (refresh / revalidation / delete),
+  // so a stale id can never resurface selected later. Adjusting state during render is the
+  // React-documented pattern for state derived from props.
+  const [prunedFor, setPrunedFor] = useState(rowIdsKey);
+  if (prunedFor !== rowIdsKey) {
+    setPrunedFor(rowIdsKey);
+    const visible = new Set(rowIds);
+    const kept = [...selected].filter((id) => visible.has(id));
+    if (kept.length !== selected.size) setSelected(new Set(kept));
+  }
+
+  // Header state is always derived from the visible rows: checked only if ALL are selected,
+  // indeterminate if only some.
+  const selectedIds = rowIds.filter((id) => selected.has(id));
   const allSelected = rows.length > 0 && selectedIds.length === rows.length;
+  const someSelected = selectedIds.length > 0 && !allSelected;
 
   const toggle = (id: string, on: boolean) =>
     setSelected((prev) => {
@@ -97,6 +131,7 @@ export function LeadList({ rows, initialNotice = null }: { rows: LeadListRow[]; 
       type="button"
       variant="danger"
       onClick={() => ask([lead.id])}
+      disabled={!hydrated}
       aria-label={`Elimina lead ${leadDisplayName(lead)}`}
       data-testid="lead-row-delete"
       className="!px-3 text-sm"
@@ -128,13 +163,15 @@ export function LeadList({ rows, initialNotice = null }: { rows: LeadListRow[]; 
         <div className="flex min-h-11 items-center gap-3 rounded-control border border-line bg-surface px-3">
           <RowCheck
             checked={allSelected}
+            indeterminate={someSelected}
+            disabled={!hydrated}
             onChange={toggleAll}
             label="Seleziona tutti (pagina)"
             testId="lead-select-all"
           />
           <span className="text-sm font-semibold">Seleziona tutti (pagina)</span>
           <span className="ml-auto text-sm text-ink-muted" data-testid="lead-selected-count">
-            {selectedIds.length > 0 ? `${selectedIds.length} selezionati` : ""}
+            {selectedIds.length > 0 ? selectedMessage(selectedIds.length) : ""}
           </span>
         </div>
       )}
@@ -225,6 +262,7 @@ export function LeadList({ rows, initialNotice = null }: { rows: LeadListRow[]; 
                     <td className="px-3 py-3">
                       <RowCheck
                         checked={selected.has(lead.id)}
+                        disabled={!hydrated}
                         onChange={(v) => toggle(lead.id, v)}
                         label={`Seleziona ${leadDisplayName(lead)}`}
                       />
@@ -267,6 +305,7 @@ export function LeadList({ rows, initialNotice = null }: { rows: LeadListRow[]; 
                   <div className="flex flex-wrap items-center gap-2">
                     <RowCheck
                       checked={selected.has(lead.id)}
+                      disabled={!hydrated}
                       onChange={(v) => toggle(lead.id, v)}
                       label={`Seleziona ${leadDisplayName(lead)}`}
                     />

@@ -176,7 +176,9 @@ test.describe("admin leads deletion", () => {
     await items(page).first().getByTestId("lead-select").uncheck();
     await expect(bulk).toHaveText("Elimina selezionati (1)");
     await expect(page.getByTestId("lead-select-all")).not.toBeChecked();
+    await expect(page.getByTestId("lead-select-all")).toHaveJSProperty("indeterminate", true);
     await page.getByTestId("lead-select-all").check();
+    await expect(page.getByTestId("lead-select-all")).toHaveJSProperty("indeterminate", false);
     await expect(bulk).toHaveText("Elimina selezionati (2)");
 
     // Cancel keeps everything.
@@ -202,8 +204,10 @@ test.describe("admin leads deletion", () => {
     await expect(items(page).first()).toContainText("Fabio");
     await expect(items(page).first()).toContainText("Nuovo");
 
-    // Cleanup via select-all.
+    // Cleanup via select-all. The header and the row checkbox must agree (derived from the rows).
     await page.getByTestId("lead-select-all").check();
+    await expect(items(page).first().getByTestId("lead-select")).toBeChecked();
+    await expect(page.getByTestId("lead-selected-count")).toHaveText("1 selezionato");
     await page.getByTestId("lead-bulk-delete").click();
     await page.getByTestId("confirm-dialog-confirm").click();
     await expect(page.getByTestId("lead-delete-notice")).toHaveText("1 lead eliminato");

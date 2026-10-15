@@ -6,6 +6,9 @@ export function deletedMessage(count: number): string {
   return count === 1 ? "1 lead eliminato" : `${count} lead eliminati`;
 }
 
+/** Selection counter in the list header: "1 selezionato" / "N selezionati". */
+export const selectedMessage = (count: number) => (count === 1 ? "1 selezionato" : `${count} selezionati`);
+
 /** Confirm dialog title: "Eliminare N lead?". */
 export const confirmTitle = (count: number) => `Eliminare ${count} lead?`;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { confirmTitle, deletedMessage, parseDeletedParam } from "./delete-notice";
+import { confirmTitle, deletedMessage, parseDeletedParam, selectedMessage } from "./delete-notice";
 
 describe("deletedMessage", () => {
   it("uses singular and plural Italian forms", () => {
@@ -7,6 +7,14 @@ describe("deletedMessage", () => {
     expect(deletedMessage(2)).toBe("2 lead eliminati");
     expect(deletedMessage(37)).toBe("37 lead eliminati");
     expect(deletedMessage(0)).toBe("Nessun lead eliminato");
+  });
+});
+
+describe("selectedMessage", () => {
+  it("uses singular and plural Italian forms", () => {
+    expect(selectedMessage(1)).toBe("1 selezionato");
+    expect(selectedMessage(2)).toBe("2 selezionati");
+    expect(selectedMessage(50)).toBe("50 selezionati");
   });
 });
 

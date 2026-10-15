@@ -4,12 +4,14 @@ import { useState, useTransition } from "react";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { deleteLeadAndRedirectAction } from "./actions";
 import { confirmTitle } from "./delete-notice";
+import { useHydrated } from "./use-hydrated";
 
 /** "Elimina lead" on the detail page: confirm modal, then redirect to the list. */
 export function DeleteLeadButton({ id, name }: { id: string; name: string }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const hydrated = useHydrated();
 
   const confirm = () => {
     setError(null);
@@ -22,7 +24,7 @@ export function DeleteLeadButton({ id, name }: { id: string; name: string }) {
 
   return (
     <>
-      <Button type="button" variant="danger" onClick={() => setOpen(true)} data-testid="lead-delete">
+      <Button type="button" variant="danger" onClick={() => setOpen(true)} disabled={!hydrated} data-testid="lead-delete">
         Elimina lead
       </Button>
       <ConfirmDialog
