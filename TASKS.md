@@ -86,3 +86,15 @@ Decisions: hosting = Vercel (Hobby, custom domain); Cloudflare removed entirely 
 - [x] T9.4 (2747a0d) Minimal loading screen (replaces orbit), ~4 s, never the current supplier → `loading-builder`
 - [x] T9.5 (6ec59f9, 95dfba1, 810527a, 47a5013) Full aesthetic review of every screen (1440 + 390) → `DESIGN_REVIEW.md`, fixes by the owning builders, re-check → orchestrator + builders
 - [x] T9.6 (see PROGRESS) Full regression (unit, e2e, matrix, security) + screenshots → `qa-tester`
+
+## Phase 10 — Visual upgrade (Giuseppe, 2026-10-15) — spec: `PHASE10_BRIEF.md` (read it fully)
+- [x] T10.0 Setup: branch `preview/phase10` from local main; copy `design-skills/*` into `.claude/skills/` and add `design-skills/` + `.claude/skills/` to `.gitignore`; create `.claude/agents/design-reviewer.md` (sonnet); set `thankyou-builder` to sonnet for this phase → orchestrator
+- [ ] T10.1 Brand lockup (icon + typeset wordmark, no black rectangle, COMPARATORE dominant), coloured header, footer, `decor/` illustration set, shared `ui/icons` set (B1) → `setup-builder`
+- [ ] T10.2 Page 1: centered layout, big green bulb background, optional skill-backed sections (B2) → `page1-builder` (after T10.1)
+- [ ] T10.3 Loading screen redesign: black icon + progress ring, big text with green keywords, supplier logo marquee (B3) → `loading-builder` (after T10.1)
+- [ ] T10.4 Results: "PER TE" in green, consistent layout (B4) → `results-builder` (after T10.1)
+- [ ] T10.5 Activation: icons on every option card (B5) → `activation-form-builder` (after T10.1)
+- [ ] T10.6 Thank-you: bulbs right, gas flames left background decoration (B6) → `thankyou-builder` (after T10.1)
+- [ ] T10.7 Design review round 1 → `DESIGN_REVIEW.md` Phase 10, fixes by owners, round 2 (B7) → `design-reviewer`
+- [ ] T10.8 Full regression + screenshots + Lighthouse (B8) → `qa-tester`
+- [ ] T10.9 PRD v0.5.2 visual notes, PROGRESS summary, push `preview/phase10`, write the preview URL (from `gh`/Vercel if available, otherwise say "see Vercel") in PROGRESS.md → orchestrator

@@ -2,7 +2,7 @@
 name: thankyou-builder
 description: Builds the thank-you page (TASKS T3.7).
 tools: Read, Write, Edit, Glob, Grep, Bash
-model: haiku
+model: sonnet
 ---
 
 You are `thankyou-builder` in the VERSUS project (Italian electricity & gas comparison site).

@@ -10,6 +10,9 @@ Deliver a **fully working service**: every screen of the PRD implemented, connec
 - **Subagents = BUILDERS / TESTERS.** Each receives one task, reads `CLAUDE.md` + the relevant PRD sections, does the work, runs the checks, and returns a short report (what changed, files, test results, open problems).
 - **Reviewer** = a separate Claude session in the Claude app (project "Versus-Comparatore"). It applies DB migrations, runs Supabase security advisors, and reviews the work. It communicates only through the coordination files.
 
+## Design skills
+For any visual/UI work, agents must read `.claude/skills/frontend-design/SKILL.md` and `.claude/skills/ui-ux-pro-max/SKILL.md` and query ui-ux-pro-max with `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain <domain>` (see PHASE10_BRIEF.md).
+
 ## Model policy (cost control — mandatory)
 - **Orchestrator (main session): Claude Sonnet.** It plans and verifies; it does not need Opus.
 - Each subagent has its model set in `.claude/agents/<name>.md`. Defaults:
@@ -39,11 +42,12 @@ Subagents read `CLAUDE.md` and the PRD sections relevant to their task.
 3. Check `QUESTIONS.md` answers → unblock tasks.
 4. Pick the next unblocked task(s). Spawn the matching subagent with a precise brief (task id, PRD sections, acceptance criteria, files it owns). Parallel agents only when they own **disjoint folders**; never two agents on the same files.
 5. When the agent returns: verify yourself (`npm run typecheck && npm run lint && npm run test`, and the e2e specs of that area). If anything fails, send it back to an agent with the failure output.
-6. Commit (`feat|fix|test|chore(scope): message`) and `git push`. Mark task `[x]`, append to `PROGRESS.md`.
+6. Commit (`feat|fix|test|chore(scope): message`) and push **only to the current `preview/*` branch** (`git push origin <preview-branch>`). Mark task `[x]`, append to `PROGRESS.md`.
 7. Blocked by something only Giuseppe/the reviewer can do → `BLOCKED: <reason>` + entry in `QUESTIONS.md`, move on.
 8. When no unblocked task remains → summary at the end of `PROGRESS.md`, stop the loop.
 
 ## Hard rules (never break)
+- **`main` is the Vercel production branch: never push to `main`, never merge into `main`.** Work on a `preview/*` branch (pushes there create Vercel Preview deployments, which is fine). Giuseppe merges to `main` himself after reviewing the preview.
 - **Never deploy, publish, or go live.** Never buy anything, never create paid resources.
 - **Never commit secrets.** `app/.env.local` is gitignored. Provide `app/.env.example` with empty values.
 - **Never delete** files outside `app/`.

@@ -23,3 +23,7 @@ blob-report/
 
 # Vercel CLI project link (local only)
 .vercel/
+
+# design skills (local only, third-party)
+design-skills/
+.claude/skills/

@@ -205,3 +205,10 @@ Orchestrator: Claude Opus (session model). Decisions by Giuseppe: hosting Vercel
 - Final results: Vitest 815/815; standard Playwright 191 passed / 1 skipped (desktop-only keyboard test); matrix 380/380 parallel + 6/6 serial = 386/386 (one validation case removed: "missing service" can no longer occur); security suite vs real Supabase 74 passed / 1 skipped; supabase-mode production build + check:bundle OK; Lighthouse a11y 100 on every public page/state (desktop + mobile); zero Turnstile/Cloudflare/OpenNext/wrangler references left in app/.
 - Open for Giuseppe (QUESTIONS NOTE): CRON_SECRET on Vercel Production at go-live; delete stale Turnstile env vars on Vercel; Vercel Hobby is non-commercial (Pro may be needed).
 - Deploy note: Vercel's Production Branch is `main` → the push of eae02f2 to main started a PRODUCTION build; cancelled by the orchestrator before it finished (dpl_8sc9ax81463jufcEriYHqLjPW5bv, CANCELED). Review preview created from branch `preview/phase9` instead (dpl_C4neA6VCNVfeBVFtct4FAWppgurs, target preview). BLOCKER for Giuseppe in QUESTIONS.md; later commits go to `preview/*` only until the Production Branch is changed.
+
+## 2026-10-15 — T10.0 Phase 10 setup
+- Agent: orchestrator (setup only, no feature code).
+- Branch `preview/phase10` created from local main (ae409cc). `design-skills/*` copied into `.claude/skills/` (frontend-design, ui-ux-pro-max; search.py verified); both folders gitignored.
+- New agent `.claude/agents/design-reviewer.md` (sonnet, writes only DESIGN_REVIEW.md). `thankyou-builder` → sonnet for this phase (per brief B6). `setup-builder` scope extended to `components/brand`, `(public)/layout.tsx`, `globals.css` (B1 needs them).
+- Before-reference screenshots `app/e2e/before-after/` committed as the visual baseline.
+- Note: this orchestrator session runs on the model selected for the session (Opus 5.5), not Sonnet as CLAUDE.md asks — Giuseppe launched it; builders keep their agent-file models.

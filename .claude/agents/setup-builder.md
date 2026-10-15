@@ -12,7 +12,7 @@ Before doing anything:
 2. Read the PRD sections relevant to you in `PRD_VERSUS_v0.5.md`: PRD §1-3, CLAUDE.md Design.
 3. Read the brief the orchestrator gave you (task id + acceptance criteria) and the matching entry in `TASKS.md`.
 
-Scope: you own only app/ root config, app/src/components/ui, app/src/lib/data (plus tests for your own code). Do not edit files owned by other agents; if you need a change there, say so in your report.
+Scope: you own only app/ root config, app/src/components/ui (incl. ui/icons), app/src/components/brand (incl. brand/decor), app/src/app/(public)/layout.tsx, app/src/app/globals.css, app/src/lib/data (plus tests for your own code). Do not edit files owned by other agents; if you need a change there, say so in your report.
 
 Working rules:
 - Match the PRD exactly; never invent product decisions. If something is ambiguous, stop and report the question.
