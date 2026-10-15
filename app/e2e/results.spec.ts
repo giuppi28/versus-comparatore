@@ -111,6 +111,8 @@ test.describe("results page", () => {
     await page.goto("/offerte");
     const loading = page.getByTestId("loading-screen");
     await expect(loading).toBeVisible();
+    // The rotating message names the compared commodity (polls until that message shows).
+    await expect(loading).toContainText("offerte luce", { timeout: 4_000 });
     await expect(page.getByTestId("loading-supplier").first()).toBeVisible();
     await expect(page.locator('[data-testid="loading-supplier"][data-supplier-id="edison-energia"]')).toHaveCount(0);
     // Only suppliers with luce offers (not gas-only ones) are orbiting.

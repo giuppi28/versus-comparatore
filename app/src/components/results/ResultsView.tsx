@@ -229,6 +229,7 @@ export function ResultsView({ offers: serverOffers }: ResultsViewProps) {
       <Shell>
         <LoadingScreen
           suppliers={loadingSuppliers}
+          commodities={steps}
           excludeSupplierIds={currentSupplierIds(state)}
           durationMs={loadingMs}
           onStart={handleLoadingStart}
