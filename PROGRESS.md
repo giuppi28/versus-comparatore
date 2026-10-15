@@ -29,3 +29,11 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Notes: gas shows "Tariffa a prezzo fisso" (monoraria applies to luce only) — see QUESTIONS Q4; caller must pass resolved logoUrl (text chip fallback). Mobile layout to be checked in flow e2e.
 - Verified by orchestrator: vitest offer-modal 16/16 ✓, eslint ✓, no tsc errors in folder ✓.
 - Commit: 677ee75
+
+## 2026-10-15 12:15 — T4.1 Admin login + protection + MFA
+- Agent: admin-auth-builder (opus).
+- Changed: `src/proxy.ts` (Next 16 proxy: session refresh, redirect, fail-closed, no-store/noindex), `src/lib/auth` (getAuth/requireAdmin, supabase + mock providers, HMAC mock session refused in production, rate limit, Turnstile), `src/app/admin/login` (login, MFA verify, MFA enrol), `src/app/admin/(protected)/` layout + dashboard shell. Deps: @supabase/ssr (+ zod from T3.1).
+- Convention: all admin pages go under `app/src/app/admin/(protected)/{leads,fornitori,offerte,impostazioni}`; every page AND server action calls requireAdmin(); admin data uses createSupabaseServerClient() (RLS as admin).
+- Needs: public.is_admin() from db-builder; reviewer must create Aldo's user + admins row, disable sign-ups, enable TOTP + leaked-password protection; real Turnstile keys before go-live. In-memory rate limiter is per-isolate (deploy-prep decision).
+- Verified by orchestrator: vitest auth 67/67 ✓, eslint ✓, tsc ✓, playwright admin-auth + smoke 14/14 (desktop+mobile) ✓.
+- Commit: 01744cd
