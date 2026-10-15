@@ -167,6 +167,42 @@ test.describe("results page", () => {
     await shot(page, info, "luce");
   });
 
+  test("title: closing words in VERSUS green, text unchanged, centered block, no overflow", async ({ page }, info) => {
+    const accentRgb = "rgb(10, 106, 58)"; // brand-700, 5.9:1 on the page grey
+    const colorOf = (loc: Locator) => loc.evaluate((el) => getComputedStyle(el).color);
+
+    await setup(page, luceCasa());
+    await page.goto("/offerte?fast=1");
+    const title = page.getByTestId("results-title");
+    await expect(title).toHaveText("Le migliori offerte Luce per te");
+    expect(await colorOf(title.locator("span"))).toBe(accentRgb);
+    expect(await colorOf(title)).not.toBe(accentRgb);
+    // Title block centered on the viewport.
+    const box = (await title.boundingBox())!;
+    const vw = page.viewportSize()!.width;
+    expect(Math.abs(box.x + box.width / 2 - vw / 2)).toBeLessThanOrEqual(2);
+    await noOverflow(page);
+    await shot(page, info, "title-luce");
+  });
+
+  test("title (gas and dual): accent colour, text unchanged", async ({ page }) => {
+    const accentRgb = "rgb(10, 106, 58)";
+    await setup(page, gasCasa());
+    await page.goto("/offerte?fast=1");
+    const title = page.getByTestId("results-title");
+    await expect(title).toHaveText("Le migliori offerte Gas per te");
+    expect(await title.locator("span").evaluate((el) => getComputedStyle(el).color)).toBe(accentRgb);
+
+    await page.evaluate(
+      ([key, value]) => window.sessionStorage.setItem(key, value),
+      [FLOW_KEY, JSON.stringify(dualCasa())],
+    );
+    await page.goto("/offerte?fast=1");
+    await expect(title).toHaveText("Le migliori offerte Luce per te");
+    expect(await title.locator("span").evaluate((el) => getComputedStyle(el).color)).toBe(accentRgb);
+    await noOverflow(page);
+  });
+
   test("luce without a current supplier: featured offer first, then by cost", async ({ page }) => {
     await setup(page, luceCasa({ serviceType: "primo_allaccio", currentSupplierLuce: "edison-energia" }));
     await page.goto("/offerte?fast=1");

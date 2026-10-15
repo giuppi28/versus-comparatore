@@ -245,9 +245,9 @@ export function ResultsView({ offers: serverOffers }: ResultsViewProps) {
 
   return (
     <Shell>
-      <div className="mb-6 space-y-4 sm:mb-8">
+      <div className="mx-auto mb-6 flex max-w-3xl flex-col items-center space-y-4 text-center sm:mb-10">
         {isDual && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-3">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 sm:gap-x-3">
             <DualStepIndicator
               active={step}
               luceDone={!!state.chosenOffers.luce}
@@ -265,8 +265,14 @@ export function ResultsView({ offers: serverOffers }: ResultsViewProps) {
             )}
           </div>
         )}
-        <h1 data-testid="results-title" className="heading-wide text-[clamp(1.5rem,1.2rem+1vw,2.25rem)] leading-[1.1] text-ink">
-          {isDual ? `Scegli l'offerta ${label}` : `Le migliori offerte ${label} per te`}
+        {/* Accent colour only on the closing phrase (brand-700: 5.9:1 on the page grey);
+            the text content, and so the accessible name, is unchanged. */}
+        <h1
+          data-testid="results-title"
+          className="heading-wide text-balance text-[clamp(1.5rem,1.2rem+1.4vw,2.5rem)] leading-[1.1] text-ink"
+        >
+          {`Le migliori offerte ${label} `}
+          <span className="text-brand-700">per te</span>
         </h1>
         {isDual && step === "gas" && state.chosenOffers.luce && (
           <p data-testid="dual-luce-summary" className="text-sm text-ink-muted">

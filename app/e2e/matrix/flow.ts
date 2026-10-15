@@ -269,9 +269,7 @@ export async function resultsStep(
   const cards = page.getByTestId("offer-card");
   await expect(cards.first()).toBeVisible({ timeout: 20_000 });
   const label = commodity === "luce" ? "Luce" : "Gas";
-  await expect(page.getByTestId("results-title")).toHaveText(
-    isDual ? `Scegli l'offerta ${label}` : `Le migliori offerte ${label} per te`,
-  );
+  await expect(page.getByTestId("results-title")).toHaveText(`Le migliori offerte ${label} per te`);
   if (isDual) await expect(page.getByTestId("dual-step-indicator")).toHaveAttribute("data-active", commodity);
 
   const annual = annualFromMonthly(monthly);
