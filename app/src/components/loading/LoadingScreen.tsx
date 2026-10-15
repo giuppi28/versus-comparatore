@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { VersusLogo } from "@/components/brand";
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { VersusMark } from "@/components/brand";
 import { cn } from "@/components/ui/cn";
+import type { Commodity } from "@/lib/data/types";
 
 export interface LoadingSupplier {
   id: string;
@@ -14,8 +15,10 @@ export interface LoadingSupplier {
 export interface LoadingScreenProps {
   /** Suppliers being "compared". The caller should already exclude the current supplier. */
   suppliers: LoadingSupplier[];
-  /** Extra guarantee: suppliers with these ids are never shown nor counted. */
+  /** Extra guarantee: suppliers with these ids are never shown. */
   excludeSupplierIds?: string[];
+  /** Commodities being compared; only used to word the messages ("offerte luce", "offerte gas"...). */
+  commodities?: Commodity[];
   /** Total animation time in ms (PRD §7: ~4 s). */
   durationMs?: number;
   /** Called once, when the animation ends. */
@@ -25,46 +28,53 @@ export interface LoadingScreenProps {
   className?: string;
 }
 
-/** Max suppliers counted in the "N fornitori" message. */
-export const MAX_ORBIT_SUPPLIERS = 10;
-/** Max small logos in the quiet row under the progress bar (6 fit in a 390px viewport). */
-export const MAX_VISIBLE_LOGOS = 6;
 export const DEFAULT_DURATION_MS = 4000;
 const TICK_MS = 50;
-const STAGGER_MS = 110;
 
 /** Progress thresholds (0..1) at which each message starts. */
-const MESSAGE_STARTS = [0, 0.25, 0.55, 0.85] as const;
+const MESSAGE_STARTS = [0, 0.2, 0.42, 0.64, 0.86] as const;
 
-/** The logo row "highlights" each supplier in turn between these progress values. */
-const HIGHLIGHT_FROM = 0.2;
-const HIGHLIGHT_TO = 0.85;
+/** A message is a list of parts; `{ em }` parts are highlighted in VERSUS green. */
+export type MessagePart = string | { em: string };
 
-/** Index of the logo currently highlighted (full colour), or -1 outside the compare phase. */
-export function getHighlightIndex(progress: number, count: number): number {
-  if (count <= 0 || progress < HIGHLIGHT_FROM || progress >= HIGHLIGHT_TO) return -1;
-  const ratio = (progress - HIGHLIGHT_FROM) / (HIGHLIGHT_TO - HIGHLIGHT_FROM);
-  return Math.min(count - 1, Math.floor(ratio * count));
+export function commodityPhrase(commodities?: Commodity[]): string {
+  const hasLuce = commodities?.includes("luce") ?? false;
+  const hasGas = commodities?.includes("gas") ?? false;
+  if (hasLuce && hasGas) return "offerte luce e gas";
+  if (hasLuce) return "offerte luce";
+  if (hasGas) return "offerte gas";
+  return "offerte";
 }
 
-function getMessageStep(progress: number): number {
+export function getMessageStep(progress: number): number {
   return MESSAGE_STARTS.reduce<number>((acc, start, i) => (progress >= start ? i : acc), 0);
 }
 
-export function getLoadingMessage(progress: number, supplierCount: number): string {
+export function getLoadingMessageParts(progress: number, commodities?: Commodity[]): MessagePart[] {
   switch (getMessageStep(progress)) {
     case 0:
-      return "Analizziamo i tuoi consumi…";
+      return ["Analizziamo i ", { em: "tuoi consumi" }];
     case 1:
-      if (supplierCount <= 0) return "Confrontiamo le offerte disponibili…";
-      return supplierCount === 1
-        ? "Confrontiamo le offerte di 1 fornitore…"
-        : `Confrontiamo le offerte di ${supplierCount} fornitori…`;
+      return ["Stiamo confrontando le ", { em: commodityPhrase(commodities) }, " per te"];
     case 2:
-      return "Calcoliamo la tua spesa mensile…";
+      return ["Analizziamo i ", { em: "migliori fornitori" }];
+    case 3:
+      return ["Calcoliamo la tua ", { em: "spesa mensile" }];
     default:
-      return "Ecco le migliori offerte per te!";
+      return ["Ecco le ", { em: "migliori offerte" }, " per te!"];
   }
+}
+
+export function getLoadingMessage(progress: number, commodities?: Commodity[]): string {
+  return getLoadingMessageParts(progress, commodities)
+    .map((p) => (typeof p === "string" ? p : p.em))
+    .join("");
+}
+
+/** Local colour logos (`/logos/<slug>.svg`) have a normalised black twin in `/logos/black/`. */
+export function blackLogoUrl(url: string): { src: string; needsFilter: boolean } {
+  const m = /^\/logos\/([a-z0-9-]+)\.svg$/i.exec(url);
+  return m ? { src: `/logos/black/${m[1]}.svg`, needsFilter: false } : { src: url, needsFilter: true };
 }
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
@@ -85,84 +95,132 @@ function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribeReducedMotion, getReducedMotion, () => false);
 }
 
+/** Seconds the marquee needs to scroll past one logo (~90px/s with the spacing below). */
+const MARQUEE_SECONDS_PER_ITEM = 1.9;
+/** The first track group must be wider than any viewport: repeat the logos until we have this many. */
+const MARQUEE_MIN_ITEMS = 12;
+
 /*
- * Scoped keyframes (transform / opacity only). Reduced motion: everything static;
- * progress and messages still advance.
+ * Scoped keyframes (transform / opacity / stroke-dashoffset only).
+ * Reduced motion: marquee static, messages swap without motion; the ring still shows progress.
  */
 const STYLES = `
-@keyframes vs-ring { 0% { transform: scale(0.92); opacity: 0.45; } 100% { transform: scale(1.55); opacity: 0; } }
+@keyframes vs-marquee { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
 @keyframes vs-msg { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes vs-logo-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-.vs-ring[data-animate="true"] { animation: vs-ring 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
-.vs-msg[data-animate="true"] { animation: vs-msg 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.vs-logo-in[data-animate="true"] { animation: vs-logo-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: var(--vs-delay, 0ms); }
-.vs-fade { transition: opacity 260ms ease; }
-.vs-bar { transition: transform 120ms linear; transform-origin: left center; }
+.vs-marquee-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
+}
+.vs-marquee-track { animation: vs-marquee var(--vs-marquee-s, 20s) linear infinite; will-change: transform; }
+.vs-msg[data-animate="true"] { animation: vs-msg 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.vs-ring-arc { transition: stroke-dashoffset 80ms linear; }
 @media (prefers-reduced-motion: reduce) {
-  .vs-ring, .vs-msg, .vs-logo-in { animation: none !important; }
-  .vs-fade, .vs-bar { transition: none !important; }
+  .vs-marquee-track, .vs-msg { animation: none !important; }
+  .vs-marquee-mask { -webkit-mask-image: none; mask-image: none; }
+  .vs-ring-arc { transition: none !important; }
 }
 `;
 
-function SupplierLogo({
+function LogoItem({
   supplier,
-  index,
-  active,
-  animate,
+  testId,
+  hidden,
 }: {
   supplier: LoadingSupplier;
-  index: number;
-  active: boolean;
-  animate: boolean;
+  testId: string;
+  hidden: boolean;
 }) {
+  const logo = supplier.logoUrl ? blackLogoUrl(supplier.logoUrl) : null;
   return (
     <li
-      data-testid="loading-supplier"
+      data-testid={testId}
       data-supplier-id={supplier.id}
-      data-active={active ? "true" : "false"}
-      data-animate={animate}
-      className="vs-logo-in relative h-6 w-11 sm:h-7 sm:w-[4.5rem]"
-      style={{ "--vs-delay": `${index * STAGGER_MS}ms` } as React.CSSProperties}
+      aria-hidden={hidden ? "true" : undefined}
+      className="flex h-8 shrink-0 items-center pr-10 sm:h-10 sm:pr-14"
     >
-      {supplier.logoUrl ? (
+      {logo ? (
         <>
           {/* Plain <img>: supplier logos are SVG files, no raster optimisation needed. */}
-          {/* Resting state: greyscale, quiet. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={supplier.logoUrl}
-            alt={supplier.name}
-            className="absolute inset-0 h-full w-full object-contain opacity-50 grayscale"
-          />
-          {/* Being compared: the same logo in full colour fades in on top. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={supplier.logoUrl}
-            alt=""
-            aria-hidden="true"
+            src={logo.src}
+            alt={hidden ? "" : supplier.name}
+            draggable={false}
             className={cn(
-              "vs-fade absolute inset-0 h-full w-full object-contain",
-              active ? "opacity-100" : "opacity-0",
+              "h-full w-auto max-w-[8.5rem] select-none object-contain opacity-90 sm:max-w-[10rem]",
+              logo.needsFilter && "brightness-0",
             )}
           />
         </>
       ) : (
-        <span
-          className={cn(
-            "vs-fade absolute inset-0 flex items-center justify-center text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs",
-            active ? "text-ink" : "text-ink-subtle opacity-60",
-          )}
-        >
-          <span className="line-clamp-2">{supplier.name}</span>
+        <span className="whitespace-nowrap text-base font-semibold tracking-tight text-ink sm:text-lg">
+          {supplier.name}
         </span>
       )}
     </li>
   );
 }
 
+function SupplierMarquee({ suppliers, reducedMotion }: { suppliers: LoadingSupplier[]; reducedMotion: boolean }) {
+  if (suppliers.length === 0) return null;
+
+  if (reducedMotion) {
+    // Static, centred, wrapped row: no movement, no duplicated logos.
+    return (
+      <div className="w-full rounded-card border border-line bg-surface px-4 py-5 shadow-card sm:px-8">
+        <ul
+          aria-label="Fornitori confrontati"
+          data-testid="loading-suppliers"
+          className="flex flex-wrap items-center justify-center gap-y-4"
+        >
+          {suppliers.map((s) => (
+            <LogoItem key={s.id} supplier={s} testId="loading-supplier" hidden={false} />
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  const repeats = Math.max(1, Math.ceil(MARQUEE_MIN_ITEMS / suppliers.length));
+  // One cycle = the logos repeated until it is wider than the screen; the track holds two cycles
+  // and slides by exactly -50% (seamless). Only the very first set carries the real list semantics.
+  const cycle = Array.from({ length: repeats }, (_, r) => suppliers.map((s) => ({ s, real: r === 0 }))).flat();
+  const seconds = (cycle.length * MARQUEE_SECONDS_PER_ITEM).toFixed(1);
+
+  return (
+    <div className="w-full overflow-hidden rounded-card border border-line bg-surface py-5 shadow-card sm:py-6">
+      <div className="vs-marquee-mask overflow-hidden">
+        <div
+          className="vs-marquee-track flex w-max"
+          style={{ "--vs-marquee-s": `${seconds}s` } as React.CSSProperties}
+        >
+          <ul aria-label="Fornitori confrontati" data-testid="loading-suppliers" className="flex shrink-0">
+            {cycle.map(({ s, real }, i) => (
+              <LogoItem
+                key={`${s.id}-${i}`}
+                supplier={s}
+                testId={real ? "loading-supplier" : "loading-supplier-copy"}
+                hidden={!real}
+              />
+            ))}
+          </ul>
+          <ul aria-hidden="true" className="flex shrink-0">
+            {cycle.map(({ s }, i) => (
+              <LogoItem key={`${s.id}-${i}`} supplier={s} testId="loading-supplier-copy" hidden />
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const RING_RADIUS = 46;
+
 export function LoadingScreen({
   suppliers,
   excludeSupplierIds,
+  commodities,
   durationMs = DEFAULT_DURATION_MS,
   onComplete,
   onStart,
@@ -171,7 +229,7 @@ export function LoadingScreen({
   const reducedMotion = usePrefersReducedMotion();
   const animate = !reducedMotion;
 
-  // Current supplier (and duplicates) are dropped here: never shown, never counted.
+  // Current supplier (and duplicates) are dropped here: never shown.
   const shown = useMemo(() => {
     const excluded = new Set(excludeSupplierIds ?? []);
     const seen = new Set<string>();
@@ -180,11 +238,9 @@ export function LoadingScreen({
       if (excluded.has(s.id) || seen.has(s.id)) continue;
       seen.add(s.id);
       result.push(s);
-      if (result.length >= MAX_ORBIT_SUPPLIERS) break;
     }
     return result;
   }, [suppliers, excludeSupplierIds]);
-  const logos = shown.slice(0, MAX_VISIBLE_LOGOS);
 
   const [progress, setProgress] = useState(0);
 
@@ -230,8 +286,7 @@ export function LoadingScreen({
 
   const percent = Math.round(progress * 100);
   const step = getMessageStep(progress);
-  const message = getLoadingMessage(progress, shown.length);
-  const highlight = getHighlightIndex(progress, logos.length);
+  const parts = getLoadingMessageParts(progress, commodities);
 
   return (
     <section
@@ -239,39 +294,14 @@ export function LoadingScreen({
       data-reduced-motion={reducedMotion ? "true" : "false"}
       aria-busy={progress < 1}
       className={cn(
-        // Fills the area below the header (header 3.5/4rem + main padding 3/5rem) and centres the content.
-        "mx-auto flex min-h-[calc(100dvh-7.5rem)] w-full max-w-xl flex-col items-center justify-center gap-7 pb-6 sm:min-h-[calc(100dvh-10rem)] sm:gap-8 sm:pb-8",
+        // Fills the area below the header and centres the content; the marquee card may use the full width.
+        "mx-auto flex min-h-[calc(100dvh-7.5rem)] w-full max-w-4xl flex-col items-center justify-center gap-6 pb-6 sm:min-h-[calc(100dvh-10rem)] sm:gap-9 sm:pb-8",
         className,
       )}
     >
       <style>{STYLES}</style>
 
-      {/* VERSUS icon with a soft pulsing ring */}
-      <div className="relative flex h-16 w-16 items-center justify-center" data-testid="loading-mark">
-        <span
-          aria-hidden="true"
-          data-animate={animate}
-          className="vs-ring absolute inset-0 rounded-[22%] border-2 border-brand-600 opacity-20"
-        />
-        <VersusLogo variant="icon" title="" className="relative h-16 w-16 rounded-[22%]" />
-      </div>
-
-      {/* Message: height reserved for two lines, so nothing moves between messages */}
-      <p
-        role="status"
-        aria-live="polite"
-        data-testid="loading-message"
-        className="flex h-[3.25rem] w-full items-center justify-center text-center text-base font-medium leading-snug text-ink sm:h-8 sm:text-lg"
-      >
-        <span
-          key={step}
-          data-animate={animate}
-          className={cn("vs-msg block", step === 3 && "text-brand-700")}
-        >
-          {message}
-        </span>
-      </p>
-
+      {/* Black VERSUS icon inside a green progress ring (SVG circle, stroke-dashoffset) */}
       <div
         role="progressbar"
         aria-label="Avanzamento del confronto"
@@ -279,32 +309,51 @@ export function LoadingScreen({
         aria-valuemax={100}
         aria-valuenow={percent}
         data-testid="loading-progress"
-        className="h-1 w-full max-w-80 overflow-hidden rounded-full bg-line"
+        className="relative flex h-36 w-36 items-center justify-center sm:h-52 sm:w-52"
       >
-        <div
-          className="vs-bar h-full w-full rounded-full bg-brand-600"
-          style={{ transform: `scaleX(${percent / 100})` }}
-        />
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" className="absolute inset-0 h-full w-full">
+          <circle cx="50" cy="50" r={RING_RADIUS} fill="var(--color-surface)" />
+          <circle cx="50" cy="50" r={RING_RADIUS} fill="none" stroke="var(--color-brand-100)" strokeWidth="3.5" />
+          <circle
+            data-testid="loading-ring"
+            className="vs-ring-arc"
+            cx="50"
+            cy="50"
+            r={RING_RADIUS}
+            fill="none"
+            stroke="var(--color-brand-600)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            pathLength={100}
+            strokeDasharray={100}
+            strokeDashoffset={100 - percent}
+            transform="rotate(-90 50 50)"
+          />
+        </svg>
+        <VersusMark className="relative h-24 w-24 sm:h-32 sm:w-32" />
       </div>
 
-      {/* Quiet row of suppliers: greyscale at rest, the one being compared turns to colour */}
-      {logos.length > 0 && (
-        <ul
-          aria-label="Fornitori confrontati"
-          data-testid="loading-suppliers"
-          className="flex min-h-6 flex-wrap items-center justify-center gap-x-3 gap-y-3 sm:min-h-7 sm:gap-x-5"
-        >
-          {logos.map((supplier, i) => (
-            <SupplierLogo
-              key={supplier.id}
-              supplier={supplier}
-              index={i}
-              active={i === highlight}
-              animate={animate}
-            />
-          ))}
-        </ul>
-      )}
+      {/* Message: fixed height for up to three lines, so nothing moves between messages */}
+      <p
+        role="status"
+        aria-live="polite"
+        data-testid="loading-message"
+        className="flex h-[5.5rem] w-full items-center justify-center px-1 text-center font-display text-[1.5rem] font-bold leading-[1.15] text-ink text-balance [font-stretch:125%] sm:text-4xl sm:leading-[1.15]"
+      >
+        <span key={step} data-animate={animate} className="vs-msg block">
+          {parts.map((p, i) =>
+            typeof p === "string" ? (
+              <Fragment key={i}>{p}</Fragment>
+            ) : (
+              <span key={i} className="text-brand-700">
+                {p.em}
+              </span>
+            ),
+          )}
+        </span>
+      </p>
+
+      <SupplierMarquee suppliers={shown} reducedMotion={reducedMotion} />
     </section>
   );
 }

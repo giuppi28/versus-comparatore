@@ -1,9 +1,10 @@
 export {
   LoadingScreen,
   getLoadingMessage,
-  getHighlightIndex,
-  MAX_ORBIT_SUPPLIERS,
-  MAX_VISIBLE_LOGOS,
+  getLoadingMessageParts,
+  getMessageStep,
+  commodityPhrase,
+  blackLogoUrl,
   DEFAULT_DURATION_MS,
 } from "./LoadingScreen";
-export type { LoadingScreenProps, LoadingSupplier } from "./LoadingScreen";
+export type { LoadingScreenProps, LoadingSupplier, MessagePart } from "./LoadingScreen";
