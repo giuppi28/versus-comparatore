@@ -2,7 +2,7 @@
  * Pure helpers of the results page (PRD §8). No React, no browser APIs:
  * unit-tested in results-logic.test.ts.
  */
-import type { Commodity } from "@/lib/data/types";
+import { isRealSupplier, type Commodity, type OfferWithSupplier } from "@/lib/data/types";
 import { annualKwh, annualSmc, serviceTypeFor, type FlowState } from "@/lib/lead/flow-state";
 import { commoditiesOf, needsCurrentSupplier } from "@/lib/lead/rules";
 
@@ -103,4 +103,30 @@ export function unitFor(commodity: Commodity): "kWh" | "Smc" {
 
 export function commodityLabel(commodity: Commodity): string {
   return commodity === "luce" ? "Luce" : "Gas";
+}
+
+/** Supplier entry of the loading orbit. */
+export interface OrbitSupplier {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+}
+
+/**
+ * Distinct suppliers of the loaded offers for the loading orbit (and its "N fornitori" count).
+ * Placeholder suppliers (Tutela / Altro fornitore / Non lo so) are never included.
+ */
+export function buildOrbitSuppliers(
+  offersByCommodity: Partial<Record<Commodity, OfferWithSupplier[]>> | null | undefined,
+  steps: Commodity[],
+  logoSrc: (supplier: OfferWithSupplier["supplier"]) => string | null,
+): OrbitSupplier[] {
+  const seen = new Map<string, OrbitSupplier>();
+  for (const c of steps) {
+    for (const o of offersByCommodity?.[c] ?? []) {
+      if (!isRealSupplier(o.supplier) || seen.has(o.supplier_id)) continue;
+      seen.set(o.supplier_id, { id: o.supplier_id, name: o.supplier.name, logoUrl: logoSrc(o.supplier) });
+    }
+  }
+  return [...seen.values()];
 }

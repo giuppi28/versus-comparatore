@@ -18,6 +18,7 @@ import { OfferCard } from "./OfferCard";
 import { supplierLogoSrc } from "./logo-src";
 import {
   LOADED_SIGNATURE_KEY,
+  buildOrbitSuppliers,
   commodityLabel,
   currentSupplierFor,
   currentSupplierIds,
@@ -152,17 +153,10 @@ export function ResultsView({ offers: serverOffers }: ResultsViewProps) {
     envMs: process.env.NEXT_PUBLIC_LOADING_MS ?? null,
   });
 
-  const loadingSuppliers = useMemo<LoadingSupplier[]>(() => {
-    const seen = new Map<string, LoadingSupplier>();
-    for (const c of steps) {
-      for (const o of offers?.[c] ?? []) {
-        if (!seen.has(o.supplier_id)) {
-          seen.set(o.supplier_id, { id: o.supplier_id, name: o.supplier.name, logoUrl: supplierLogoSrc(o.supplier) });
-        }
-      }
-    }
-    return [...seen.values()];
-  }, [offers, steps]);
+  const loadingSuppliers = useMemo<LoadingSupplier[]>(
+    () => buildOrbitSuppliers(offers, steps, supplierLogoSrc),
+    [offers, steps],
+  );
 
   const handleLoadingStart = () => {
     const patch = {

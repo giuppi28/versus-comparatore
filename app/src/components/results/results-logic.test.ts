@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { MOCK_OFFERS, MOCK_SUPPLIERS } from "@/lib/data";
+import type { OfferWithSupplier } from "@/lib/data/types";
 import { INITIAL_FLOW_STATE, type FlowState } from "@/lib/lead/flow-state";
 import {
   DEFAULT_LOADING_MS,
+  buildOrbitSuppliers,
   FAST_LOADING_MS,
   currentSupplierFor,
   currentSupplierIds,
@@ -111,5 +114,33 @@ describe("toCents", () => {
     expect(toCents(54.5)).toBe(5450);
     expect(toCents(54.504)).toBe(5450);
     expect(toCents(54.506)).toBe(5451);
+  });
+});
+
+describe("buildOrbitSuppliers", () => {
+  const withSupplier = (o: (typeof MOCK_OFFERS)[number]): OfferWithSupplier => ({
+    ...o,
+    supplier: MOCK_SUPPLIERS.find((s) => s.id === o.supplier_id)!,
+  });
+  const real = MOCK_OFFERS.filter((o) => o.commodity === "luce").map(withSupplier);
+  const placeholder = MOCK_SUPPLIERS.find((s) => s.is_placeholder)!;
+  const fakeOffer: OfferWithSupplier = { ...real[0], id: "x-placeholder", supplier_id: placeholder.id, supplier: placeholder };
+
+  it("excludes placeholder suppliers and de-duplicates the rest", () => {
+    const list = buildOrbitSuppliers({ luce: [...real, fakeOffer], gas: [] }, ["luce", "gas"], () => null);
+    expect(list.map((s) => s.id)).not.toContain(placeholder.id);
+    expect(list.length).toBeGreaterThan(0);
+    expect(new Set(list.map((s) => s.id)).size).toBe(list.length);
+    expect(list.every((s) => MOCK_SUPPLIERS.find((m) => m.id === s.id)?.is_placeholder === false)).toBe(true);
+  });
+
+  it("only looks at the requested steps and tolerates missing offers", () => {
+    expect(buildOrbitSuppliers({ luce: real }, ["gas"], () => null)).toEqual([]);
+    expect(buildOrbitSuppliers(null, ["luce"], () => null)).toEqual([]);
+  });
+
+  it("uses the logo resolver", () => {
+    const [first] = buildOrbitSuppliers({ luce: real }, ["luce"], () => "/x.svg");
+    expect(first.logoUrl).toBe("/x.svg");
   });
 });

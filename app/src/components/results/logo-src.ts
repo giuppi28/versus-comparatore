@@ -1,4 +1,4 @@
-import { resolveLogoUrl } from "@/lib/data";
+import { resolveLogoUrl } from "@/lib/data/logo";
 import type { Supplier } from "@/lib/data/types";
 
 /** Image URL for a supplier logo, or null (the UI then shows a neutral text chip). */
