@@ -120,3 +120,11 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 ## 2026-10-15 14:30 — Activation flake fixed; Phase 7 started
 - c05bfdc test(activation): /offerte RSC fetch now stubbed (root cause: glob missed ?_rsc request → real page redirect on cold compile). Orchestrator verified 32/32 on fresh server.
 - qa-tester started on T7.1–T7.4, T7.6. T7.5 BLOCKED until migrations are applied on Supabase.
+
+## 2026-10-15 14:45 — T6.1 Deploy preparation (no deploy)
+- Agent: deploy-prep-builder (sonnet).
+- Changed: open-next.config.ts (static-assets cache, no paid resources), wrangler.jsonc (nodejs_compat; cron + vars commented), cloudflare/worker.ts + keepalive.ts (daily Supabase ping, disabled), cloudflare/check-bundle-env.mjs (build:cf fails if non-public env embedded — OpenNext embeds .env* into the bundle), DEPLOY.md; scripts build:cf / preview:cf only (no deploy script).
+- Results: next build ✓ (supabase mode), opennextjs-cloudflare build ✓ (~2.1 MB gzip), local wrangler dev smoke ✓ (proxy redirect, lead API errors, comuni, cron ping vs stub).
+- Risk: Workers Free 10 ms CPU likely insufficient for SSR → Q10.
+- Verified by orchestrator: vitest cloudflare 13/13 ✓, eslint ✓, tsc 0 errors ✓; no deploy script present.
+- Commit: 3f9d086
