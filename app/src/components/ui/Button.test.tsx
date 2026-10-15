@@ -13,6 +13,8 @@ describe("Button", () => {
     expect(screen.getByRole("button").className).toContain("border-control");
     rerender(<Button variant="ghost">Vai</Button>);
     expect(screen.getByRole("button").className).toContain("bg-transparent");
+    rerender(<Button variant="danger">Vai</Button>);
+    expect(screen.getByRole("button").className).toContain("bg-danger");
   });
 
   it("fires onClick", async () => {

@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, Ref } from "react";
 import { cn } from "./cn";
 import { SpinnerIcon } from "./icons";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "md" | "lg";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -21,6 +21,9 @@ const variants: Record<ButtonVariant, string> = {
     "border border-control bg-surface text-ink hover:border-ink disabled:text-ink-subtle disabled:hover:border-control",
   ghost:
     "bg-transparent text-brand-700 hover:bg-brand-50 active:bg-brand-100 disabled:text-ink-subtle disabled:hover:bg-transparent",
+  // Destructive actions: white on #b42318 is 6.5:1 (WCAG AA).
+  danger:
+    "bg-danger text-white hover:bg-[#912018] active:bg-[#7a271a] disabled:bg-disabled disabled:text-ink-subtle disabled:hover:bg-disabled",
 };
 
 const sizes: Record<ButtonSize, string> = {
