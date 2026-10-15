@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAdminState } from "@/lib/auth";
 import { ADMIN_HOME_PATH, ADMIN_MFA_PATH, AUTH_MESSAGES } from "@/lib/auth/constants";
-import { getTurnstileSiteKey } from "@/lib/auth/turnstile";
 import { AuthCard } from "./AuthCard";
 import { LoginForm } from "./LoginForm";
 
@@ -23,10 +22,7 @@ export default async function AdminLoginPage({
   const { errore } = await searchParams;
   return (
     <AuthCard title="Area riservata" subtitle="Accedi con le credenziali di amministratore.">
-      <LoginForm
-        siteKey={getTurnstileSiteKey()}
-        notice={errore === "accesso" ? AUTH_MESSAGES.rejected : undefined}
-      />
+      <LoginForm notice={errore === "accesso" ? AUTH_MESSAGES.rejected : undefined} />
     </AuthCard>
   );
 }

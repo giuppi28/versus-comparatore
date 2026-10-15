@@ -4,12 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Card, Stepper } from "@/components/ui";
-import { TurnstileWidget } from "@/app/admin/login/TurnstileWidget";
 import type { Supplier } from "@/lib/data/types";
 import { useFlow } from "@/lib/lead/flow-context";
 import { totalMonthlyCost } from "@/lib/lead/flow-state";
 import { completeLead, LeadApiError } from "@/lib/lead/client";
-import { getTurnstileSiteKey } from "@/lib/lead/turnstile-config";
 import { ActivationSummary } from "./ActivationSummary";
 import {
   activationRedirect,
@@ -37,8 +35,6 @@ export function submitErrorMessage(err: unknown): string {
       return err.retryAfterSec
         ? `Hai effettuato troppi tentativi. Riprova tra circa ${Math.max(1, Math.ceil(err.retryAfterSec / 60))} minuti.`
         : "Hai effettuato troppi tentativi. Riprova tra qualche minuto.";
-    case "turnstile_failed":
-      return "Verifica di sicurezza non riuscita. Riprova.";
     case "network_error":
       return "Connessione non riuscita. Controlla la rete e riprova.";
     case "no_lead":
@@ -66,8 +62,6 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [captchaKey, setCaptchaKey] = useState(0);
 
   const redirectTo = hydrated ? activationRedirect(state) : null;
   useEffect(() => {
@@ -135,10 +129,6 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
       focusFirstInvalid();
       return;
     }
-    if (!captchaToken) {
-      setSubmitError("Completa la verifica di sicurezza per continuare.");
-      return;
-    }
 
     setSubmitting(true);
     // Persist the normalised values (CF upper-case, POD cut to 14 ...) and send them.
@@ -150,12 +140,9 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
       activation: normalizeActivation(state),
     });
     try {
-      await completeLead(buildSubmitPayload(state), captchaToken);
+      await completeLead(buildSubmitPayload(state));
     } catch (err) {
       setSubmitting(false);
-      // A Turnstile token is single use: get a new one for the next attempt.
-      setCaptchaToken(null);
-      setCaptchaKey((k) => k + 1);
       if (err instanceof LeadApiError && err.code === "validation") {
         const { fields, general } = splitFormErrors(serverFieldErrors(err.fields));
         setServerErrors(fields);
@@ -227,32 +214,24 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
               submitting={submitting}
               onBack={() => goTo("A")}
               onNext={onSubmit}
-              captcha={
-                <div className="space-y-3">
-                  <TurnstileWidget
-                    key={captchaKey}
-                    siteKey={getTurnstileSiteKey()}
-                    action="lead_complete"
-                    onToken={setCaptchaToken}
-                  />
-                  {submitError && (
-                    <p
-                      role="alert"
-                      data-testid="activation-error"
-                      className="rounded-control border border-danger bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
-                    >
-                      {submitError}
-                      {sessionExpired && (
-                        <>
-                          {" "}
-                          <Link href="/" className="underline">
-                            Ricomincia
-                          </Link>
-                        </>
-                      )}
-                    </p>
-                  )}
-                </div>
+              beforeActions={
+                submitError && (
+                  <p
+                    role="alert"
+                    data-testid="activation-error"
+                    className="rounded-control border border-danger bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
+                  >
+                    {submitError}
+                    {sessionExpired && (
+                      <>
+                        {" "}
+                        <Link href="/" className="underline">
+                          Ricomincia
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                )
               }
             />
           )}

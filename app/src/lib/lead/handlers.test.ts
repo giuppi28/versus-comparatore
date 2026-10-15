@@ -18,15 +18,12 @@ const URL_BASE = "http://localhost:3000";
 let repo: Repository;
 let handlers: LeadHandlers;
 let notify: ReturnType<typeof vi.fn<(l: NewLeadNotification) => Promise<void>>>;
-let turnstileOk: boolean;
 
 function setup(opts: { isProduction?: boolean; limiters?: ReturnType<typeof createRateLimiters> } = {}) {
   repo = createMockRepository();
   notify = vi.fn<(l: NewLeadNotification) => Promise<void>>(async () => {});
-  turnstileOk = true;
   handlers = createLeadHandlers({
     getRepository: () => repo,
-    verifyTurnstile: async () => ({ success: turnstileOk, errorCodes: turnstileOk ? [] : ["invalid-input-response"] }),
     notify,
     limiters: opts.limiters ?? createRateLimiters(),
     isProduction: opts.isProduction ?? false,
@@ -62,7 +59,7 @@ function setCookies(res: Response) {
 }
 
 async function createAndGetCookie(data = page1Data()): Promise<string> {
-  const res = await handlers.create(req("POST", "/api/lead", { data, turnstileToken: "tok" }));
+  const res = await handlers.create(req("POST", "/api/lead", { data }));
   expect(res.status).toBe(201);
   const token = setCookies(res)[LEAD_COOKIE].value;
   return `${LEAD_COOKIE}=${token}; ${LEAD_STEP_COOKIE}=page1`;
@@ -78,7 +75,7 @@ beforeEach(() => setup());
 
 describe("POST /api/lead (create)", () => {
   it("creates the lead, sets an httpOnly SameSite=Lax cookie and never returns the token", async () => {
-    const res = await handlers.create(req("POST", "/api/lead", { data: page1Data(), turnstileToken: "tok" }));
+    const res = await handlers.create(req("POST", "/api/lead", { data: page1Data() }));
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body).toEqual({ ok: true });
@@ -105,7 +102,7 @@ describe("POST /api/lead (create)", () => {
 
   it("sets the Secure flag in production", async () => {
     setup({ isProduction: true });
-    const res = await handlers.create(req("POST", "/api/lead", { data: page1Data(), turnstileToken: "tok" }));
+    const res = await handlers.create(req("POST", "/api/lead", { data: page1Data() }));
     expect(setCookies(res)[LEAD_COOKIE].raw).toMatch(/Secure/i);
   });
 
@@ -118,7 +115,7 @@ describe("POST /api/lead (create)", () => {
     ["false", { ...page1Data(), privacy_consent: false }],
     ["string 'true'", { ...page1Data(), privacy_consent: "true" }],
   ])("rejects privacy_consent %s with 400 and stores nothing", async (_label, data) => {
-    const res = await handlers.create(req("POST", "/api/lead", { data, turnstileToken: "tok" }));
+    const res = await handlers.create(req("POST", "/api/lead", { data }));
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ ok: false, error: "privacy_consent_required" });
     expect(await repo.listLeads()).toHaveLength(0);
@@ -129,7 +126,6 @@ describe("POST /api/lead (create)", () => {
     const res = await handlers.create(
       req("POST", "/api/lead", {
         data: { ...page1Data(), status: "closed", notes: "x", token: "t", step_reached: "completed" },
-        turnstileToken: "tok",
       }),
     );
     expect(res.status).toBe(422);
@@ -146,28 +142,23 @@ describe("POST /api/lead (create)", () => {
 
   it("validates phone with the shared validator (422 format)", async () => {
     const res = await handlers.create(
-      req("POST", "/api/lead", { data: page1Data({ phone: "0612345678" }), turnstileToken: "tok" }),
+      req("POST", "/api/lead", { data: page1Data({ phone: "0612345678" }) }),
     );
     expect(res.status).toBe(422);
     expect((await res.json()).fields).toEqual({ phone: "format" });
   });
 
-  it("requires a Turnstile token (422) and a valid one (403)", async () => {
-    const missing = await handlers.create(req("POST", "/api/lead", { data: page1Data() }));
-    expect(missing.status).toBe(422);
-    expect((await missing.json()).fields).toEqual({ turnstileToken: "required" });
-
-    turnstileOk = false;
-    const bad = await handlers.create(req("POST", "/api/lead", { data: page1Data(), turnstileToken: "tok" }));
-    expect(bad.status).toBe(403);
-    expect(await bad.json()).toEqual({ ok: false, error: "turnstile_failed" });
+  it("rejects unknown top-level body keys (422) without creating a lead", async () => {
+    const res = await handlers.create(req("POST", "/api/lead", { data: page1Data(), token: "x" }));
+    expect(res.status).toBe(422);
+    expect((await res.json()).fields).toEqual({ token: "unknown_field" });
     expect(await repo.listLeads()).toHaveLength(0);
   });
 
   it("re-submitting with a valid cookie updates the same lead (no duplicate)", async () => {
     const cookie = await createAndGetCookie();
     const res = await handlers.create(
-      req("POST", "/api/lead", { data: page1Data({ first_name: "Luigi" }), turnstileToken: "tok" }, { cookie }),
+      req("POST", "/api/lead", { data: page1Data({ first_name: "Luigi" }) }, { cookie }),
     );
     expect(res.status).toBe(200);
     const lead = await onlyLead();
@@ -176,7 +167,7 @@ describe("POST /api/lead (create)", () => {
 
   it("a stale cookie creates a new lead", async () => {
     const res = await handlers.create(
-      req("POST", "/api/lead", { data: page1Data(), turnstileToken: "tok" }, { cookie: `${LEAD_COOKIE}=stale` }),
+      req("POST", "/api/lead", { data: page1Data() }, { cookie: `${LEAD_COOKIE}=stale` }),
     );
     expect(res.status).toBe(201);
     const lead = await onlyLead();
@@ -197,14 +188,14 @@ describe("POST /api/lead (create)", () => {
     expect(arr.status).toBe(400);
 
     const big = await handlers.create(
-      req("POST", "/api/lead", { data: page1Data({ first_name: "a".repeat(MAX_BODY_BYTES) }), turnstileToken: "t" }),
+      req("POST", "/api/lead", { data: page1Data({ first_name: "a".repeat(MAX_BODY_BYTES) }) }),
     );
     expect(big.status).toBe(413);
   });
 
   it("rejects cross-origin requests", async () => {
     const res = await handlers.create(
-      req("POST", "/api/lead", { data: page1Data(), turnstileToken: "tok" }, {
+      req("POST", "/api/lead", { data: page1Data() }, {
         headers: { origin: "https://evil.example", host: "localhost:3000" },
       }),
     );
@@ -212,7 +203,7 @@ describe("POST /api/lead (create)", () => {
     expect((await res.json()).error).toBe("forbidden_origin");
 
     const same = await handlers.create(
-      req("POST", "/api/lead", { data: page1Data(), turnstileToken: "tok" }, {
+      req("POST", "/api/lead", { data: page1Data() }, {
         headers: { origin: "http://localhost:3000", host: "localhost:3000" },
       }),
     );
@@ -225,7 +216,7 @@ describe("POST /api/lead (create)", () => {
     setup({ limiters });
     const send = (ip: string) =>
       handlers.create(
-        req("POST", "/api/lead", { data: page1Data(), turnstileToken: "tok" }, { headers: { "cf-connecting-ip": ip } }),
+        req("POST", "/api/lead", { data: page1Data() }, { headers: { "x-real-ip": ip } }),
       );
     expect((await send("1.1.1.1")).status).toBe(201);
     expect((await send("1.1.1.1")).status).toBe(201);
@@ -236,10 +227,25 @@ describe("POST /api/lead (create)", () => {
     expect((await send("2.2.2.2")).status).toBe(201);
   });
 
+  it("a rotating cf-connecting-ip header does not bypass the rate limit", async () => {
+    const limiters = createRateLimiters();
+    limiters.create = new SlidingWindowRateLimiter({ limit: 2, windowMs: 60_000 });
+    setup({ limiters });
+    const send = (spoofed: string) =>
+      handlers.create(
+        req("POST", "/api/lead", { data: page1Data() }, {
+          headers: { "x-real-ip": "5.5.5.5", "cf-connecting-ip": spoofed },
+        }),
+      );
+    expect((await send("1.0.0.1")).status).toBe(201);
+    expect((await send("1.0.0.2")).status).toBe(201);
+    expect((await send("1.0.0.3")).status).toBe(429);
+  });
+
   it("maps unexpected repository errors to 500 without leaking details", async () => {
     vi.spyOn(repo, "createLead").mockRejectedValueOnce(new Error("db down"));
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const res = await handlers.create(req("POST", "/api/lead", { data: page1Data(), turnstileToken: "tok" }));
+    const res = await handlers.create(req("POST", "/api/lead", { data: page1Data() }));
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ ok: false, error: "server_error" });
     spy.mockRestore();
@@ -328,8 +334,8 @@ describe("PATCH /api/lead (update)", () => {
 });
 
 describe("POST /api/lead/complete", () => {
-  async function complete(data: unknown, cookie?: string, turnstileToken: unknown = "tok") {
-    return handlers.complete(req("POST", "/api/lead/complete", { data, turnstileToken }, { cookie }));
+  async function complete(data: unknown, cookie?: string) {
+    return handlers.complete(req("POST", "/api/lead/complete", { data }, { cookie }));
   }
 
   it("happy path: completed + status new, notification sent, cookies expired", async () => {
@@ -502,17 +508,15 @@ describe("POST /api/lead/complete", () => {
     });
   });
 
-  it("requires Turnstile (validation errors do not burn the token)", async () => {
+  it("rejects unknown top-level body keys (422) without completing the lead", async () => {
     const cookie = await createAndGetCookie();
-    const missing = await handlers.complete(
-      req("POST", "/api/lead/complete", { data: completeData() }, { cookie }),
+    const res = await handlers.complete(
+      req("POST", "/api/lead/complete", { data: completeData(), token: "x" }, { cookie }),
     );
-    expect(missing.status).toBe(422);
-    expect((await missing.json()).fields).toEqual({ turnstileToken: "required" });
-    turnstileOk = false;
-    const bad = await complete(completeData(), cookie);
-    expect(bad.status).toBe(403);
+    expect(res.status).toBe(422);
+    expect((await res.json()).fields).toEqual({ token: "unknown_field" });
     expect((await onlyLead()).step_reached).toBe("page1");
+    expect(notify).not.toHaveBeenCalled();
   });
 
   it("a failing notification does not fail the submit", async () => {

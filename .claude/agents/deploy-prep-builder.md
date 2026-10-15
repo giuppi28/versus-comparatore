@@ -1,6 +1,6 @@
 ---
 name: deploy-prep-builder
-description: Prepares Cloudflare/OpenNext build and writes DEPLOY.md — never deploys (TASKS Phase 6).
+description: Prepares the Vercel config (app/vercel.json, cron) and writes DEPLOY.md — never deploys (TASKS Phase 6).
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

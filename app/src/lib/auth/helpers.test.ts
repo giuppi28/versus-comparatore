@@ -6,8 +6,9 @@ import { isProtectedAdminPath } from "./paths";
 const h = (o: Record<string, string>) => new Headers(o);
 
 describe("getClientIp", () => {
-  it("prefers cf-connecting-ip, then x-real-ip, then the first x-forwarded-for", () => {
-    expect(getClientIp(h({ "cf-connecting-ip": "1.1.1.1", "x-forwarded-for": "2.2.2.2" }))).toBe("1.1.1.1");
+  it("uses x-real-ip, then the first x-forwarded-for; ignores cf-connecting-ip", () => {
+    expect(getClientIp(h({ "cf-connecting-ip": "1.1.1.1", "x-forwarded-for": "2.2.2.2" }))).toBe("2.2.2.2");
+    expect(getClientIp(h({ "cf-connecting-ip": "1.1.1.1" }))).toBe("unknown");
     expect(getClientIp(h({ "x-real-ip": "3.3.3.3", "x-forwarded-for": "2.2.2.2" }))).toBe("3.3.3.3");
     expect(getClientIp(h({ "x-forwarded-for": " 2.2.2.2 , 9.9.9.9" }))).toBe("2.2.2.2");
     expect(getClientIp(h({}))).toBe("unknown");

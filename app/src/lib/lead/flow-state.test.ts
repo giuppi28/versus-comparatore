@@ -215,7 +215,7 @@ describe("lead payload mappers", () => {
     });
     expect(data).not.toHaveProperty("chosen_offer_luce");
     expect(data).not.toHaveProperty("company_name");
-    expect(createBodySchema.safeParse({ data, turnstileToken: "t" }).success).toBe(true);
+    expect(createBodySchema.safeParse({ data }).success).toBe(true);
   });
 
   it("create payload omits invalid phone and empty strings", () => {
@@ -239,7 +239,7 @@ describe("lead payload mappers", () => {
 
   it("complete payload passes server schema and completion rules (dual)", () => {
     const data = toLeadCompleteData(filledState());
-    const parsed = completeBodySchema.safeParse({ data, turnstileToken: "t" });
+    const parsed = completeBodySchema.safeParse({ data });
     expect(parsed.success).toBe(true);
     expect(checkCompletion(parsed.data!.data).fields).toEqual({});
     expect(parsed.data!.data.tax_code).toBe(VALID_CF);

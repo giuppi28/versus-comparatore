@@ -11,8 +11,6 @@ export interface GoLiveInputs {
   envRecipientSet: boolean;
   resendKeyPresent: boolean;
   resendFromPresent: boolean;
-  /** Real (non-test) Turnstile site key AND secret key. */
-  turnstileReal: boolean;
   siteUrlPresent: boolean;
   dataSource: "mock" | "supabase";
 }
@@ -22,17 +20,6 @@ export interface GoLiveCheck {
   label: string;
   ok: boolean;
   detail: string;
-}
-
-/** Cloudflare's documented dummy keys: 1x/2x/3x followed by zeros (site keys and secrets). */
-export function isTurnstileTestKey(key: string | null | undefined): boolean {
-  return /^[123]x0{10,}/i.test((key ?? "").trim());
-}
-
-export function hasRealTurnstileKeys(siteKey: string | undefined, secret: string | undefined): boolean {
-  const s = (siteKey ?? "").trim();
-  const k = (secret ?? "").trim();
-  return !!s && !!k && !isTurnstileTestKey(s) && !isTurnstileTestKey(k);
 }
 
 export function computeGoLiveChecks(i: GoLiveInputs): GoLiveCheck[] {
@@ -77,14 +64,6 @@ export function computeGoLiveChecks(i: GoLiveInputs): GoLiveCheck[] {
       label: "Mittente email configurato (RESEND_FROM)",
       ok: i.resendFromPresent,
       detail: i.resendFromPresent ? "Mittente configurato." : "Mittente mancante: le email non vengono inviate.",
-    },
-    {
-      id: "turnstile",
-      label: "Chiavi Turnstile reali",
-      ok: i.turnstileReal,
-      detail: i.turnstileReal
-        ? "Chiavi di produzione presenti."
-        : "Mancanti o di prova: la protezione anti-bot non è attiva.",
     },
     {
       id: "site-url",

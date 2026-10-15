@@ -2,7 +2,7 @@ import { chromium, type FullConfig } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { ADMIN_STATE_FILE } from "./paths";
-import { ADMIN_EMAIL, ADMIN_PASSWORD, FAKE_TURNSTILE } from "./constants";
+import { ADMIN_EMAIL, ADMIN_PASSWORD } from "./constants";
 
 /** Logs in once with the mock admin and stores the session for the API clients of every worker. */
 export default async function globalSetup(config: FullConfig) {
@@ -10,9 +10,6 @@ export default async function globalSetup(config: FullConfig) {
   mkdirSync(path.dirname(ADMIN_STATE_FILE), { recursive: true });
   const browser = await chromium.launch();
   const context = await browser.newContext({ baseURL });
-  await context.route("https://challenges.cloudflare.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "text/javascript", body: FAKE_TURNSTILE }),
-  );
   const page = await context.newPage();
   await page.goto("/admin/login", { timeout: 120_000 });
   await page.getByLabel("Email").fill(ADMIN_EMAIL);

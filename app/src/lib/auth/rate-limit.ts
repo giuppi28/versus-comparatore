@@ -1,6 +1,6 @@
 /**
  * Fixed-window in-memory rate limiter.
- * NOTE: state is per server instance (per isolate on Cloudflare Workers).
+ * NOTE: state is per server instance (each Vercel Function instance keeps its own counters).
  */
 export interface RateLimitResult {
   allowed: boolean;

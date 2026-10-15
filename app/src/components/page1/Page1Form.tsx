@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { TurnstileWidget } from "@/app/admin/login/TurnstileWidget";
 import type { ComuneSuggestion, ComuniResponse } from "@/app/api/comuni/types";
 import {
   Autocomplete,
@@ -13,7 +12,6 @@ import {
   type AutocompleteOption,
 } from "@/components/ui";
 import type { LeadCommodity, LeadCustomerType, ServiceType } from "@/lib/data/types";
-import { getTurnstileSiteKey } from "@/lib/lead/turnstile-config";
 import { updateLead } from "@/lib/lead/client";
 import { useFlow } from "@/lib/lead/flow-context";
 import {
@@ -374,14 +372,6 @@ export function Page1Form({ suppliers }: Page1FormProps) {
             <p role="alert" data-testid="consent-error" className="text-sm font-medium text-danger">
               {lead.error}
             </p>
-          )}
-          {hydrated && state.privacyConsent && !state.leadCreated && (
-            <TurnstileWidget
-              key={lead.widgetKey}
-              siteKey={getTurnstileSiteKey()}
-              action="lead-create"
-              onToken={lead.onToken}
-            />
           )}
         </div>
       </Block>

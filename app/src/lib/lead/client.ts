@@ -63,8 +63,8 @@ async function call(path: string, method: string, body?: unknown): Promise<void>
  * browser session). `data.privacy_consent` must be true. Send only fields that are filled
  * and valid (see `toLeadCreateData` in flow-state.ts).
  */
-export function createLead(data: LeadCreateData, turnstileToken: string): Promise<void> {
-  return call(LEAD_API_PATH, "POST", { data, turnstileToken });
+export function createLead(data: LeadCreateData): Promise<void> {
+  return call(LEAD_API_PATH, "POST", { data });
 }
 
 /**
@@ -80,8 +80,8 @@ export function updateLead(patch: LeadPatchData): Promise<void> {
  * Final submit of the activation form (step_reached = completed, status = new).
  * On success the server expires the lead cookie; keep the flow state for the thank-you page.
  */
-export function completeLead(data: LeadCompleteData, turnstileToken: string): Promise<void> {
-  return call(LEAD_COMPLETE_API_PATH, "POST", { data, turnstileToken });
+export function completeLead(data: LeadCompleteData): Promise<void> {
+  return call(LEAD_COMPLETE_API_PATH, "POST", { data });
 }
 
 /** Forgets the lead in this browser (expires the cookie). Use with `reset()` of the flow state. */

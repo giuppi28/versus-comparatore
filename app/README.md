@@ -12,7 +12,8 @@ Deployment is documented in `DEPLOY.md` (nothing here deploys by itself).
 | `npm run test:coverage` | Vitest with v8 coverage. |
 | `npm run e2e` | Playwright specs (desktop 1440px + mobile 390px); the `e2e/matrix/` specs are ignored. |
 | `PORT=<port> npm run e2e:matrix` | Phase 7 matrix (`playwright.matrix.config.ts`), two phases against the same server: everything not tagged `@serial` in parallel, then the `@serial` admin CRUD tests with one worker. Extra args are forwarded to both phases. Env: `MATRIX_WORKERS` (default 4), `MATRIX_OUTPUT` (Playwright output dir, default `./test-results/matrix`), `MATRIX_JSON` (JSON report path). The matrix cases are documented in `e2e/matrix/cases.ts`. |
-| `npm run build:cf` / `preview:cf` | OpenNext Cloudflare build (+ bundle env check) / local preview of it. Neither deploys; see `DEPLOY.md`. |
+| `npm run build` | `next build`, then automatically (`postbuild`) `npm run check:bundle`. Does not deploy; see `DEPLOY.md` (hosting: Vercel). |
+| `npm run check:bundle` | Secret guard on the build output (`scripts/check-bundle-env.mjs`): fails if a secret-like `NEXT_PUBLIC_*` variable has a value or if the value of a server secret (`LEAD_API_SECRET`, `RESEND_API_KEY`, `CRON_SECRET`, mock admin credentials) appears anywhere in `.next/`. `--strict` (automatic on Vercel, `VERCEL=1`) also requires `NEXT_PUBLIC_DATA_SOURCE=supabase` and the public Supabase config. Run it after `npx next build` too. |
 
 ### Running e2e locally
 
@@ -40,6 +41,18 @@ Recipient order: (1) `notification_email` returned by the `complete_lead` RPC (t
 `settings.notification_email`, supabase mode, QUESTIONS Q7); (2) the `NOTIFICATION_EMAIL` env var,
 now only a **fallback** (used when the RPC returns null); (3) the admin settings in mock mode.
 
+## Supabase keep-alive (Vercel Cron)
+
+Free Supabase projects pause after 7 days without activity. `app/vercel.json` declares a daily Vercel
+Cron Job (Hobby allows one run per day) that calls `GET /api/cron/keepalive`
+(`src/app/api/cron/keepalive/route.ts` → `src/lib/keepalive.ts`). It does one public read with the
+**publishable** key (`comuni?select=istat_code&limit=1`) and answers JSON `{ ok, status[, reason] }`
+(200 when the read succeeded, 503 otherwise, `Cache-Control: no-store`). Protection: Vercel's
+`CRON_SECRET` — when set, Vercel sends `Authorization: Bearer <CRON_SECRET>` and every other request
+gets 401; when unset the route refuses everything in production and is open in local dev/tests
+(`curl localhost:3000/api/cron/keepalive`). The admin proxy (`src/proxy.ts`, matcher `/admin*`) does
+not touch it.
+
 ## Environment: server-only lead secret
 
 `LEAD_API_SECRET` (server-only, never `NEXT_PUBLIC_*`, never sent to the browser) is passed as the first
@@ -60,16 +73,16 @@ All bodies are JSON (`Content-Type: application/json`, max 32 KB), every object 
 
 | Route | Body | Success | Notes |
 |---|---|---|---|
-| `POST /api/lead` | `{ data: { privacy_consent: true, ...Page 1 fields }, turnstileToken }` | 201 (200 when it updates the lead already bound to the cookie) | Sets cookies; activation fields not accepted here |
+| `POST /api/lead` | `{ data: { privacy_consent: true, ...Page 1 fields } }` | 201 (200 when it updates the lead already bound to the cookie) | Sets cookies; activation fields not accepted here |
 | `PATCH /api/lead` | `{ data: { ...any lead field, step_reached?: "results" \| "offer_chosen" } }` | 200 | Needs the cookie; `step_reached` only moves forward (backward value silently dropped) |
-| `POST /api/lead/complete` | `{ data: <full lead>, turnstileToken }` | 200 | Server-side validation of all PRD §10 rules, then `step_reached = completed`, `status = new`, `notifyNewLead()`; **expires the cookies** |
+| `POST /api/lead/complete` | `{ data: <full lead> }` | 200 | Server-side validation of all PRD §10 rules, then `step_reached = completed`, `status = new`, `notifyNewLead()`; **expires the cookies** |
 | `DELETE /api/lead` | — | 200 | Expires the cookies ("new comparison") |
 
 Never writable by the customer: `id`, `token`, `created_at`, `updated_at`, `status`, `notes`,
 `step_reached = completed/page1`; `privacy_consent` only on create.
 
 Errors: 400 `invalid_body` / `privacy_consent_required` · 401 `no_lead` (no cookie) ·
-403 `turnstile_failed` / `forbidden_origin` · 404 `lead_not_found` (cookies expired) ·
+403 `forbidden_origin` · 404 `lead_not_found` (cookies expired) ·
 413 `payload_too_large` · 422 `validation` + `fields` · 429 `rate_limited` (+ `Retry-After`) · 500 `server_error`.
 
 Field codes: `required`, `invalid`, `unknown_field`, the shared validator codes
@@ -90,17 +103,17 @@ in the flow are stored as `null`.
 response body and never readable by JS. After a successful complete both cookies are
 expired: the thank-you page reads the summary from the flow state, not from the server.
 
-**Turnstile** (create + complete): server secret `TURNSTILE_SECRET_KEY`; if unset outside
-production the official always-pass test secret `1x0000000000000000000000000000000AA` is used
-(Cloudflare test secrets are resolved offline). In production without a secret requests fail
-closed. Client site key: `getTurnstileSiteKey()` (`src/lib/lead/turnstile-config.ts`) →
-`NEXT_PUBLIC_TURNSTILE_SITE_KEY` or the test key `1x00000000000000000000AA`.
-Validation errors are returned **before** Turnstile is checked, so a 422 does not burn the token;
-after a 403 / success the widget must be reset for a new token.
+**Anti-spam**: there is no captcha (decision v0.5.1: add one later only if spam appears). Lead
+writes are protected by the same-origin check, strict validation, the per-IP rate limit below and
+the server-only `LEAD_API_SECRET` required by the Supabase lead functions (direct RPC calls with
+the publishable key are refused).
 
-**Rate limit**: in-memory sliding window per IP (`cf-connecting-ip` → `x-forwarded-for`) and
-route: create 10 / complete 10 / update 60 / delete 30 per 10 minutes. Per instance only — add a
-Cloudflare WAF rate-limiting rule on `/api/lead*` at deploy.
+**Rate limit**: in-memory sliding window per IP and route: create 10 / complete 10 / update 60 /
+delete 30 per 10 minutes (`/api/comuni`: 120 per minute; admin login and TOTP: 5 per 15 minutes per
+IP + account). The client IP comes from `src/lib/client-ip.ts` and uses **only the headers set by
+Vercel**: `x-real-ip`, else the first value of `x-forwarded-for` (Vercel overwrites it); any other
+client-IP header is ignored because a client could spoof it. Per instance only — optionally add a
+Vercel Firewall rate-limit rule on `/api/lead*` and `/admin/login` (see `DEPLOY.md`).
 
 **Notification**: `notifyNewLead({ id, data, completedAt })` in `src/lib/lead/notify.ts` sends the new-lead email
 (see the "Notifications" section above). A failing notification never fails the submit.
@@ -108,9 +121,9 @@ Cloudflare WAF rate-limiting rule on `/api/lead*` at deploy.
 ### Browser helpers (`src/lib/lead/client.ts`)
 
 ```ts
-createLead(data: LeadCreateData, turnstileToken: string): Promise<void>
+createLead(data: LeadCreateData): Promise<void>
 updateLead(patch: LeadPatchData): Promise<void>
-completeLead(data: LeadCompleteData, turnstileToken: string): Promise<void>
+completeLead(data: LeadCompleteData): Promise<void>
 clearLead(): Promise<void>
 // failures throw LeadApiError { status, code, fields, retryAfterSec } ("network_error" = status 0)
 ```

@@ -1,20 +1,26 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useSyncExternalStore } from "react";
 import { Button, Input } from "@/components/ui";
 import { loginAction } from "@/lib/auth/actions";
 import { INITIAL_AUTH_STATE } from "@/lib/auth/form-state";
 import { FormError } from "./AuthCard";
-import { TurnstileWidget } from "./TurnstileWidget";
 
-export function LoginForm({ siteKey, notice }: { siteKey: string; notice?: string }) {
+const noopSubscribe = () => () => {};
+
+/** False during SSR and hydration, true once React runs in the browser. */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+}
+
+export function LoginForm({ notice }: { notice?: string }) {
   const [state, formAction, pending] = useActionState(loginAction, INITIAL_AUTH_STATE);
-  // Token per attempt: the widget is re-mounted (fresh token) after every failure.
-  const [token, setToken] = useState<{ attempt: number; value: string | null }>({
-    attempt: 0,
-    value: null,
-  });
-  const ready = token.attempt === state.attempt && !!token.value;
+  // The submit is enabled once hydrated, so the action always runs through React.
+  const hydrated = useHydrated();
 
   return (
     <form action={formAction} className="flex flex-col gap-5" noValidate data-attempt={state.attempt}>
@@ -37,13 +43,7 @@ export function LoginForm({ siteKey, notice }: { siteKey: string; notice?: strin
         required
         maxLength={512}
       />
-      <TurnstileWidget
-        key={state.attempt}
-        siteKey={siteKey}
-        action="admin-login"
-        onToken={(value) => setToken({ attempt: state.attempt, value })}
-      />
-      <Button type="submit" size="lg" fullWidth loading={pending} disabled={!ready}>
+      <Button type="submit" size="lg" fullWidth loading={pending} disabled={!hydrated}>
         Accedi
       </Button>
     </form>

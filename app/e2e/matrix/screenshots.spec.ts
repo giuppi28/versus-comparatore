@@ -244,12 +244,12 @@ test.describe("screenshots: admin area", () => {
     completedPod = `IT001E${Math.floor(10_000_000 + Math.random() * 89_999_999)}`;
     partialSurname = `Shot${Math.random().toString(36).replace(/[^a-z]/g, "").slice(0, 6)}`;
     const done = await client();
-    await done.post("/api/lead", { data: { data: page1Data(), turnstileToken: "XXXX.DUMMY.TOKEN.XXXX" } });
-    const res = await done.post("/api/lead/complete", { data: { data: completeData({ pod: completedPod }), turnstileToken: "XXXX.DUMMY.TOKEN.XXXX" } });
+    await done.post("/api/lead", { data: { data: page1Data() } });
+    const res = await done.post("/api/lead/complete", { data: { data: completeData({ pod: completedPod }) } });
     expect(res.status()).toBeLessThan(300);
     await done.dispose();
     const partial = await client();
-    await partial.post("/api/lead", { data: { data: page1Data({ last_name: partialSurname, commodity: "dual" }), turnstileToken: "XXXX.DUMMY.TOKEN.XXXX" } });
+    await partial.post("/api/lead", { data: { data: page1Data({ last_name: partialSurname, commodity: "dual" }) } });
     await partial.dispose();
   });
 

@@ -1,6 +1,6 @@
 ---
 name: lead-api-builder
-description: Builds the server routes for the lead lifecycle (create/update/complete) with token cookie, Turnstile and rate limiting (TASKS T3.1).
+description: Builds the server routes for the lead lifecycle (create/update/complete) with token cookie, server-only LEAD_API_SECRET and rate limiting (TASKS T3.1).
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: opus
 ---

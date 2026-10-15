@@ -10,7 +10,6 @@ import { expect, randomIp, test } from "./fixtures";
 import { ADMIN_STATE_FILE } from "./paths";
 
 const TAG = { tag: "@mobile" };
-const TURNSTILE_TOKEN = "XXXX.DUMMY.TOKEN.XXXX";
 
 /** Every admin route of the app (mfa pages included). */
 const ADMIN_ROUTES = [
@@ -132,15 +131,15 @@ async function seedLeads(baseURL: string, label: string): Promise<SeedLeads> {
   const partialSurname = `Parz${label}${rand()}`;
 
   const done = await client();
-  let res = await done.post("/api/lead", { data: { data: page1Data(), turnstileToken: TURNSTILE_TOKEN } });
+  let res = await done.post("/api/lead", { data: { data: page1Data() } });
   expect(res.status(), await res.text()).toBeLessThan(300);
-  res = await done.post("/api/lead/complete", { data: { data: completeData({ pod: completedPod }), turnstileToken: TURNSTILE_TOKEN }});
+  res = await done.post("/api/lead/complete", { data: { data: completeData({ pod: completedPod }) }});
   expect(res.status(), await res.text()).toBeLessThan(300);
   await done.dispose();
 
   const partial = await client();
   res = await partial.post("/api/lead", {
-    data: { data: page1Data({ first_name: "Giulia", last_name: partialSurname, commodity: "dual" }), turnstileToken: TURNSTILE_TOKEN },
+    data: { data: page1Data({ first_name: "Giulia", last_name: partialSurname, commodity: "dual" }) },
   });
   expect(res.status(), await res.text()).toBeLessThan(300);
   res = await partial.patch("/api/lead", { data: { data: { step_reached: "results" } } });

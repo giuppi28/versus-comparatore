@@ -1,7 +1,7 @@
 /**
  * Activation form (PRD §10): Step A "Dati intestatario", Step B "Fornitura", sticky summary.
- * The flow state is seeded in sessionStorage; POST /api/lead/complete and the Turnstile
- * script are intercepted, so the specs do not depend on the other screens or on the network.
+ * The flow state is seeded in sessionStorage; POST /api/lead/complete is intercepted, so the
+ * specs do not depend on the other screens or on the network.
  *
  * Test ids (all inputs also have a `name` attribute equal to the API field):
  *   activation-loading, activation-step-a, activation-step-b, activation-next, activation-back,
@@ -114,15 +114,6 @@ async function open(page: Page, flow: Json | null, path = "/attivazione") {
         ? route.fulfill({ contentType: "text/html", body: "<html><body>offerte</body></html>" })
         : route.abort(),
   );
-  await page.route("https://challenges.cloudflare.com/**", (route) =>
-    route.fulfill({
-      contentType: "application/javascript",
-      body: `window.turnstile = {
-        render: function (el, opts) { setTimeout(function () { opts.callback("e2e-token"); }, 0); return "w1"; },
-        remove: function () {}
-      };`,
-    }),
-  );
   await page.addInitScript(
     ([key, value]) => {
       if (sessionStorage.getItem("e2e.seeded")) return;
@@ -229,8 +220,8 @@ test.describe("activation form", () => {
     await expect(page).toHaveURL(/\/grazie$/);
 
     expect(mock.requests).toHaveLength(1);
-    const body = mock.requests[0] as { data: Json; turnstileToken: string };
-    expect(body.turnstileToken).toBe("e2e-token");
+    const body = mock.requests[0] as { data: Json };
+    expect(Object.keys(body)).toEqual(["data"]);
     expect(body.data).toMatchObject({
       first_name: "Mario",
       last_name: "Rossi",
@@ -533,8 +524,9 @@ test.describe("activation form", () => {
     await page.getByTestId("activation-next").click();
     await page.getByTestId("activation-submit").click();
     await expect(page).toHaveURL(/\/grazie$/);
-    // A fresh Turnstile token is used for every attempt.
-    expect((mock.requests[2] as { turnstileToken: string }).turnstileToken).toBe("e2e-token");
+    // Every attempt sends the same { data } contract.
+    expect(mock.requests).toHaveLength(3);
+    for (const r of mock.requests) expect(Object.keys(r as Json)).toEqual(["data"]);
   });
 
   test("chosen offer no longer available is reported at form level", async ({ page }) => {

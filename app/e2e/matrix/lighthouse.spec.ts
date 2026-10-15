@@ -10,7 +10,6 @@
 import { chromium, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { FAKE_TURNSTILE } from "./constants";
 import { MATRIX } from "./cases";
 import { derive, fillActivation, fillPage1, newIdentity, openPage1, pick, resultsStep, type Chosen } from "./flow";
 import { expect, randomIp, test } from "./fixtures";
@@ -86,9 +85,6 @@ test.describe("Lighthouse accessibility >= 90", () => {
         hasTouch: mobile,
         extraHTTPHeaders: { "x-forwarded-for": randomIp() },
       });
-      await context.route("https://challenges.cloudflare.com/**", (route) =>
-        route.fulfill({ status: 200, contentType: "text/javascript", body: FAKE_TURNSTILE }),
-      );
       const page = await context.newPage();
       const a = (name: string) => audit(page, port, name, mobile);
 

@@ -1,10 +1,11 @@
 /**
  * Simple in-memory sliding-window rate limiter (PRD §4.6). SERVER ONLY.
  *
- * LIMITATION: state is per server instance / per Worker isolate, so it is only a
- * first line of defence. At deploy time add a Cloudflare WAF rate-limiting rule on
- * /api/lead* (note for DEPLOY.md).
+ * LIMITATION: state is per server instance (each Vercel Function instance keeps its own
+ * counters), so it is only a first line of defence. Optional extra: a Vercel Firewall
+ * rate-limit rule on /api/lead* (see DEPLOY.md).
  */
+import { getClientIp } from "@/lib/client-ip";
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -75,15 +76,11 @@ export class SlidingWindowRateLimiter {
 }
 
 /**
- * Client IP: Cloudflare's `cf-connecting-ip`, then the first `x-forwarded-for` hop,
- * then `x-real-ip`. "unknown" when none is present (all such requests share a bucket).
+ * Client IP for the rate-limit key: `x-real-ip`, then the first `x-forwarded-for` value
+ * (both set by Vercel). No other client-IP header is trusted. See src/lib/client-ip.ts.
  */
 export function clientIp(headers: Headers): string {
-  const cf = headers.get("cf-connecting-ip")?.trim();
-  if (cf) return cf;
-  const xff = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  if (xff) return xff;
-  return headers.get("x-real-ip")?.trim() || "unknown";
+  return getClientIp(headers);
 }
 
 /** Per-route limits (per IP). */

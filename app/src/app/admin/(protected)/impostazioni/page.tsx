@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import { getDataSource } from "@/lib/data";
 import { normalizeEmail } from "@/lib/notify/email-address";
-import { MANUAL_CHECKS, computeGoLiveChecks, hasRealTurnstileKeys, isReadyForGoLive } from "./checks";
+import { MANUAL_CHECKS, computeGoLiveChecks, isReadyForGoLive } from "./checks";
 import { SettingsForm } from "./SettingsForm";
 
 export const metadata = { title: "Impostazioni — Area riservata VERSUS" };
@@ -24,10 +24,6 @@ export default async function SettingsPage() {
     envRecipientSet: !!normalizeEmail(process.env.NOTIFICATION_EMAIL),
     resendKeyPresent: !!process.env.RESEND_API_KEY?.trim(),
     resendFromPresent: !!process.env.RESEND_FROM?.trim(),
-    turnstileReal: hasRealTurnstileKeys(
-      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
-      process.env.TURNSTILE_SECRET_KEY,
-    ),
     siteUrlPresent: /^https?:\/\//i.test(process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? ""),
     dataSource: getDataSource(),
   });

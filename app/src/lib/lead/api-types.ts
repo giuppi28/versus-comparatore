@@ -14,7 +14,6 @@ export type LeadApiErrorCode =
   | "invalid_body" // 400: not JSON / not an object / wrong content type
   | "privacy_consent_required" // 400: create without privacy_consent === true
   | "no_lead" // 401: no lead cookie
-  | "turnstile_failed" // 403: Turnstile token missing/invalid
   | "forbidden_origin" // 403: cross-origin request
   | "lead_not_found" // 404: cookie token unknown / lead already completed
   | "payload_too_large" // 413

@@ -1,6 +1,6 @@
 /**
  * Minimal Resend REST client (https://api.resend.com/emails) using fetch only, so it runs
- * on Cloudflare Workers. Never throws: returns a result object. Never logs the API key.
+ * in any runtime (Node or edge, no SDK). Never throws: returns a result object. Never logs the API key.
  */
 export const RESEND_ENDPOINT = "https://api.resend.com/emails";
 

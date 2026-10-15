@@ -415,7 +415,7 @@ test.describe("server-side validation of /api/lead/complete", () => {
     const post = (data: Record<string, unknown>) =>
       page.request.post("/api/lead/complete", {
         headers: { ...headers, "x-forwarded-for": randomIp() },
-        data: { data, turnstileToken: "e2e-token" },
+        data: { data },
       });
     const base = completeData();
 
@@ -449,7 +449,7 @@ test.describe("server-side validation of /api/lead/complete", () => {
     const anonymous = await request.newContext({ baseURL: baseURL! });
     const noCookie = await anonymous.post("/api/lead/complete", {
       headers: { ...headers, "x-forwarded-for": randomIp() },
-      data: { data: base, turnstileToken: "e2e-token" },
+      data: { data: base },
     });
     expect(noCookie.status()).toBe(401);
     await anonymous.dispose();
@@ -527,6 +527,10 @@ test.describe("back buttons and refresh", () => {
     await expect(page.locator(`[data-offer-id="${chosen.luce!.offer.id}"]`)).toHaveAttribute("data-chosen", "true");
 
     // Browser back to Page 1: every answer is still there.
+    const creations: string[] = [];
+    page.on("request", (r) => {
+      if (r.url().endsWith("/api/lead") && r.method() === "POST") creations.push(r.url());
+    });
     for (let i = 0; i < 8 && new URL(page.url()).pathname !== "/"; i++) await page.goBack();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByTestId("page1-form")).toHaveAttribute("data-hydrated", "true");
@@ -541,8 +545,8 @@ test.describe("back buttons and refresh", () => {
     await expect(page.getByTestId("supplier-gas")).toHaveValue(c.supplierGas!);
     await expect(page.getByTestId("estimate-luce")).toBeVisible();
     await expect(page.getByTestId("estimate-gas")).toBeVisible();
-    // No second consent widget / lead creation: the lead already exists.
-    await expect(page.getByTestId("turnstile")).toHaveCount(0);
+    // No second lead creation: the lead already exists.
+    expect(creations).toEqual([]);
   });
 
   test("refresh in the middle of Page 1, results, activation A and activation B, then complete", async ({ page, admin }) => {

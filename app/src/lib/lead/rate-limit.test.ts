@@ -62,10 +62,11 @@ describe("SlidingWindowRateLimiter", () => {
 });
 
 describe("clientIp", () => {
-  it("prefers cf-connecting-ip, then x-forwarded-for, then x-real-ip", () => {
-    expect(clientIp(new Headers({ "cf-connecting-ip": "1.1.1.1", "x-forwarded-for": "2.2.2.2" }))).toBe("1.1.1.1");
+  it("uses x-real-ip, then the first x-forwarded-for (Vercel); ignores cf-connecting-ip", () => {
+    expect(clientIp(new Headers({ "cf-connecting-ip": "1.1.1.1", "x-forwarded-for": "2.2.2.2" }))).toBe("2.2.2.2");
+    expect(clientIp(new Headers({ "cf-connecting-ip": "1.1.1.1" }))).toBe("unknown");
     expect(clientIp(new Headers({ "x-forwarded-for": "2.2.2.2, 10.0.0.1" }))).toBe("2.2.2.2");
-    expect(clientIp(new Headers({ "x-real-ip": "3.3.3.3" }))).toBe("3.3.3.3");
+    expect(clientIp(new Headers({ "x-real-ip": "3.3.3.3", "x-forwarded-for": "2.2.2.2" }))).toBe("3.3.3.3");
     expect(clientIp(new Headers())).toBe("unknown");
   });
 });

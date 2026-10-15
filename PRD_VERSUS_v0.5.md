@@ -1,7 +1,7 @@
 # VERSUS — Comparatore luce e gas — PRD v0.5
 
 Status: brainstorming complete — ready to build.
-Last update: 2026-10-15
+Last update: 2026-10-15 — v0.5.1: hosting Vercel, Cloudflare removed (no Turnstile; rate limiting kept)
 Owner: Giuseppe Pappalardo (SiteXP) — Client: Aldo (energy broker)
 
 The previous demo is discarded. Reference material lives in the read-only folder `/Users/pippo/Desktop/versus elementi/`; the project lives in `/Users/pippo/Desktop/versus-comparatore/`. Everything is rebuilt from scratch.
@@ -36,16 +36,16 @@ Out of scope v1: bill upload, offer PDF documents, customer emails, variable/ind
 
 | Layer | Choice | Notes |
 |---|---|---|
-| App | Next.js (single app: public site + `/admin`) | deploy via OpenNext adapter |
-| Hosting | Cloudflare Pages/Workers (free, commercial use allowed) | Vercel Hobby forbids commercial use |
+| App | Next.js (single app: public site + `/admin`) | deployed on Vercel |
+| Hosting | Vercel Hobby + custom domain | Hobby is for non-commercial use; Pro (paid) may be needed for commercial use |
 | Database | Supabase Postgres (Free) | |
 | Auth | Supabase Auth, email + password | single admin user (Aldo) |
 | File storage | Supabase Storage | supplier SVG logos only |
 | Email | Resend (free tier) | new-lead notification to Aldo only |
-| Anti-spam | Cloudflare Turnstile | on public forms |
+| Anti-spam | None for now | server-side rate limiting; add anti-spam later only if spam appears |
 | Domain | ~10–15 €/year | only unavoidable cost |
 
-Supabase free projects pause after 7 days of inactivity → daily scheduled keep-alive job. Railway: not used.
+Supabase free projects pause after 7 days of inactivity → daily Vercel Cron Job (keep-alive). Railway: not used.
 
 ---
 
@@ -57,8 +57,8 @@ Supabase free projects pause after 7 days of inactivity → daily scheduled keep
    - authenticated admin: full access.
 3. `/admin` protected **server-side**.
 4. Supabase **service role key** only server-side.
-5. Login protected by rate limiting + Turnstile.
-6. Public forms protected with **Turnstile** + rate limiting.
+5. Login protected by rate limiting.
+6. Public forms protected by server-side rate limiting (no captcha for now; add anti-spam later only if spam appears).
 7. Uploaded **SVG logos sanitized** server-side (strip scripts, event handlers, external refs).
 8. GDPR: privacy consent checkbox required before any personal data is stored.
 
@@ -169,7 +169,7 @@ Annual kWh and/or Smc entered directly, with a hint on where to find it in the b
 
 ## 7. Loading screen
 
-~4 s. VERSUS logo centered, supplier SVG logos orbiting, entering staggered. Progress bar + messages: "Analizziamo i tuoi consumi…" → "Confrontiamo le offerte di N fornitori…" → "Calcoliamo la tua spesa mensile…" → "Ecco le migliori offerte per te!". Current supplier not shown. Lead update during the animation.
+~4 s. Minimal: VERSUS icon centered with a soft pulse, a quiet row of greyscale supplier logos highlighted one at a time (no orbit). Progress bar + messages: "Analizziamo i tuoi consumi…" → "Confrontiamo le offerte di N fornitori…" → "Calcoliamo la tua spesa mensile…" → "Ecco le migliori offerte per te!". Current supplier not shown. Lead update during the animation.
 
 ---
 

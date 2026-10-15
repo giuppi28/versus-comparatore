@@ -38,7 +38,7 @@ export function StepB({
   onNext,
   suppliers,
   submitting,
-  captcha,
+  beforeActions,
 }: StepBProps & { onNext: () => void }) {
   const a = state.activation;
   const luce = includesLuce(state.commodity);
@@ -320,7 +320,7 @@ export function StepB({
         </Section>
       )}
 
-      {captcha}
+      {beforeActions}
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
         <Button

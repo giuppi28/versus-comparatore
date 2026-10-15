@@ -328,8 +328,6 @@ export function mapApiError(error: unknown): MappedApiError {
   switch (error.code) {
     case "rate_limited":
       return { message: "Troppe richieste, riprova tra poco.", fields: {} };
-    case "turnstile_failed":
-      return { message: "Verifica di sicurezza non riuscita. Riprova.", fields: {} };
     case "network_error":
       return { message: "Connessione non riuscita. Controlla la rete e riprova.", fields: {} };
     case "validation": {

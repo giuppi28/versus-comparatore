@@ -326,7 +326,7 @@ describe("API error mapping", () => {
   });
 
   it("maps other codes and unknown errors", () => {
-    expect(mapApiError(new LeadApiError(403, "turnstile_failed")).message).toMatch(/Verifica di sicurezza/);
+    expect(mapApiError(new LeadApiError(403, "forbidden_origin")).message).toMatch(/Non è stato possibile/);
     expect(mapApiError(new LeadApiError(0, "network_error")).message).toMatch(/Connessione/);
     expect(mapApiError(new LeadApiError(500, "server_error")).message).toMatch(/momentaneamente/);
     expect(mapApiError(new Error("boom")).message).toMatch(/imprevisto/);

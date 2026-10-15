@@ -3,9 +3,7 @@ import {
   MANUAL_CHECKS,
   PRIVACY_PLACEHOLDERS,
   computeGoLiveChecks,
-  hasRealTurnstileKeys,
   isReadyForGoLive,
-  isTurnstileTestKey,
   type GoLiveInputs,
 } from "./checks";
 
@@ -15,7 +13,6 @@ const READY: GoLiveInputs = {
   envRecipientSet: true,
   resendKeyPresent: true,
   resendFromPresent: true,
-  turnstileReal: true,
   siteUrlPresent: true,
   dataSource: "supabase",
 };
@@ -31,7 +28,6 @@ describe("go-live checks", () => {
     ["envRecipientSet", false],
     ["resendKeyPresent", false],
     ["resendFromPresent", false],
-    ["turnstileReal", false],
     ["siteUrlPresent", false],
     ["dataSource", "mock"],
   ] as const)("is not ready when %s fails", (key, value) => {
@@ -50,17 +46,6 @@ describe("go-live checks", () => {
   it("only asks for NOTIFICATION_EMAIL in supabase mode", () => {
     expect(computeGoLiveChecks({ ...READY, dataSource: "mock" }).some((c) => c.id === "env-recipient")).toBe(false);
     expect(computeGoLiveChecks(READY).some((c) => c.id === "env-recipient")).toBe(true);
-  });
-
-  it("detects Cloudflare dummy Turnstile keys", () => {
-    expect(isTurnstileTestKey("1x00000000000000000000AA")).toBe(true);
-    expect(isTurnstileTestKey("2x0000000000000000000000000000000AA")).toBe(true);
-    expect(isTurnstileTestKey("0x4AAAAAAABkMYinukE8nzYS")).toBe(false);
-    expect(hasRealTurnstileKeys("0x4AAAAAAA", "0x4BBBBBBB")).toBe(true);
-    expect(hasRealTurnstileKeys("1x00000000000000000000AA", "0x4BBBBBBB")).toBe(false);
-    expect(hasRealTurnstileKeys("0x4AAAAAAA", "1x0000000000000000000000000000000AA")).toBe(false);
-    expect(hasRealTurnstileKeys(undefined, "0x4BBBBBBB")).toBe(false);
-    expect(hasRealTurnstileKeys("0x4AAAAAAA", "")).toBe(false);
   });
 
   it("keeps manual items out of the automatic checks and the ready computation", () => {

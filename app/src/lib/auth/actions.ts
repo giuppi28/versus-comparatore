@@ -14,7 +14,6 @@ import {
 } from "./constants";
 import type { AuthFormState, EnrollFormState } from "./form-state";
 import { getSharedRateLimiter } from "./rate-limit";
-import { TURNSTILE_RESPONSE_FIELD, verifyTurnstile } from "./turnstile";
 
 const str = (v: FormDataEntryValue | null, max = 512) =>
   typeof v === "string" ? v.slice(0, max) : "";
@@ -32,11 +31,6 @@ export async function loginAction(prev: AuthFormState, formData: FormData): Prom
   const limiter = getSharedRateLimiter("admin-login", LOGIN_RATE_LIMIT);
   const key = `${ip}|${email}`;
   if (!limiter.consume(key).allowed) return fail(prev, AUTH_MESSAGES.tooManyAttempts, 429, email);
-
-  const human = await verifyTurnstile(str(formData.get(TURNSTILE_RESPONSE_FIELD), 4096), {
-    remoteIp: ip,
-  });
-  if (!human) return fail(prev, AUTH_MESSAGES.turnstileFailed, undefined, email);
 
   let result;
   try {

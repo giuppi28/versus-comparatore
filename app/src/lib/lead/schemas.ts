@@ -117,17 +117,9 @@ export const patchDataSchema = z
 /** POST /api/lead/complete — data (business rules checked by `checkCompletion`). */
 export const completeDataSchema = z.strictObject(leadFields).partial();
 
-const turnstileToken = z.string().min(1).max(2048);
-
-export const createBodySchema = z.strictObject({
-  data: createDataSchema,
-  turnstileToken,
-});
+export const createBodySchema = z.strictObject({ data: createDataSchema });
 export const patchBodySchema = z.strictObject({ data: patchDataSchema });
-export const completeBodySchema = z.strictObject({
-  data: completeDataSchema,
-  turnstileToken,
-});
+export const completeBodySchema = z.strictObject({ data: completeDataSchema });
 
 /** Client-facing input types (what the browser sends). */
 export type LeadCreateData = z.input<typeof createDataSchema>;

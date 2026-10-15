@@ -2,7 +2,7 @@ export interface AuthFormState {
   error?: string;
   /** 429 when rate limited. */
   status?: 429;
-  /** Incremented on every failed submit (used to reset the Turnstile widget). */
+  /** Incremented on every failed submit (lets the form tell attempts apart). */
   attempt: number;
   /** Email to keep in the field after a failed login (the form is reset by React). */
   email?: string;

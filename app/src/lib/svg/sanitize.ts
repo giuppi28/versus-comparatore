@@ -1,7 +1,7 @@
 /**
  * Allowlist-based SVG sanitizer for supplier logos (PRD §4.7).
  *
- * Works in Node and on Cloudflare Workers: it only needs `@xmldom/xmldom` (pure JS,
+ * Works in any JS runtime (Node, edge): it only needs `@xmldom/xmldom` (pure JS,
  * no jsdom, no eval). The input is parsed as strict XML, walked, and a brand new
  * document is serialised from the nodes/attributes that pass the allowlists, so
  * nothing the parser tolerated can leak into the output verbatim.

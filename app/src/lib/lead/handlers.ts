@@ -39,13 +39,11 @@ import {
   zodFieldErrors,
   type FieldErrors,
 } from "./schemas";
-import { defaultTurnstileVerifier, type TurnstileVerifier } from "./turnstile";
 
 export const MAX_BODY_BYTES = 32 * 1024;
 
 export interface LeadHandlerDeps {
   getRepository: () => Repository;
-  verifyTurnstile: TurnstileVerifier;
   notify: NotifyNewLead;
   limiters: Record<LeadRouteKey, SlidingWindowRateLimiter>;
   /** Controls the cookie `Secure` flag. */
@@ -76,7 +74,6 @@ export function createRateLimiters(): Record<LeadRouteKey, SlidingWindowRateLimi
 export function defaultLeadDeps(): LeadHandlerDeps {
   return {
     getRepository,
-    verifyTurnstile: defaultTurnstileVerifier,
     notify: notifyNewLead,
     limiters: createRateLimiters(),
     isProduction: process.env.NODE_ENV === "production",
@@ -183,11 +180,6 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
     }
   }
 
-  async function turnstile(request: Request, token: string) {
-    const result = await deps.verifyTurnstile(token, clientIp(request.headers));
-    if (!result.success) throw new HttpError(403, "turnstile_failed");
-  }
-
   function requireToken(request: Request): string {
     const token = readCookie(request, LEAD_COOKIE);
     if (!token) throw new HttpError(401, "no_lead");
@@ -237,7 +229,6 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
       }
       const parsed = createBodySchema.safeParse(body);
       if (!parsed.success) throw validationError(zodFieldErrors(parsed.error, body));
-      await turnstile(request, parsed.data.turnstileToken);
 
       const repo = deps.getRepository();
       const existing = readCookie(request, LEAD_COOKIE);
@@ -294,8 +285,6 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
       const repo = deps.getRepository();
       const refFields = await checkCompletionReferences(repo, data);
       if (Object.keys(refFields).length > 0) throw validationError(refFields);
-
-      await turnstile(request, parsed.data.turnstileToken);
 
       const ref = await repo.completeLead(token, data);
       const completedAt = (deps.now?.() ?? new Date()).toISOString();

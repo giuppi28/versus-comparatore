@@ -17,20 +17,20 @@ function errors(schema: { safeParse: (v: unknown) => { success: boolean; error?:
 
 describe("createBodySchema", () => {
   it("accepts Page 1 data and normalises the phone", () => {
-    const r = createBodySchema.safeParse({ data: page1Data({ phone: "+39 333-123.4567" }), turnstileToken: "t" });
+    const r = createBodySchema.safeParse({ data: page1Data({ phone: "+39 333-123.4567" }) });
     expect(r.success).toBe(true);
     expect(r.data?.data.phone).toBe("3331234567");
   });
 
   it("accepts consent only (all Page 1 fields optional)", () => {
-    expect(createBodySchema.safeParse({ data: { privacy_consent: true }, turnstileToken: "t" }).success).toBe(true);
+    expect(createBodySchema.safeParse({ data: { privacy_consent: true } }).success).toBe(true);
   });
 
   it("does not accept activation fields at creation", () => {
-    expect(errors(createBodySchema, { data: page1Data({}), turnstileToken: "t", extra: 1 })).toEqual({
+    expect(errors(createBodySchema, { data: page1Data({}), extra: 1 })).toEqual({
       extra: "unknown_field",
     });
-    expect(errors(createBodySchema, { data: { ...page1Data(), tax_code: VALID_CF }, turnstileToken: "t" })).toEqual({
+    expect(errors(createBodySchema, { data: { ...page1Data(), tax_code: VALID_CF } })).toEqual({
       tax_code: "unknown_field",
     });
   });
@@ -52,13 +52,13 @@ describe("createBodySchema", () => {
     [{ current_supplier_luce: "enel; drop table" }, "current_supplier_luce"],
     [{ has_gas: "si" }, "has_gas"],
   ])("rejects %j as invalid", (patch, key) => {
-    expect(errors(createBodySchema, { data: { ...page1Data(), ...patch }, turnstileToken: "t" })).toEqual({
+    expect(errors(createBodySchema, { data: { ...page1Data(), ...patch } })).toEqual({
       [key]: "invalid",
     });
   });
 
   it("trims names", () => {
-    const r = createBodySchema.safeParse({ data: page1Data({ first_name: "  Mario " }), turnstileToken: "t" });
+    const r = createBodySchema.safeParse({ data: page1Data({ first_name: "  Mario " }) });
     expect(r.data?.data.first_name).toBe("Mario");
   });
 });
@@ -90,7 +90,7 @@ describe("patchBodySchema", () => {
 
 describe("completeBodySchema + checkCompletion", () => {
   it("valid luce/casa/cambio payload passes", () => {
-    const r = completeBodySchema.safeParse({ data: completeData(), turnstileToken: "t" });
+    const r = completeBodySchema.safeParse({ data: completeData() });
     expect(r.success).toBe(true);
     expect(checkCompletion(r.data!.data).fields).toEqual({});
   });

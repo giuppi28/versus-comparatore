@@ -17,13 +17,13 @@ function stubFetch(status: number, body: unknown, headers: Record<string, string
 afterEach(() => vi.unstubAllGlobals());
 
 describe("lead client", () => {
-  it("createLead POSTs { data, turnstileToken } same-origin", async () => {
+  it("createLead POSTs { data } same-origin", async () => {
     const f = stubFetch(201, { ok: true });
-    await createLead(page1Data(), "tok");
+    await createLead(page1Data());
     const [url, init] = f.mock.calls[0];
     expect(url).toBe("/api/lead");
     expect(init).toMatchObject({ method: "POST", credentials: "same-origin" });
-    expect(JSON.parse(init!.body as string)).toEqual({ data: page1Data(), turnstileToken: "tok" });
+    expect(JSON.parse(init!.body as string)).toEqual({ data: page1Data() });
   });
 
   it("updateLead PATCHes { data } with keepalive", async () => {
@@ -35,18 +35,19 @@ describe("lead client", () => {
     expect(JSON.parse(init!.body as string)).toEqual({ data: { step_reached: "results" } });
   });
 
-  it("completeLead POSTs to /api/lead/complete; clearLead DELETEs", async () => {
+  it("completeLead POSTs { data } to /api/lead/complete; clearLead DELETEs", async () => {
     const f = stubFetch(200, { ok: true });
-    await completeLead(completeData(), "tok");
+    await completeLead(completeData());
     await clearLead();
     expect(f.mock.calls[0][0]).toBe("/api/lead/complete");
+    expect(JSON.parse(f.mock.calls[0][1]!.body as string)).toEqual({ data: completeData() });
     expect(f.mock.calls[1][1]).toMatchObject({ method: "DELETE" });
     expect(f.mock.calls[1][1]?.body).toBeUndefined();
   });
 
   it("throws typed validation errors with fields", async () => {
     stubFetch(422, { ok: false, error: "validation", fields: { tax_code: "name_mismatch" } });
-    const err = await completeLead(completeData(), "tok").catch((e: unknown) => e);
+    const err = await completeLead(completeData()).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(LeadApiError);
     expect(err).toMatchObject({ status: 422, code: "validation", fields: { tax_code: "name_mismatch" } });
   });

@@ -43,7 +43,6 @@ function setup() {
   notify = vi.fn<(l: NewLeadNotification) => Promise<void>>(async () => {});
   handlers = createLeadHandlers({
     getRepository: () => repo,
-    verifyTurnstile: async () => ({ success: true, errorCodes: [] }),
     notify,
     limiters: createRateLimiters(),
     isProduction: false,
@@ -57,10 +56,10 @@ function req(method: string, path: string, body: unknown, cookie?: string): Requ
   return new Request(`http://localhost:3000${path}`, { method, headers, body: JSON.stringify(body) });
 }
 
-const create = () => handlers.create(req("POST", "/api/lead", { data: page1Data(), turnstileToken: "t" }));
+const create = () => handlers.create(req("POST", "/api/lead", { data: page1Data() }));
 const update = () => handlers.update(req("PATCH", "/api/lead", { data: { first_name: "Anna" } }, COOKIE));
 const complete = () =>
-  handlers.complete(req("POST", "/api/lead/complete", { data: completeData(), turnstileToken: "t" }, COOKIE));
+  handlers.complete(req("POST", "/api/lead/complete", { data: completeData() }, COOKIE));
 
 async function expectNoLeak(res: Response) {
   const text = await res.clone().text();

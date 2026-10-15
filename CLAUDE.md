@@ -62,7 +62,7 @@ Code, comments, commits, docs, coordination files: **English**. All customer-fac
 - Next.js (App Router, TypeScript strict) + Tailwind CSS, in `app/`.
 - Supabase: Postgres + Auth (email/password, single admin) + Storage (logos). Migrations in `app/supabase/migrations/`, seed in `app/supabase/seed.sql`.
 - RLS on every table exactly as PRD §4.
-- Hosting target: Cloudflare (OpenNext). Turnstile on public forms and login. Resend for the new-lead email to Aldo.
+- Hosting target: **Vercel** (Hobby plan, custom domain; Pro may be needed later for commercial use). Cloudflare is not used. No Turnstile/captcha (anti-spam added later only if spam appears); server-side per-IP rate limiting (client IP from Vercel's `x-real-ip` / first `x-forwarded-for`) and the hashed server-only `LEAD_API_SECRET` are kept. Supabase keep-alive via a daily Vercel Cron Job (`app/vercel.json`). Resend for the new-lead email to Aldo.
 - Tests: Vitest (logic, validators) + Playwright (flows, desktop 1440px + mobile 390px).
 
 ## Supabase project (already created by the reviewer)

@@ -21,7 +21,6 @@ export const AUTH_MESSAGES = {
   invalidCredentials: "Email o password non corretti.",
   missingFields: "Inserisci email e password.",
   tooManyAttempts: "Troppi tentativi, riprova più tardi",
-  turnstileFailed: "Verifica di sicurezza non riuscita. Riprova.",
   invalidCode: "Codice non valido. Riprova.",
   missingCode: "Inserisci il codice a 6 cifre.",
   rejected: "Accesso non consentito.",

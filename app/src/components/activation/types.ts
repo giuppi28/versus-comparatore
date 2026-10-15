@@ -18,6 +18,6 @@ export interface StepProps {
 export interface StepBProps extends StepProps {
   suppliers: readonly Supplier[];
   submitting: boolean;
-  /** Turnstile widget slot (rendered just above the buttons). */
-  captcha: React.ReactNode;
+  /** Slot rendered just above the buttons (submit error message). */
+  beforeActions: React.ReactNode;
 }

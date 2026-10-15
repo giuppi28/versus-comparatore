@@ -4,7 +4,6 @@ import { completeData, page1Data } from "../src/lib/lead/test-fixtures";
 // Must match the webServer env in playwright.config.ts (mock auth, test-only).
 const ADMIN_EMAIL = "admin@versus.test";
 const ADMIN_PASSWORD = "Versus-Test-Password-2026!";
-const TURNSTILE_TOKEN = "XXXX.DUMMY.TOKEN.XXXX";
 const SHOTS = "e2e/screenshots";
 
 const rand = () => Math.random().toString(36).replace(/[^a-z]/g, "").slice(0, 8).padEnd(8, "q");
@@ -34,20 +33,20 @@ async function seedLeads(baseURL: string, playwright: PlaywrightWorkerArgs["play
 
   const done = await newClient();
   let res = await done.post("/api/lead", {
-    data: { data: page1Data(), turnstileToken: TURNSTILE_TOKEN },
+    data: { data: page1Data() },
   });
   expect(res.status(), await res.text()).toBeLessThan(300);
   const token = (await done.storageState()).cookies.find((c) => c.name === "versus_lead")?.value ?? "";
   expect(token).not.toBe("");
   res = await done.post("/api/lead/complete", {
-    data: { data: completeData({ pod: completedPod }), turnstileToken: TURNSTILE_TOKEN },
+    data: { data: completeData({ pod: completedPod }) },
   });
   expect(res.status(), await res.text()).toBeLessThan(300);
   await done.dispose();
 
   const partial = await newClient();
   res = await partial.post("/api/lead", {
-    data: { data: page1Data({ first_name: "Giulia", last_name: partialSurname, commodity: "dual" }), turnstileToken: TURNSTILE_TOKEN },
+    data: { data: page1Data({ first_name: "Giulia", last_name: partialSurname, commodity: "dual" }) },
   });
   expect(res.status(), await res.text()).toBeLessThan(300);
   res = await partial.patch("/api/lead", { data: { data: { step_reached: "results" } } });

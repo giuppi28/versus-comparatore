@@ -36,14 +36,13 @@ beforeEach(() => {
   vi.stubEnv("ADMIN_MOCK_EMAIL", "admin@versus.test");
   vi.stubEnv("ADMIN_MOCK_PASSWORD", "correct-password");
   vi.stubEnv("ADMIN_MOCK_SESSION_SECRET", "actions-test-secret-0123456789abcdef");
-  vi.stubEnv("TURNSTILE_SECRET_KEY", "");
   cookieJar.clear();
   requestHeaders = new Headers({ "x-forwarded-for": `10.0.0.${++ipCounter}` });
 });
 afterEach(() => vi.unstubAllEnvs());
 
 const creds = (password: string, email = "admin@versus.test") =>
-  form({ email, password, "cf-turnstile-response": "XXXX.DUMMY.TOKEN.XXXX" });
+  form({ email, password });
 
 describe("loginAction", () => {
   it("returns a generic error for wrong password and unknown email", async () => {
@@ -60,9 +59,14 @@ describe("loginAction", () => {
     expect(s.error).toBe(AUTH_MESSAGES.missingFields);
   });
 
-  it("requires a Turnstile token", async () => {
-    const s = await loginAction(INITIAL_AUTH_STATE, form({ email: "admin@versus.test", password: "correct-password" }));
-    expect(s.error).toBe(AUTH_MESSAGES.turnstileFailed);
+  it("keys the rate limit on the Vercel client IP, ignoring cf-connecting-ip", async () => {
+    requestHeaders = new Headers({ "x-real-ip": "10.9.9.9" });
+    for (let i = 0; i < 5; i++) {
+      requestHeaders.set("cf-connecting-ip", `172.16.0.${i}`);
+      await loginAction(INITIAL_AUTH_STATE, creds("wrong"));
+    }
+    requestHeaders.set("cf-connecting-ip", "172.16.0.99");
+    expect((await loginAction(INITIAL_AUTH_STATE, creds("correct-password"))).status).toBe(429);
   });
 
   it("signs in with correct credentials, sets the session cookie and redirects to /admin", async () => {

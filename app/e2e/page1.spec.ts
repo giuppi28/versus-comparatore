@@ -2,21 +2,10 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Page 1 (PRD §6). The Cloudflare Turnstile script is replaced by a stub that issues a token
- * right away (the server accepts any token with the official test secret), so the suite is
- * deterministic and offline-safe. The lead API is the real one unless a test stubs it.
+ * Page 1 (PRD §6). The lead API is the real one (mock data layer) unless a test stubs it.
  */
 
 const SHOTS = path.join(__dirname, "screenshots");
-
-const FAKE_TURNSTILE = `
-window.turnstile = {
-  render(el, opts) {
-    setTimeout(() => opts.callback("e2e-token"), 30);
-    return "w-" + Math.random();
-  },
-  remove() {},
-};`;
 
 test.beforeEach(async ({ page }) => {
   // Every test gets its own client IP so the per-IP rate limits (10 lead creations per
@@ -25,9 +14,6 @@ test.beforeEach(async ({ page }) => {
   await page.context().setExtraHTTPHeaders({
     "x-forwarded-for": `10.${(n >> 16) & 255}.${(n >> 8) & 255}.${n & 255}`,
   });
-  await page.route("https://challenges.cloudflare.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "text/javascript", body: FAKE_TURNSTILE }),
-  );
 });
 
 async function open(page: Page) {
@@ -87,7 +73,7 @@ test.describe("Page 1 — structure and copy", () => {
   test("shows blocks A–D; consumption appears after commodity + customer type", async ({ page }, testInfo) => {
     await open(page);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByAltText("VERSUS")).toBeVisible();
+    await expect(page.getByRole("img", { name: "VERSUS — comparatore luce e gas" })).toBeVisible();
     for (const id of ["block-commodity", "block-customer", "block-personal", "block-service"]) {
       await expect(page.getByTestId(id)).toBeVisible();
     }
@@ -369,8 +355,7 @@ test.describe("Page 1 — lead creation and submit", () => {
     expect(response.status()).toBe(201);
     const cookies = await page.context().cookies();
     expect(cookies.find((c) => c.name === "versus_lead")?.httpOnly).toBe(true);
-    // The widget is gone and the state remembers the lead.
-    await expect(page.getByTestId("turnstile")).toHaveCount(0);
+    // The state remembers the lead.
     const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem("versus.flow.v1") ?? "{}"));
     expect(stored.leadCreated).toBe(true);
     expect(stored.privacyConsent).toBe(true);
@@ -381,8 +366,7 @@ test.describe("Page 1 — lead creation and submit", () => {
     const request = page.waitForRequest((r) => r.url().endsWith("/api/lead") && r.method() === "POST");
     await consent(page);
     const body = (await request).postDataJSON();
-    expect(body.turnstileToken).toBe("e2e-token");
-    expect(body.data).toEqual({ privacy_consent: true });
+    expect(body).toEqual({ data: { privacy_consent: true } });
   });
 
   test("API errors are shown inline (429 → 'Troppe richieste, riprova tra poco.')", async ({ page }) => {
@@ -514,6 +498,10 @@ test.describe("Page 1 — persistence", () => {
     await fillPersonal(page);
     await consent(page);
 
+    const creations: string[] = [];
+    page.on("request", (r) => {
+      if (r.url().endsWith("/api/lead") && r.method() === "POST") creations.push(r.url());
+    });
     await page.reload();
     await expect(page.getByTestId("page1-form")).toHaveAttribute("data-hydrated", "true");
 
@@ -536,8 +524,8 @@ test.describe("Page 1 — persistence", () => {
     await expect(page.getByTestId("estimate-luce")).toHaveText("Consumo stimato: ~1.450 kWh/anno");
     // 75 m² x 13 + cucina (40 + 2 x 10) = 975 + 60
     await expect(page.getByTestId("estimate-gas")).toHaveText("Consumo stimato: ~1.035 Smc/anno");
-    // The lead already exists: no new widget / request after the refresh.
-    await expect(page.getByTestId("turnstile")).toHaveCount(0);
+    // The lead already exists: no new creation request after the refresh.
+    expect(creations).toEqual([]);
   });
 
   test("manual consumption and Partita IVA data survive a refresh", async ({ page }) => {

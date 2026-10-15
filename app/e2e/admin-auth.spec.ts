@@ -11,7 +11,7 @@ async function fillLogin(page: Page, email: string, password: string, expectRedi
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   const submit = page.getByRole("button", { name: "Accedi" });
-  // Enabled once the Turnstile widget (test site key) has issued a token.
+  // Enabled once the form is hydrated.
   await expect(submit).toBeEnabled({ timeout: 20_000 });
   await submit.click();
   if (!expectRedirect) await expect(form).toHaveAttribute("data-attempt", String(attempt + 1));
@@ -33,7 +33,7 @@ test.describe("admin authentication", () => {
     await expect(page.getByRole("heading", { name: "Area riservata" })).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();
     await expect(page.getByLabel("Password")).toBeVisible();
-    await expect(page.getByTestId("turnstile")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Accedi" })).toBeEnabled();
     // No sign-up anywhere.
     await expect(page.getByText(/registrati|crea (un )?account/i)).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
