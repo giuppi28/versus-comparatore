@@ -4,6 +4,7 @@ import {
   DEFAULT_COMUNI_LIMIT,
   LeadNotFoundError,
   OfferNotFoundError,
+  PlaceholderSupplierError,
   PrivacyConsentRequiredError,
   SupplierNotFoundError,
   SupplierSlugTakenError,
@@ -14,6 +15,7 @@ import type {
   Lead,
   LeadData,
   LeadCompletion,
+  LeadOfferSnapshot,
   Offer,
   OfferInput,
   LeadQuery,
@@ -22,7 +24,7 @@ import type {
   Supplier,
   SupplierInput,
 } from "../types";
-import { LEAD_PAGE_SIZE_DEFAULT, LEAD_PAGE_SIZE_MAX } from "../types";
+import { LEAD_HISTORY_FIELDS, LEAD_PAGE_SIZE_DEFAULT, LEAD_PAGE_SIZE_MAX } from "../types";
 import { MOCK_COMUNI, MOCK_OFFERS, MOCK_SUPPLIERS } from "./data";
 
 export interface MockSeed {
@@ -77,13 +79,19 @@ function emptyLead(id: string, token: string, now: string): Lead {
     pdr: null,
     privacy_consent: false,
     marketing_consent: null,
+    chosen_offer_luce_snapshot: null,
+    chosen_offer_gas_snapshot: null,
+    current_supplier_luce_name: null,
+    current_supplier_gas_name: null,
   };
 }
 
 /** Never let callers overwrite server-managed columns through lead data. */
 function sanitize(data: LeadData): LeadData {
   const copy: Record<string, unknown> = { ...data };
-  for (const k of ["id", "token", "created_at", "updated_at", "status", "notes"]) delete copy[k];
+  for (const k of ["id", "token", "created_at", "updated_at", "status", "notes", ...LEAD_HISTORY_FIELDS]) {
+    delete copy[k];
+  }
   return copy as LeadData;
 }
 
@@ -139,6 +147,55 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
     const lead = token ? leads.find((l) => l.token === token) : undefined;
     if (!lead) throw new LeadNotFoundError();
     return lead;
+  }
+
+  /** Mirrors the DB trigger offers_snapshot_before_delete (migration 20261015170000). */
+  function snapshotOfferIntoLeads(o: Offer) {
+    const snapshot: LeadOfferSnapshot = {
+      offer_id: o.id,
+      supplier_name: supplierById(o.supplier_id)?.name ?? null,
+      offer_name: o.name,
+      commodity: o.commodity,
+      energy_price: o.energy_price,
+      other_variable_costs: o.other_variable_costs,
+      fixed_fee_monthly: o.fixed_fee_monthly,
+      other_fixed_costs_monthly: o.other_fixed_costs_monthly,
+      locked_months: o.locked_months,
+      deleted_at: new Date().toISOString(),
+    };
+    for (const lead of leads) {
+      let touched = false;
+      for (const side of ["luce", "gas"] as const) {
+        const ref = `chosen_offer_${side}` as const;
+        const snap = `chosen_offer_${side}_snapshot` as const;
+        if (lead[ref] !== o.id) continue;
+        // Keep an existing copy of the same offer; replace a stale copy of another one.
+        if (lead[snap]?.offer_id !== o.id) lead[snap] = { ...snapshot };
+        lead[ref] = null; // ON DELETE SET NULL
+        touched = true;
+      }
+      if (touched) lead.updated_at = new Date().toISOString();
+    }
+  }
+
+  /** Mirrors the DB trigger suppliers_guard_before_delete (name part). */
+  function storeSupplierNameInLeads(s: Supplier) {
+    for (const lead of leads) {
+      let touched = false;
+      for (const side of ["luce", "gas"] as const) {
+        const ref = `current_supplier_${side}` as const;
+        if (lead[ref] !== s.id) continue;
+        lead[`current_supplier_${side}_name`] = s.name;
+        lead[ref] = null; // ON DELETE SET NULL
+        touched = true;
+      }
+      if (touched) lead.updated_at = new Date().toISOString();
+    }
+  }
+
+  function removeOffer(o: Offer) {
+    snapshotOfferIntoLeads(o);
+    offers.splice(offers.indexOf(o), 1);
   }
 
   function apply(lead: Lead, data: LeadData) {
@@ -260,6 +317,19 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       return structuredClone(lead);
     },
 
+    async deleteLeads(ids) {
+      const wanted = new Set(ids);
+      if (wanted.size === 0) return 0;
+      let deleted = 0;
+      for (let i = leads.length - 1; i >= 0; i--) {
+        if (wanted.has(leads[i].id)) {
+          leads.splice(i, 1);
+          deleted++;
+        }
+      }
+      return deleted;
+    },
+
     async listAllSuppliers() {
       return [...suppliers].sort(bySupplierOrder).map((s) => ({ ...s }));
     },
@@ -313,6 +383,22 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       return `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`;
     },
 
+    async countOffersBySupplier(supplierId) {
+      return offers.filter((o) => o.supplier_id === supplierId).length;
+    },
+
+    async deleteSupplier(id) {
+      const s = supplierById(id);
+      if (!s) throw new SupplierNotFoundError();
+      if (s.is_placeholder) throw new PlaceholderSupplierError();
+      const own = offers.filter((o) => o.supplier_id === id);
+      for (const o of own) removeOffer(o);
+      storeSupplierNameInLeads(s);
+      suppliers.splice(suppliers.indexOf(s), 1);
+      // Mock logos are data: URLs or /logos/ files: nothing to clean up.
+      return { deletedOffers: own.length, logoCleanupFailed: false };
+    },
+
     async listAllOffers() {
       return offers
         .map(withSupplier)
@@ -350,6 +436,12 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
 
     async setOfferFlags(id, flags) {
       return repo.updateOffer(id, definedOnly(flags));
+    },
+
+    async deleteOffer(id) {
+      const o = offers.find((x) => x.id === id);
+      if (!o) throw new OfferNotFoundError();
+      removeOffer(o);
     },
 
     async saveOffer(input: OfferInput) {

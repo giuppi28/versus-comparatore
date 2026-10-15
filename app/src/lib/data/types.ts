@@ -84,6 +84,34 @@ export type SqmRange = "lt60" | "60_90" | "90_120" | "gt120";
 export type Voltage = 220 | 380;
 
 /**
+ * Compact copy of a chosen offer, written into the lead by the DB trigger
+ * `offers_snapshot_before_delete` (migration 20261015170000) right before the offer is
+ * deleted. Prices are numbers, VAT excluded, same units as `Offer`.
+ */
+export interface LeadOfferSnapshot {
+  offer_id: string;
+  supplier_name: string | null;
+  offer_name: string;
+  commodity: Commodity;
+  energy_price: number;
+  other_variable_costs: number;
+  fixed_fee_monthly: number;
+  other_fixed_costs_monthly: number;
+  locked_months: number;
+  /** ISO timestamp of the deletion. */
+  deleted_at: string;
+}
+
+/** Lead columns maintained only by the DB delete triggers (never written by the customer flow). */
+export const LEAD_HISTORY_FIELDS = [
+  "chosen_offer_luce_snapshot",
+  "chosen_offer_gas_snapshot",
+  "current_supplier_luce_name",
+  "current_supplier_gas_name",
+] as const;
+export type LeadHistoryField = (typeof LEAD_HISTORY_FIELDS)[number];
+
+/**
  * `current_supplier_*` hold a suppliers.id (including the special rows
  * "Servizio di Tutela / Tutele Graduali", "Altro fornitore", "Non lo so").
  */
@@ -139,11 +167,22 @@ export interface Lead {
 
   privacy_consent: boolean;
   marketing_consent: boolean | null;
+
+  // History kept when the referenced offer / supplier is deleted (DB triggers, Phase 11).
+  // Show them when the live chosen_offer_* / current_supplier_* is null.
+  /** Copy of the chosen luce offer, written when that offer was deleted. */
+  chosen_offer_luce_snapshot: LeadOfferSnapshot | null;
+  /** Copy of the chosen gas offer, written when that offer was deleted. */
+  chosen_offer_gas_snapshot: LeadOfferSnapshot | null;
+  /** Name of the current luce supplier, written when that supplier was deleted. */
+  current_supplier_luce_name: string | null;
+  /** Name of the current gas supplier, written when that supplier was deleted. */
+  current_supplier_gas_name: string | null;
 }
 
 /** Fields the customer flow may write (everything except server-managed columns). */
 export type LeadData = Partial<
-  Omit<Lead, "id" | "token" | "created_at" | "updated_at" | "status" | "notes">
+  Omit<Lead, "id" | "token" | "created_at" | "updated_at" | "status" | "notes" | LeadHistoryField>
 >;
 
 /** Reference returned by create/complete: the row id and the secret token. */
@@ -212,6 +251,17 @@ export type SupplierCreateInput = Pick<Supplier, "name" | "slug"> &
 
 export type OfferCreateInput = Omit<Offer, "id" | "updated_at">;
 export type OfferPatch = Partial<OfferCreateInput>;
+/** Result of Repository.deleteSupplier. */
+export interface SupplierDeletion {
+  /** Offers of the supplier deleted together with it. */
+  deletedOffers: number;
+  /**
+   * True when the supplier row was deleted but removing its logo from Supabase Storage
+   * failed (an orphan file is left in the public bucket; harmless, can be removed later).
+   */
+  logoCleanupFailed: boolean;
+}
+
 /** Quick toggles on the offer list. */
 export interface OfferFlags {
   active?: boolean;

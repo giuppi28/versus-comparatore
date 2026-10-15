@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveLogoUrl } from "./logo";
+import { isStorageLogoPath, resolveLogoUrl } from "./logo";
 
 const SB = "https://abc.supabase.co";
 
@@ -33,5 +33,14 @@ describe("resolveLogoUrl", () => {
     expect(resolveLogoUrl("javascript:alert(1)", SB)).toBeNull();
     expect(resolveLogoUrl("//evil.com/a.svg", SB)).toBeNull();
     expect(resolveLogoUrl("data:text/html;base64,AAA", SB)).toBeNull();
+  });
+});
+
+describe("isStorageLogoPath", () => {
+  it("true only for bucket object paths", () => {
+    expect(isStorageLogoPath("11111111-1111-4111-8111-111111111111/1700000000000.svg")).toBe(true);
+    for (const p of [null, undefined, "", "  ", "/logos/enel-energia.svg", "https://x.it/a.svg", "data:image/svg+xml;base64,AA", "javascript:alert(1)"]) {
+      expect(isStorageLogoPath(p)).toBe(false);
+    }
   });
 });

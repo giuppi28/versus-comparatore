@@ -398,6 +398,207 @@ begin
   raise notice 'ok: anon visibility after admin changes';
 end $$;
 
+-- ================================================================ DELETIONS (Phase 11, D1)
+-- Lead snapshots written by the BEFORE DELETE triggers on offers / suppliers, placeholder
+-- suppliers protected, only an admin (aal2 here, MFA factor verified above) can delete.
+reset role;
+insert into public.suppliers (id, name, slug, logo_path, sells_luce, sells_gas, active) values
+  ('00000000-0000-4000-8000-00000000b101', 'RLS Delete Supplier',   'zz-rls-del',   '00000000-0000-4000-8000-00000000b101/1.svg', true, true, true),
+  ('00000000-0000-4000-8000-00000000b102', 'RLS Delete Supplier 2', 'zz-rls-del-2', null, true, true, true);
+insert into public.offers (id, supplier_id, name, commodity, energy_price, other_variable_costs,
+                           fixed_fee_monthly, other_fixed_costs_monthly, locked_months) values
+  ('00000000-0000-4000-8000-00000000d101', '00000000-0000-4000-8000-00000000b101', 'RLS Del Luce', 'luce', 0.123456, 0.01, 9.5, 1.25, 24),
+  ('00000000-0000-4000-8000-00000000d102', '00000000-0000-4000-8000-00000000b101', 'RLS Del Gas',  'gas',  0.48,     0.2,  8,   0,    12),
+  ('00000000-0000-4000-8000-00000000d103', '00000000-0000-4000-8000-00000000b101', 'RLS Del Luce 2', 'luce', 0.15,   0.02, 7,   0,    12);
+insert into public.leads (id, privacy_consent, commodity, chosen_offer_luce, chosen_offer_gas,
+                          current_supplier_luce, current_supplier_gas,
+                          chosen_offer_luce_snapshot) values
+  -- e1: references the luce + gas offer of supplier b101 and both suppliers
+  ('00000000-0000-4000-8000-00000000e001', true, 'dual', '00000000-0000-4000-8000-00000000d101', '00000000-0000-4000-8000-00000000d102',
+   '00000000-0000-4000-8000-00000000b101', '00000000-0000-4000-8000-00000000b102', null),
+  -- e2: already holds a snapshot of the SAME offer -> kept
+  ('00000000-0000-4000-8000-00000000e002', true, 'luce', '00000000-0000-4000-8000-00000000d103', null, null, null,
+   '{"offer_id":"00000000-0000-4000-8000-00000000d103","offer_name":"Kept"}'),
+  -- e3: holds a stale snapshot of ANOTHER (earlier deleted) offer -> replaced
+  ('00000000-0000-4000-8000-00000000e003', true, 'luce', '00000000-0000-4000-8000-00000000d103', null, null, null,
+   '{"offer_id":"00000000-0000-4000-8000-00000000dfff","offer_name":"Stale"}'),
+  -- e4: current supplier = placeholder "Servizio di Tutela"
+  ('00000000-0000-4000-8000-00000000e004', true, 'luce', null, null,
+   (select id from public.suppliers where slug = 'tutela'), null, null);
+
+-- anon: no delete privilege on leads / offers / suppliers at all
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare ok boolean;
+begin
+  ok := false; begin delete from public.leads where id = '00000000-0000-4000-8000-00000000e001'; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could delete leads'; end if;
+  ok := false; begin delete from public.offers where id = '00000000-0000-4000-8000-00000000d101'; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could delete offers'; end if;
+  ok := false; begin delete from public.suppliers where id = '00000000-0000-4000-8000-00000000b102'; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could delete suppliers'; end if;
+  ok := false; begin perform private.offers_snapshot_before_delete(); exception when insufficient_privilege or feature_not_supported then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could call the offer delete trigger function'; end if;
+  raise notice 'ok: anon cannot delete leads / offers / suppliers';
+end $$;
+
+-- authenticated non-admin: RLS hides every row, nothing is deleted
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a2","role":"authenticated"}';
+do $$
+declare n integer;
+begin
+  delete from public.leads;
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: non-admin deleted % leads', n; end if;
+  delete from public.offers where id = '00000000-0000-4000-8000-00000000d101';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: non-admin deleted an offer'; end if;
+  delete from public.suppliers where id = '00000000-0000-4000-8000-00000000b102';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: non-admin deleted a supplier'; end if;
+  raise notice 'ok: non-admin cannot delete';
+end $$;
+
+-- admin with a verified factor on aal1: blocked by the MFA restrictive policies
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal1"}';
+do $$
+declare n integer;
+begin
+  delete from public.leads where id = '00000000-0000-4000-8000-00000000e001';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: admin on aal1 deleted a lead'; end if;
+  delete from public.offers where id = '00000000-0000-4000-8000-00000000d101';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: admin on aal1 deleted an offer'; end if;
+  raise notice 'ok: admin on aal1 cannot delete';
+end $$;
+
+-- admin (aal2): deletes, triggers write the history
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}';
+do $$
+declare
+  ok    boolean;
+  n     integer;
+  err   text;
+  state text;
+  l     public.leads;
+  snap  jsonb;
+begin
+  -- placeholder suppliers cannot be deleted (clear error, nothing changed)
+  ok := false;
+  begin
+    delete from public.suppliers where slug = 'tutela';
+  exception when others then
+    err := sqlerrm; state := sqlstate;
+    ok := err like 'placeholder_supplier:%' and state = 'P0001';
+  end;
+  if not ok then raise exception 'FAIL: placeholder supplier delete not rejected (% / %)', state, err; end if;
+  select count(*) into n from public.suppliers where is_placeholder;
+  if n <> 3 then raise exception 'FAIL: % of 3 placeholder suppliers left', n; end if;
+
+  -- supplier with offers: still ON DELETE RESTRICT, and the failed delete leaves no trace
+  ok := false;
+  begin
+    delete from public.suppliers where id = '00000000-0000-4000-8000-00000000b101';
+  exception when restrict_violation then ok := true;  -- SQLSTATE 23001
+  end;
+  if not ok then raise exception 'FAIL: supplier with offers was deleted (RESTRICT expected)'; end if;
+  select * into l from public.leads where id = '00000000-0000-4000-8000-00000000e001';
+  if l.current_supplier_luce_name is not null or l.current_supplier_luce is null then
+    raise exception 'FAIL: rejected supplier delete changed lead e1 (%, %)', l.current_supplier_luce, l.current_supplier_luce_name;
+  end if;
+
+  -- single offer delete: snapshot written / kept / replaced, FK cleared
+  delete from public.offers where id = '00000000-0000-4000-8000-00000000d103';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'FAIL: admin could not delete an offer'; end if;
+  select * into l from public.leads where id = '00000000-0000-4000-8000-00000000e002';
+  if l.chosen_offer_luce is not null or l.chosen_offer_luce_snapshot ->> 'offer_name' <> 'Kept' then
+    raise exception 'FAIL: existing snapshot of the same offer overwritten (%)', l.chosen_offer_luce_snapshot;
+  end if;
+  select * into l from public.leads where id = '00000000-0000-4000-8000-00000000e003';
+  if l.chosen_offer_luce is not null
+     or l.chosen_offer_luce_snapshot ->> 'offer_name' <> 'RLS Del Luce 2'
+     or l.chosen_offer_luce_snapshot ->> 'offer_id' <> '00000000-0000-4000-8000-00000000d103' then
+    raise exception 'FAIL: stale snapshot of another offer not replaced (%)', l.chosen_offer_luce_snapshot;
+  end if;
+  select * into l from public.leads where id = '00000000-0000-4000-8000-00000000e001';
+  if l.chosen_offer_luce_snapshot is not null or l.chosen_offer_gas_snapshot is not null
+     or l.chosen_offer_luce is null or l.chosen_offer_gas is null then
+    raise exception 'FAIL: lead e1 touched by the delete of an offer it does not reference';
+  end if;
+
+  -- supplier delete flow used by the app: ALL its offers in one statement (lead e1 references
+  -- both the luce and the gas offer), then the supplier
+  delete from public.offers where supplier_id = '00000000-0000-4000-8000-00000000b101';
+  get diagnostics n = row_count;
+  if n <> 2 then raise exception 'FAIL: admin deleted % of 2 remaining offers of the supplier', n; end if;
+  select * into l from public.leads where id = '00000000-0000-4000-8000-00000000e001';
+  snap := l.chosen_offer_luce_snapshot;
+  if l.chosen_offer_luce is not null or l.chosen_offer_gas is not null then raise exception 'FAIL: chosen offers not cleared'; end if;
+  if snap is null then raise exception 'FAIL: no luce snapshot on lead e1'; end if;
+  if (select array_agg(k order by k) from jsonb_object_keys(snap) k) <> array[
+       'commodity', 'deleted_at', 'energy_price', 'fixed_fee_monthly', 'locked_months', 'offer_id',
+       'offer_name', 'other_fixed_costs_monthly', 'other_variable_costs', 'supplier_name'] then
+    raise exception 'FAIL: snapshot keys %', snap;
+  end if;
+  if snap ->> 'offer_id' <> '00000000-0000-4000-8000-00000000d101'
+     or snap ->> 'supplier_name' <> 'RLS Delete Supplier'
+     or snap ->> 'offer_name' <> 'RLS Del Luce'
+     or snap ->> 'commodity' <> 'luce'
+     or jsonb_typeof(snap -> 'energy_price') <> 'number'
+     or (snap ->> 'energy_price')::numeric <> 0.123456
+     or (snap ->> 'other_variable_costs')::numeric <> 0.01
+     or (snap ->> 'fixed_fee_monthly')::numeric <> 9.5
+     or (snap ->> 'other_fixed_costs_monthly')::numeric <> 1.25
+     or (snap -> 'locked_months') <> '24'::jsonb
+     or (snap ->> 'deleted_at')::timestamptz is null then
+    raise exception 'FAIL: luce snapshot values %', snap;
+  end if;
+  if l.chosen_offer_gas_snapshot ->> 'offer_name' <> 'RLS Del Gas'
+     or l.chosen_offer_gas_snapshot ->> 'offer_id' <> '00000000-0000-4000-8000-00000000d102'
+     or l.chosen_offer_gas_snapshot ->> 'commodity' <> 'gas'
+     or l.chosen_offer_gas_snapshot ->> 'supplier_name' <> 'RLS Delete Supplier' then
+    raise exception 'FAIL: gas snapshot %', l.chosen_offer_gas_snapshot;
+  end if;
+  -- both suppliers referenced by lead e1 in ONE statement
+  delete from public.suppliers where id in ('00000000-0000-4000-8000-00000000b101', '00000000-0000-4000-8000-00000000b102');
+  get diagnostics n = row_count;
+  if n <> 2 then raise exception 'FAIL: admin deleted % of 2 suppliers', n; end if;
+  select * into l from public.leads where id = '00000000-0000-4000-8000-00000000e001';
+  if l.current_supplier_luce is not null or l.current_supplier_gas is not null
+     or l.current_supplier_luce_name is distinct from 'RLS Delete Supplier'
+     or l.current_supplier_gas_name is distinct from 'RLS Delete Supplier 2' then
+    raise exception 'FAIL: supplier names on lead e1 (% / %)', l.current_supplier_luce_name, l.current_supplier_gas_name;
+  end if;
+  select * into l from public.leads where id = '00000000-0000-4000-8000-00000000e004';
+  if l.current_supplier_luce is null or l.current_supplier_luce_name is not null then
+    raise exception 'FAIL: lead e4 (placeholder supplier) changed';
+  end if;
+
+  -- leads: bulk delete by id
+  delete from public.leads where id in ('00000000-0000-4000-8000-00000000e001', '00000000-0000-4000-8000-00000000e002',
+                                        '00000000-0000-4000-8000-00000000e003', '00000000-0000-4000-8000-00000000e004');
+  get diagnostics n = row_count;
+  if n <> 4 then raise exception 'FAIL: admin deleted % of 4 leads', n; end if;
+  raise notice 'ok: admin deletions keep lead history';
+end $$;
+
+reset role;
+do $$
+declare n integer;
+begin
+  select count(*) into n from public.leads where id::text like '00000000-0000-4000-8000-00000000e00%';
+  if n <> 0 then raise exception 'FAIL: % deleted test leads still exist', n; end if;
+  select count(*) into n from public.suppliers where slug in ('zz-rls-del', 'zz-rls-del-2');
+  if n <> 0 then raise exception 'FAIL: deleted test suppliers still exist'; end if;
+  select count(*) into n from public.offers where supplier_id = '00000000-0000-4000-8000-00000000b101';
+  if n <> 0 then raise exception 'FAIL: offers of the deleted supplier still exist'; end if;
+  raise notice 'ok: postgres verification after deletions';
+end $$;
+
 reset role;
 do $$ begin raise notice 'ALL RLS TESTS PASSED'; end $$;
 rollback;

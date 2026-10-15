@@ -18,6 +18,7 @@ import type {
   Settings,
   Supplier,
   SupplierCreateInput,
+  SupplierDeletion,
   SupplierInput,
   SupplierPatch,
 } from "./types";
@@ -70,6 +71,32 @@ export class SupplierSlugTakenError extends Error {
   constructor() {
     super("Another supplier already uses this slug");
     this.name = "SupplierSlugTakenError";
+  }
+}
+
+/**
+ * Placeholder suppliers (Tutela / Altro fornitore / Non lo so) can never be deleted.
+ * Thrown by deleteSupplier before anything is touched; the DB trigger
+ * `suppliers_guard_before_delete` raises `placeholder_supplier: ...` as well.
+ */
+export class PlaceholderSupplierError extends Error {
+  readonly code = "placeholder_supplier" as const;
+  constructor() {
+    super("Placeholder suppliers cannot be deleted");
+    this.name = "PlaceholderSupplierError";
+  }
+}
+
+/**
+ * The supplier still has offers, so the DB refused the delete (offers.supplier_id is
+ * ON DELETE RESTRICT), e.g. an offer was created between the two steps of deleteSupplier.
+ * Its other offers may already be deleted.
+ */
+export class SupplierHasOffersError extends Error {
+  readonly code = "supplier_has_offers" as const;
+  constructor() {
+    super("The supplier still has offers and was not deleted");
+    this.name = "SupplierHasOffersError";
   }
 }
 
@@ -139,6 +166,12 @@ export interface Repository {
   getLead(id: string): Promise<Lead | null>;
   /** Updates status / internal notes. Throws LeadNotFoundError. */
   updateLeadAdmin(id: string, patch: LeadAdminPatch): Promise<Lead>;
+  /**
+   * Permanently deletes the leads with these ids; returns how many were deleted
+   * (unknown ids are ignored, duplicates counted once). Empty array: 0, no query.
+   * Id validation (UUID, max 200 per call) belongs to the server action.
+   */
+  deleteLeads(ids: string[]): Promise<number>;
 
   // Suppliers
   /** All suppliers including inactive ones, ordered by sort_order. */
@@ -157,6 +190,18 @@ export interface Repository {
    * Throws InvalidLogoError (defence in depth) / SupplierNotFoundError.
    */
   uploadSupplierLogo(supplierId: string, svg: string): Promise<string>;
+  /** Number of offers (active or not) of the supplier, for the delete confirmation. */
+  countOffersBySupplier(supplierId: string): Promise<number>;
+  /**
+   * Permanently deletes the supplier AND all its offers (offers first, so the DB trigger
+   * stores a snapshot of each in the leads that chose it; then the supplier, whose name is
+   * stored in the leads that had it as current supplier).
+   * If logo_path is a Supabase Storage object, the supplier's logo objects
+   * ("<supplier_id>/...") are removed too; "/logos/..." files are left alone.
+   * Throws SupplierNotFoundError, PlaceholderSupplierError (checked before touching any
+   * offer), SupplierHasOffersError (offer added concurrently), or a generic Error.
+   */
+  deleteSupplier(id: string): Promise<SupplierDeletion>;
 
   // Offers
   /** All offers (active and inactive) with supplier, ordered by supplier, commodity, name. */
@@ -168,6 +213,12 @@ export interface Repository {
   updateOffer(id: string, patch: OfferPatch): Promise<OfferWithSupplier>;
   /** Quick toggles (active / featured / price_verified). Throws OfferNotFoundError. */
   setOfferFlags(id: string, flags: OfferFlags): Promise<OfferWithSupplier>;
+  /**
+   * Permanently deletes the offer. Leads that chose it keep a copy in
+   * chosen_offer_*_snapshot (DB trigger) and their chosen_offer_* becomes null.
+   * Throws OfferNotFoundError.
+   */
+  deleteOffer(id: string): Promise<void>;
   /** Upsert (create when no id). Kept for bulk/test use; admin UI uses create/update. */
   saveOffer(input: OfferInput): Promise<Offer>;
   /** Go-live checklist: active offers (of active suppliers or not) with price_verified = false. */

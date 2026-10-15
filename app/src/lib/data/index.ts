@@ -10,13 +10,15 @@ export {
   SupplierNotFoundError,
   OfferNotFoundError,
   SupplierSlugTakenError,
+  PlaceholderSupplierError,
+  SupplierHasOffersError,
   InvalidLogoError,
   assertSafeSvg,
   MAX_LOGO_BYTES,
   SUPPLIER_LOGO_BUCKET,
   DEFAULT_COMUNI_LIMIT,
 } from "./repository";
-export { resolveLogoUrl } from "./logo";
+export { resolveLogoUrl, isStorageLogoPath } from "./logo";
 export type { Repository } from "./repository";
 export { createMockRepository } from "./mock/mock-repository";
 export { createSupabaseRepository, createSupabaseClient } from "./supabase/supabase-repository";

@@ -139,6 +139,48 @@ begin
    where slug in ('tutela','altro-fornitore','non-lo-so') and is_placeholder and logo_path is null;
   if n <> 3 then raise exception 'FAIL: % of 3 placeholder suppliers have null logo_path', n; end if;
 
+  -- ---------------------------------------------------------------- lead snapshots on delete (Phase 11, D1)
+  select count(*) into n from information_schema.columns
+   where table_schema = 'public' and table_name = 'leads' and is_nullable = 'YES' and column_default is null
+     and ((column_name in ('chosen_offer_luce_snapshot', 'chosen_offer_gas_snapshot') and data_type = 'jsonb')
+       or (column_name in ('current_supplier_luce_name', 'current_supplier_gas_name') and data_type = 'text'));
+  if n <> 4 then raise exception 'FAIL: % of 4 lead snapshot columns (nullable, no default, right type)', n; end if;
+  -- the customer flow can never write them
+  select count(*) into n from unnest(private.lead_writable_fields()) f
+   where f in ('chosen_offer_luce_snapshot', 'chosen_offer_gas_snapshot', 'current_supplier_luce_name', 'current_supplier_gas_name');
+  if n <> 0 then raise exception 'FAIL: snapshot columns are writable by the lead functions'; end if;
+
+  -- BEFORE DELETE, FOR EACH ROW, enabled, and only on DELETE (tgtype bits: ROW 1, BEFORE 2, INSERT 4, DELETE 8, UPDATE 16)
+  select count(*) into n from pg_trigger t
+   where not t.tgisinternal and t.tgenabled = 'O' and (t.tgtype & 31) = 11
+     and ((t.tgrelid = 'public.offers'::regclass and t.tgname = 'offers_snapshot_before_delete'
+           and t.tgfoid = 'private.offers_snapshot_before_delete()'::regprocedure)
+       or (t.tgrelid = 'public.suppliers'::regclass and t.tgname = 'suppliers_guard_before_delete'
+           and t.tgfoid = 'private.suppliers_guard_before_delete()'::regprocedure));
+  if n <> 2 then raise exception 'FAIL: % of 2 BEFORE DELETE triggers on offers/suppliers', n; end if;
+
+  -- trigger functions: SECURITY DEFINER, search_path = '', owned by postgres, not executable by API roles
+  select count(*) into n from pg_proc p
+   where p.oid in ('private.offers_snapshot_before_delete()'::regprocedure,
+                   'private.suppliers_guard_before_delete()'::regprocedure)
+     and p.prosecdef
+     and 'search_path=""' = any (p.proconfig)
+     and pg_get_userbyid(p.proowner) = 'postgres'
+     and not has_function_privilege('anon', p.oid, 'execute')
+     and not has_function_privilege('authenticated', p.oid, 'execute')
+     and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where a.grantee = 0);
+  if n <> 2 then raise exception 'FAIL: % of 2 trigger functions are security definer / search_path '''' / postgres-owned / not executable', n; end if;
+
+  -- offers.supplier_id stays ON DELETE RESTRICT; leads FKs to offers/suppliers stay ON DELETE SET NULL
+  select count(*) into n from pg_constraint c
+   where c.contype = 'f' and c.conrelid = 'public.offers'::regclass
+     and c.confrelid = 'public.suppliers'::regclass and c.confdeltype = 'r';
+  if n <> 1 then raise exception 'FAIL: offers.supplier_id is not ON DELETE RESTRICT'; end if;
+  select count(*) into n from pg_constraint c
+   where c.contype = 'f' and c.conrelid = 'public.leads'::regclass
+     and c.confrelid in ('public.offers'::regclass, 'public.suppliers'::regclass) and c.confdeltype = 'n';
+  if n <> 4 then raise exception 'FAIL: % of 4 lead FKs to offers/suppliers are ON DELETE SET NULL', n; end if;
+
   -- ---------------------------------------------------------------- settings
   select count(*) into n from public.settings;
   if n <> 1 then raise exception 'FAIL: settings must have exactly 1 row, got %', n; end if;

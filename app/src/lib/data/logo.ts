@@ -29,3 +29,16 @@ export function resolveLogoUrl(
     .join("/");
   return `${base}/storage/v1/object/public/${SUPPLIER_LOGO_BUCKET}/${key}`;
 }
+
+/**
+ * True when `logoPath` is an object path in the "supplier-logos" Storage bucket
+ * (what uploadSupplierLogo returns: "<supplier_id>/<timestamp>.svg"), i.e. not an
+ * http(s) URL, not a root-relative "/logos/..." file, not a data: URL, not another scheme.
+ */
+export function isStorageLogoPath(logoPath: string | null | undefined): boolean {
+  const p = logoPath?.trim();
+  if (!p) return false;
+  if (p.startsWith("/")) return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(p)) return false;
+  return true;
+}

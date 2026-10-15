@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isStorageLogoPath } from "../logo";
 import { normalizeSearch } from "../normalize";
 import {
   assertSafeSvg,
@@ -6,7 +7,9 @@ import {
   LeadApiSecretError,
   LeadNotFoundError,
   OfferNotFoundError,
+  PlaceholderSupplierError,
   PrivacyConsentRequiredError,
+  SupplierHasOffersError,
   SupplierNotFoundError,
   SupplierSlugTakenError,
   SUPPLIER_LOGO_BUCKET,
@@ -16,6 +19,7 @@ import type {
   Comune,
   Lead,
   LeadCompletion,
+  LeadOfferSnapshot,
   LeadQuery,
   LeadRef,
   Offer,
@@ -41,6 +45,10 @@ import { LEAD_PAGE_SIZE_DEFAULT, LEAD_PAGE_SIZE_MAX } from "../types";
  *   session (see getAdminRepository) so RLS `is_admin()` policies apply
  * - Storage: public bucket "supplier-logos" (public read; insert/update/delete
  *   for admins only), objects keyed "<supplier_id>/<timestamp>.svg"
+ * - deletions (migration 20261015170000): BEFORE DELETE triggers copy a deleted offer into
+ *   leads.chosen_offer_*_snapshot and a deleted supplier's name into
+ *   leads.current_supplier_*_name; deleting a placeholder supplier raises
+ *   "placeholder_supplier: ..." (P0001); offers.supplier_id is ON DELETE RESTRICT (23001)
  */
 
 export interface SupabaseConfig {
@@ -88,6 +96,14 @@ function fail(error: { message: string; code?: string }, ctx?: "supplier" | "off
   throw new Error(error.message);
 }
 
+/** Errors of a supplier DELETE (trigger / RESTRICT) mapped to typed errors. */
+function failSupplierDelete(error: { message: string; code?: string }): never {
+  if (/placeholder_supplier/i.test(error.message)) throw new PlaceholderSupplierError();
+  // 23001 restrict_violation (ON DELETE RESTRICT); 23503 if the FK is ever NO ACTION.
+  if (error.code === "23001" || error.code === "23503") throw new SupplierHasOffersError();
+  throw new Error(error.message);
+}
+
 function firstRow(data: unknown): unknown {
   return Array.isArray(data) ? data[0] : data;
 }
@@ -111,6 +127,27 @@ function toCompletion(data: unknown): LeadCompletion {
   return {
     ...ref,
     notification_email: typeof email === "string" && email.trim() !== "" ? email.trim() : null,
+  };
+}
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * Lead row -> Lead. The history columns (migration 20261015170000) default to null, so
+ * the app also works against a DB where that migration is not applied yet.
+ */
+function toLead(row: unknown): Lead {
+  const r = row as Record<string, unknown>;
+  const snapshot = (v: unknown) => (isObject(v) ? (v as unknown as LeadOfferSnapshot) : null);
+  const text = (v: unknown) => (typeof v === "string" && v !== "" ? v : null);
+  return {
+    ...(r as unknown as Lead),
+    chosen_offer_luce_snapshot: snapshot(r.chosen_offer_luce_snapshot),
+    chosen_offer_gas_snapshot: snapshot(r.chosen_offer_gas_snapshot),
+    current_supplier_luce_name: text(r.current_supplier_luce_name),
+    current_supplier_gas_name: text(r.current_supplier_gas_name),
   };
 }
 
@@ -185,6 +222,30 @@ export function createSupabaseRepository(
     const secret = readLeadSecret()?.trim();
     if (!secret) throw new LeadApiSecretError("missing");
     return secret;
+  }
+
+  /**
+   * Removes the supplier's logo objects: every object in its "<supplier_id>/" folder
+   * (current and earlier uploads) plus `logoPath` when it lives in that folder. A storage
+   * path outside the supplier's own folder is never removed (it could be shared).
+   * Returns false when the removal failed.
+   */
+  async function removeSupplierLogoObjects(supplierId: string, logoPath: string): Promise<boolean> {
+    const bucket = client.storage.from(SUPPLIER_LOGO_BUCKET);
+    const folder = `${supplierId}/`;
+    const paths = new Set<string>();
+    const normalized = logoPath.replace(/^\/+/, "");
+    if (normalized.startsWith(folder)) paths.add(normalized);
+    const listed = await bucket.list(supplierId, { limit: 1000 });
+    if (!listed.error) {
+      for (const f of listed.data ?? []) {
+        // Folder placeholders have no id; only files are removed.
+        if (f.id && f.name) paths.add(`${folder}${f.name}`);
+      }
+    }
+    if (paths.size === 0) return !listed.error;
+    const removed = await bucket.remove([...paths]);
+    return !removed.error && !listed.error;
   }
 
   const repo: Repository = {
@@ -281,7 +342,7 @@ export function createSupabaseRepository(
         .select("*")
         .order("created_at", { ascending: false });
       if (error) fail(error);
-      return (data ?? []) as Lead[];
+      return (data ?? []).map(toLead);
     },
 
     async queryLeads(query: LeadQuery = {}) {
@@ -322,13 +383,13 @@ export function createSupabaseRepository(
         }
         fail(error);
       }
-      return { items: (data ?? []) as Lead[], total: count ?? 0, page, pageSize };
+      return { items: (data ?? []).map(toLead), total: count ?? 0, page, pageSize };
     },
 
     async getLead(id) {
       const { data, error } = await client.from("leads").select("*").eq("id", id).maybeSingle();
       if (error) fail(error);
-      return (data as Lead | null) ?? null;
+      return data ? toLead(data) : null;
     },
 
     async updateLeadAdmin(id, patch) {
@@ -345,7 +406,15 @@ export function createSupabaseRepository(
         .maybeSingle();
       if (error) fail(error);
       if (!data) throw new LeadNotFoundError();
-      return data as Lead;
+      return toLead(data);
+    },
+
+    async deleteLeads(ids) {
+      const unique = [...new Set(ids)];
+      if (unique.length === 0) return 0;
+      const { data, error } = await client.from("leads").delete().in("id", unique).select("id");
+      if (error) fail(error);
+      return (data ?? []).length;
     },
 
     async listAllSuppliers() {
@@ -417,6 +486,43 @@ export function createSupabaseRepository(
       return path;
     },
 
+    async countOffersBySupplier(supplierId) {
+      const { count, error } = await client
+        .from("offers")
+        .select("id", { count: "exact", head: true })
+        .eq("supplier_id", supplierId);
+      if (error) fail(error);
+      return count ?? 0;
+    },
+
+    async deleteSupplier(id) {
+      const supplier = await repo.getSupplier(id);
+      if (!supplier) throw new SupplierNotFoundError();
+      // Checked before any offer is touched (the DB trigger rejects it as well).
+      if (supplier.is_placeholder) throw new PlaceholderSupplierError();
+
+      // 1. Its offers (ON DELETE RESTRICT): the offer trigger snapshots them into the leads.
+      const offersRes = await client.from("offers").delete().eq("supplier_id", id).select("id");
+      if (offersRes.error) fail(offersRes.error);
+      const deletedOffers = (offersRes.data ?? []).length;
+
+      // 2. The supplier itself; a failure here is surfaced, never swallowed.
+      const supRes = await client.from("suppliers").delete().eq("id", id).select("id");
+      if (supRes.error) failSupplierDelete(supRes.error);
+      if ((supRes.data ?? []).length === 0) throw new SupplierNotFoundError();
+
+      // 3. Logo objects in Storage ("<supplier_id>/..."). "/logos/..." files are left alone.
+      let logoCleanupFailed = false;
+      if (isStorageLogoPath(supplier.logo_path)) {
+        try {
+          logoCleanupFailed = !(await removeSupplierLogoObjects(id, supplier.logo_path!.trim()));
+        } catch {
+          logoCleanupFailed = true;
+        }
+      }
+      return { deletedOffers, logoCleanupFailed };
+    },
+
     async listAllOffers() {
       const { data, error } = await client.from("offers").select(OFFER_SELECT);
       if (error) fail(error);
@@ -468,6 +574,12 @@ export function createSupabaseRepository(
 
     async setOfferFlags(id, flags) {
       return repo.updateOffer(id, flags);
+    },
+
+    async deleteOffer(id) {
+      const { data, error } = await client.from("offers").delete().eq("id", id).select("id");
+      if (error) fail(error);
+      if ((data ?? []).length === 0) throw new OfferNotFoundError();
     },
 
     async saveOffer(input) {
