@@ -131,3 +131,10 @@ Cloudflare removed (Giuseppe's decision): hosting is Vercel. Q10 (Workers Free C
 ## BLOCKER (orchestrator, 2026-10-15) — Vercel Production Branch is `main`
 Pushing `eae02f2` to `main` started a deployment with **target = production** (`dpl_8sc9ax81463jufcEriYHqLjPW5bv`). The orchestrator cancelled it while it was still building (state CANCELED, never served). The Vercel project's Production Branch is `main`, so every push to `main` deploys to production. Previews for review were therefore created from the branch `preview/phase9` (non-production branch → preview).
 Giuseppe: in Vercel → Project → Settings → Environments/Git, set the Production Branch to a branch that is not pushed by the agents (e.g. `production`), or disable automatic production deployments, before anyone pushes to `main` again. Until then the orchestrator pushes only to `preview/*` branches (main is at `eae02f2`, which already contains all Phase 9 code; this note is on `preview/phase9` only).
+
+## NOTE (orchestrator, 2026-10-15) — Phase 10 design leftovers for Giuseppe (non-blocking)
+Two design-review rounds done (max per brief). Open choices to confirm on the preview:
+1. Page 1 background bulb is shown only from 1280px wide (at 1024 it was half off-screen; on tablet/mobile the headline spans the full width, so the bulb is hidden there rather than shown as a cropped sliver). Say if you want a small bulb on mobile anyway (e.g. above the headline).
+2. Thank-you decoration is hidden below 1024px for the same reason (cropped slivers looked like artefacts).
+3. Dual results titles changed from "Scegli l'offerta Luce/Gas" to "Le migliori offerte Luce/Gas per te" so that "PER TE" is green in every variant as B4 asks.
+4. Header trust line "Confronto gratuito · 100% online" is shown only from 1024px (it caused horizontal scroll on tablets).

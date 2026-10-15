@@ -95,6 +95,6 @@ Decisions: hosting = Vercel (Hobby, custom domain); Cloudflare removed entirely 
 - [x] T10.4 (58570ff) Results: "PER TE" in green, consistent layout (B4) → `results-builder` (after T10.1)
 - [x] T10.5 (d4c5b17) Activation: icons on every option card (B5) → `activation-form-builder` (after T10.1)
 - [x] T10.6 (45ef61e) Thank-you: bulbs right, gas flames left background decoration (B6) → `thankyou-builder` (after T10.1)
-- [~] T10.7 Design review round 1 → `DESIGN_REVIEW.md` Phase 10, fixes by owners, round 2 (B7) → `design-reviewer`
-- [ ] T10.8 Full regression + screenshots + Lighthouse (B8) → `qa-tester`
+- [x] T10.7 (2748722 r1, db750c7 r2; fixes 2702d51 42a9d11 209d4c0 728a719 f388740) Design review round 1 → `DESIGN_REVIEW.md` Phase 10, fixes by owners, round 2 (B7) → `design-reviewer`
+- [~] T10.8 Full regression + screenshots + Lighthouse (B8) → `qa-tester`
 - [ ] T10.9 PRD v0.5.2 visual notes, PROGRESS summary, push `preview/phase10`, write the preview URL (from `gh`/Vercel if available, otherwise say "see Vercel") in PROGRESS.md → orchestrator

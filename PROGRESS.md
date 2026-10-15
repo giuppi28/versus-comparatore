@@ -228,3 +228,10 @@ Orchestrator: Claude Opus (session model). Decisions by Giuseppe: hosting Vercel
 - T10.6 thankyou-builder (sonnet), 45ef61e: flames left / bulbs right in the margins (brand-200/300), cropped hints on mobile, card untouched, static.
 - Verified by orchestrator: typecheck ✓, lint ✓, Vitest 882/882 ✓, standard Playwright 201 passed / 1 skipped ✓ (shared dev server; per-agent `--output` dirs avoid test-results collisions).
 - Noted for design review: SiteHeader trust line clipped around 640–800px (reported by page1-builder); Page 1 logo strip can switch to /logos/black now.
+
+## 2026-10-15 — T10.7 Design review (2 rounds, max reached)
+- Agent: design-reviewer (sonnet). Round 1 (2748722): 6 findings — P10-1 high header trust line caused horizontal scroll 640–800px; P10-2 Page 1 header override misaligned; P10-3 colour logos with greyscale washed out; P10-4 bulb touching hero text; P10-5 reduced-motion logo row off-centre; P10-6 thank-you decor too busy / slivers on mobile.
+- Fix round 1 (parallel, owners): setup-builder 2702d51 (trust line from lg, compact lockup <360px, no-overflow e2e 320–1440), page1-builder 42a9d11, loading-builder 209d4c0, thankyou-builder 728a719 (1 large flame/bulb per side, hidden below lg).
+- Round 2 (db750c7): P10-1..6 verified; verdict READY; polish P10-7 (bulb too faint) + P10-8 (sliver below lg) + P10-9 (stale thank-you screenshots → T10.8).
+- Fix round 2: page1-builder f388740 — brand-200, 30rem, fade ends at hero bottom. **Decision:** bulb shown from xl (1280px) instead of lg, because at 1024 half of it fell outside the viewport (cropped-fragment look); hidden on tablet/mobile because the headline spans the full width there (no clear spot). Logged for Giuseppe in QUESTIONS.md.
+- Orchestrator checks after round 1: typecheck ✓, lint ✓, Vitest 882/882 ✓, Playwright 217 passed / 1 skipped ✓.
