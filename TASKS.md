@@ -12,10 +12,10 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [x] T0.5 Data-access layer with two implementations (typed mock + Supabase), switchable by one flag.
 
 ## Phase 1 — Database  → agent: `db-builder`
-- [~] T1.1 Migration: tables `suppliers`, `offers`, `comuni`, `leads`, `settings`, `admins` (PRD §12), constraints, `updated_at` triggers. → `APPLY` request.
-- [~] T1.2 Migration: RLS + `SECURITY DEFINER` lead functions (`create_lead`, `update_lead`, `complete_lead`) per CLAUDE.md → `APPLY` request. Include SQL test script proving anon cannot read leads / inactive offers / other leads.
-- [~] T1.3 Comuni dataset: all Italian municipalities (ISTAT code, name, province, region, CAPs) + official climate zone (DPR 412/93). Reliable public source, documented in PROGRESS.md. Load via migration/seed. Flag comuni without zone.
-- [~] T1.4 Seed suppliers: full dropdown list of PRD §6 Block E (+ special options) and **these test offers** (all `customer_type = both`, fixed, monorario, `active = true`, `price_verified = false`, activation 0 €). Offer names are invented on purpose — do not use real commercial product names.
+- [x] T1.1 Migration: tables `suppliers`, `offers`, `comuni`, `leads`, `settings`, `admins` (PRD §12), constraints, `updated_at` triggers. → `APPLY` request.
+- [x] T1.2 Migration: RLS + `SECURITY DEFINER` lead functions (`create_lead`, `update_lead`, `complete_lead`) per CLAUDE.md → `APPLY` request. Include SQL test script proving anon cannot read leads / inactive offers / other leads.
+- [x] T1.3 Comuni dataset: all Italian municipalities (ISTAT code, name, province, region, CAPs) + official climate zone (DPR 412/93). Reliable public source, documented in PROGRESS.md. Load via migration/seed. Flag comuni without zone.
+- [x] T1.4 Seed suppliers: full dropdown list of PRD §6 Block E (+ special options) and **these test offers** (all `customer_type = both`, fixed, monorario, `active = true`, `price_verified = false`, activation 0 €). Offer names are invented on purpose — do not use real commercial product names.
 
   **Luce** (other variable costs 0,0600 €/kWh for all)
   | Supplier | Name | €/kWh | Quota fissa €/mese | Bloccato | Featured | Promo |
@@ -42,12 +42,12 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 
 ## Phase 3 — Customer screens (one agent per screen)
 - [x] T3.1 Lead API (server routes → lead functions, httpOnly token cookie, Turnstile, rate limit) → `lead-api-builder`
-- [ ] T3.2 Page 1 (PRD §6) → `page1-builder`
+- [~] T3.2 Page 1 (PRD §6) → `page1-builder`
 - [x] T3.3 Loading screen (PRD §7) → `loading-builder`
-- [ ] T3.4 Page 2 results incl. Luce+Gas two-step (PRD §8) → `results-builder`
+- [~] T3.4 Page 2 results incl. Luce+Gas two-step (PRD §8) → `results-builder`
 - [x] T3.5 Offer modal (PRD §9) → `offer-modal-builder`
-- [ ] T3.6 Activation form step A + B + sticky summary (PRD §10) → `activation-form-builder`
-- [ ] T3.7 Thank-you page (PRD §11) → `thankyou-builder`
+- [~] T3.6 Activation form step A + B + sticky summary (PRD §10) → `activation-form-builder`
+- [~] T3.7 Thank-you page (PRD §11) → `thankyou-builder`
 
 ## Phase 4 — Admin screens (one agent per screen)
 - [x] T4.1 Login + server-side protection + optional TOTP MFA → `admin-auth-builder`
