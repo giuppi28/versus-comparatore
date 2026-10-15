@@ -162,3 +162,11 @@ Known limitations: real Supabase flow (auth/MFA, RLS, storage) untested until mi
 - Verified by orchestrator: typecheck ✓, lint ✓, vitest 745/745 ✓ (agent: lead e2e 107 passed).
 - Ship note: migration 20261015140000 and this commit must go live together; hosting LEAD_API_SECRET must match the hash in the migration.
 - Commit: 3f92e05
+
+## 2026-10-15 17:10 — Phase 8 builder work complete; regression green
+- Q8 consumers: 6394331 (is_placeholder + isRealSupplier, mock Q4 wording, docs), 65f8c14 (orbit excludes placeholders, no data barrel in client graph), 2bb7505 (offer form hides placeholders, server rejects them).
+- Orchestrator regression on one clean server: typecheck ✓, lint ✓, vitest 757/757 ✓, standard e2e 185 passed / 1 skipped ✓, matrix 382/382 + 6/6 serial ✓.
+- REVIEW.md items marked fixed; T7.5 remains BLOCKED until the reviewer applies 20261015140000 (the app now uses the new lead function signatures).
+
+## 2026-10-15 17:10 — LOOP SUMMARY (stopping: no unblocked task left)
+Blocked on reviewer/Giuseppe: APPLY 20261015140000 (then T7.5 + T7.7 final sign-off; also drop bootstrap_load_comuni); T5.1 logos (Q2 "ready"); Q3 Aldo's email; Q9 privacy text.
