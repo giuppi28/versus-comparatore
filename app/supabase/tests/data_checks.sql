@@ -69,6 +69,11 @@ begin
   select count(*) into n from public.offers o join public.suppliers s on s.id = o.supplier_id
    where s.slug in ('tutela','altro-fornitore','non-lo-so');
   if n <> 0 then raise exception 'FAIL: special dropdown options must have no offers'; end if;
+  -- Q8: only the three special options are placeholders
+  select count(*) into n from public.suppliers where is_placeholder;
+  if n <> 3 then raise exception 'FAIL: expected 3 placeholder suppliers, got %', n; end if;
+  select count(*) into n from public.suppliers where is_placeholder and slug in ('tutela','altro-fornitore','non-lo-so');
+  if n <> 3 then raise exception 'FAIL: placeholder flag on tutela / altro-fornitore / non-lo-so'; end if;
 
   -- ---------------------------------------------------------------- offers (T1.4)
   select count(*) into n from public.offers
@@ -101,11 +106,22 @@ begin
   if v_offer.energy_price <> 0.51 or v_offer.fixed_fee_monthly <> 8 or v_offer.locked_months <> 24 or v_offer.featured or v_offer.promo_text is not null then
     raise exception 'FAIL: Hera Gas Sereno values';
   end if;
-  if v_offer.advantages <> array['Prezzo **bloccato** 24 mesi', 'Tariffa **monoraria**',
+  if v_offer.advantages <> array['Prezzo **bloccato** 24 mesi', 'Prezzo **fisso** per tutta la durata del blocco',
                            'Attivala **online** con noi, **gratis** e in **1 minuto**',
                            'Puoi **revocare** il contratto entro 14 giorni'] then
     raise exception 'FAIL: Hera advantages = %', v_offer.advantages;
   end if;
+
+  -- Q4: "Tariffa monoraria" only on luce offers; gas offers use the fixed-price wording
+  select count(*) into n from public.offers where commodity = 'gas' and 'Tariffa **monoraria**' = any (advantages)
+     and name in ('Plenitude Gas Fisso 12','Hera Gas Sereno','Engie Gas Facile','Iren Gas Chiaro');
+  if n <> 0 then raise exception 'FAIL: % gas seed offers still show Tariffa monoraria', n; end if;
+  select count(*) into n from public.offers where commodity = 'gas' and 'Prezzo **fisso** per tutta la durata del blocco' = any (advantages)
+     and name in ('Plenitude Gas Fisso 12','Hera Gas Sereno','Engie Gas Facile','Iren Gas Chiaro');
+  if n <> 4 then raise exception 'FAIL: gas fixed-price advantage on % of 4 gas seed offers', n; end if;
+  select count(*) into n from public.offers where commodity = 'luce' and 'Tariffa **monoraria**' = any (advantages)
+     and name in ('Edison Luce Fissa 12','Sorgenia Luce Sicura 24','A2A Luce Smart','Iberdrola Luce Stabile');
+  if n <> 4 then raise exception 'FAIL: Tariffa monoraria on % of 4 luce seed offers', n; end if;
 
   select count(*) into n from public.offers where featured and name in ('Edison Luce Fissa 12', 'Plenitude Gas Fisso 12');
   if n <> 2 then raise exception 'FAIL: featured offers'; end if;

@@ -31,6 +31,19 @@ insert into public.offers (id, supplier_id, name, commodity, energy_price, locke
   -- visible gas offer (used to test commodity mismatch)
   ('00000000-0000-4000-8000-00000000c004', '00000000-0000-4000-8000-00000000b001', 'RLS Gas Active', 'gas', 0.5, 12, true);
 
+-- Q6: the lead functions check sha256(p_secret) against private.app_secrets. Inside this
+-- rolled-back transaction the stored hash is replaced by the hash of a TEST secret, so the
+-- test never needs the real LEAD_API_SECRET.
+update private.app_secrets set sha256 = encode(extensions.digest('rls-test-secret-not-the-real-one', 'sha256'), 'hex')
+ where name = 'lead_api_secret';
+do $$ begin
+  if (select count(*) from private.app_secrets where name = 'lead_api_secret') <> 1 then
+    raise exception 'FAIL: private.app_secrets has no lead_api_secret row';
+  end if;
+end $$;
+-- Q7: notification recipient returned by complete_lead
+update public.settings set notification_email = 'rls-notify@test.invalid' where id;
+
 -- storage bucket config + one pre-existing logo object (as postgres)
 do $$
 declare b storage.buckets;
@@ -96,18 +109,48 @@ begin
   ok := false; begin perform private.lock_lead_by_token(repeat('a', 64)); exception when insufficient_privilege then ok := true; end;
   if not ok then raise exception 'FAIL: anon could execute private helpers'; end if;
 
+  -- 4b. Q6: the server secret is required by all three lead functions (checked first)
+  ok := false; begin perform 1 from private.app_secrets; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could read private.app_secrets'; end if;
+  ok := false; begin perform public.create_lead('wrong-secret', '{"privacy_consent":true}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: create_lead with wrong secret (got %)', err; end if;
+  ok := false; begin perform public.create_lead(null, '{"privacy_consent":true}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: create_lead with null secret (got %)', err; end if;
+  ok := false; begin perform public.create_lead('', '{"privacy_consent":true}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: create_lead with empty secret (got %)', err; end if;
+  ok := false; begin perform public.create_lead('wrong-secret', '{}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: secret must be checked before input (got %)', err; end if;
+  ok := false; begin perform public.create_lead(encode(extensions.digest('rls-test-secret-not-the-real-one', 'sha256'), 'hex'), '{"privacy_consent":true}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: create_lead accepted the stored hash as secret (got %)', err; end if;
+  ok := false; begin perform public.update_lead('wrong-secret', repeat('0', 64), '{"first_name":"X"}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: update_lead with wrong secret (got %)', err; end if;
+  ok := false; begin perform public.update_lead(null, repeat('0', 64), '{"first_name":"X"}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: update_lead with null secret (got %)', err; end if;
+  ok := false; begin perform public.complete_lead('wrong-secret', repeat('0', 64), '{}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: complete_lead with wrong secret (got %)', err; end if;
+  ok := false; begin perform public.complete_lead(null, repeat('0', 64), '{}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: complete_lead with null secret (got %)', err; end if;
+  -- the old secret-less signatures are gone
+  ok := false; begin execute 'select public.create_lead(''{"privacy_consent":true}''::jsonb)'; exception when undefined_function then ok := true; end;
+  if not ok then raise exception 'FAIL: old create_lead(jsonb) still exists'; end if;
+  ok := false; begin execute 'select public.update_lead(repeat(''0'', 64), ''{}''::jsonb)'; exception when undefined_function then ok := true; end;
+  if not ok then raise exception 'FAIL: old update_lead(text, jsonb) still exists'; end if;
+  ok := false; begin execute 'select public.complete_lead(repeat(''0'', 64), ''{}''::jsonb)'; exception when undefined_function then ok := true; end;
+  if not ok then raise exception 'FAIL: old complete_lead(text, jsonb) still exists'; end if;
+
   -- 5. create_lead requires privacy consent
-  ok := false; begin perform public.create_lead('{"first_name":"Mario"}'); exception when others then ok := sqlerrm like '%privacy_consent_required%'; err := sqlerrm; end;
+  ok := false; begin perform public.create_lead('rls-test-secret-not-the-real-one', '{"first_name":"Mario"}'); exception when others then ok := sqlerrm like '%privacy_consent_required%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: create_lead without consent (got %)', err; end if;
-  ok := false; begin perform public.create_lead('{"privacy_consent":false}'); exception when others then ok := sqlerrm like '%privacy_consent_required%'; err := sqlerrm; end;
+  ok := false; begin perform public.create_lead('rls-test-secret-not-the-real-one', '{"privacy_consent":false}'); exception when others then ok := sqlerrm like '%privacy_consent_required%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: create_lead with consent=false (got %)', err; end if;
-  ok := false; begin perform public.create_lead('{"privacy_consent":"true"}'); exception when others then ok := sqlerrm like '%privacy_consent_required%'; err := sqlerrm; end;
+  ok := false; begin perform public.create_lead('rls-test-secret-not-the-real-one', '{"privacy_consent":"true"}'); exception when others then ok := sqlerrm like '%privacy_consent_required%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: create_lead with consent="true" string (got %)', err; end if;
 
   -- 6. create two leads
-  v := public.create_lead('{"privacy_consent":true,"commodity":"dual","customer_type":"casa","first_name":"Mario","last_name":"Rossi","phone":"3331234567","comune_istat":"999999","service_type":"cambio_fornitore","appliances":["frigorifero","forno"],"gas_uses":["cucina"],"people":3,"has_gas":true}');
+  v := public.create_lead('rls-test-secret-not-the-real-one', '{"privacy_consent":true,"commodity":"dual","customer_type":"casa","first_name":"Mario","last_name":"Rossi","phone":"3331234567","comune_istat":"999999","service_type":"cambio_fornitore","appliances":["frigorifero","forno"],"gas_uses":["cucina"],"people":3,"has_gas":true}');
   if v ->> 'token' !~ '^[0-9a-f]{64}$' or (v ->> 'id') is null then raise exception 'FAIL: create_lead returned %', v; end if;
-  w := public.create_lead('{"privacy_consent":true,"first_name":"Lucia"}');
+  if v ? 'notification_email' then raise exception 'FAIL: create_lead leaks notification_email'; end if;
+  w := public.create_lead('rls-test-secret-not-the-real-one', '{"privacy_consent":true,"first_name":"Lucia"}');
   if (w ->> 'token') = (v ->> 'token') then raise exception 'FAIL: duplicate tokens'; end if;
   perform set_config('rls.a_id', v ->> 'id', true);
   perform set_config('rls.a_token', v ->> 'token', true);
@@ -115,70 +158,80 @@ begin
   perform set_config('rls.b_token', w ->> 'token', true);
 
   -- create_lead rejects non-whitelisted fields (status, notes, token, id, step completed)
-  ok := false; begin perform public.create_lead('{"privacy_consent":true,"status":"closed"}'); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
+  ok := false; begin perform public.create_lead('rls-test-secret-not-the-real-one', '{"privacy_consent":true,"status":"closed"}'); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: create_lead accepted status (got %)', err; end if;
-  ok := false; begin perform public.create_lead('{"privacy_consent":true,"step_reached":"completed"}'); exception when others then ok := sqlerrm like '%invalid_step_reached%'; err := sqlerrm; end;
+  ok := false; begin perform public.create_lead('rls-test-secret-not-the-real-one', '{"privacy_consent":true,"step_reached":"completed"}'); exception when others then ok := sqlerrm like '%invalid_step_reached%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: create_lead accepted step completed (got %)', err; end if;
 
   -- 7. update_lead: own token only
-  perform public.update_lead(v ->> 'token', '{"last_name":"Bianchi","step_reached":"results","final_kwh_month":150}');
-  ok := false; begin perform public.update_lead(repeat('0', 64), '{"first_name":"Hacker"}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
+  perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"last_name":"Bianchi","step_reached":"results","final_kwh_month":150}');
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', repeat('0', 64), '{"first_name":"Hacker"}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead with unknown token (got %)', err; end if;
-  ok := false; begin perform public.update_lead('not-a-token', '{"first_name":"Hacker"}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', 'not-a-token', '{"first_name":"Hacker"}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead with malformed token (got %)', err; end if;
-  ok := false; begin perform public.update_lead(null, '{"first_name":"Hacker"}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', null, '{"first_name":"Hacker"}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead with null token (got %)', err; end if;
 
   -- 8. update_lead cannot touch server-managed columns
-  ok := false; begin perform public.update_lead(v ->> 'token', '{"status":"closed"}'); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"status":"closed"}'); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead changed status (got %)', err; end if;
-  ok := false; begin perform public.update_lead(v ->> 'token', '{"notes":"x"}'); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"notes":"x"}'); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead changed notes (got %)', err; end if;
-  ok := false; begin perform public.update_lead(v ->> 'token', jsonb_build_object('token', w ->> 'token')); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', jsonb_build_object('token', w ->> 'token')); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead changed token (got %)', err; end if;
-  ok := false; begin perform public.update_lead(v ->> 'token', jsonb_build_object('id', w ->> 'id')); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', jsonb_build_object('id', w ->> 'id')); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead changed id (got %)', err; end if;
-  ok := false; begin perform public.update_lead(v ->> 'token', '{"step_reached":"completed"}'); exception when others then ok := sqlerrm like '%invalid_step_reached%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"step_reached":"completed"}'); exception when others then ok := sqlerrm like '%invalid_step_reached%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead set step completed (got %)', err; end if;
-  ok := false; begin perform public.update_lead(v ->> 'token', '{"privacy_consent":false}'); exception when others then ok := sqlerrm like '%privacy_consent_required%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"privacy_consent":false}'); exception when others then ok := sqlerrm like '%privacy_consent_required%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead revoked privacy consent (got %)', err; end if;
-  ok := false; begin perform public.update_lead(v ->> 'token', '"just a string"'); exception when others then ok := sqlerrm like '%invalid_input%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '"just a string"'); exception when others then ok := sqlerrm like '%invalid_input%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead accepted a non-object patch (got %)', err; end if;
-  ok := false; begin perform public.update_lead(v ->> 'token', jsonb_build_object('address', repeat('x', 30000))); exception when others then ok := sqlerrm like '%payload_too_large%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', jsonb_build_object('address', repeat('x', 30000))); exception when others then ok := sqlerrm like '%payload_too_large%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead accepted an oversized patch (got %)', err; end if;
 
   -- 9. chosen offer must match the commodity
-  ok := false; begin perform public.update_lead(v ->> 'token', '{"chosen_offer_luce":"00000000-0000-4000-8000-00000000c004"}'); exception when others then ok := sqlerrm like '%invalid_offer%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"chosen_offer_luce":"00000000-0000-4000-8000-00000000c004"}'); exception when others then ok := sqlerrm like '%invalid_offer%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: gas offer accepted as chosen_offer_luce (got %)', err; end if;
 
   -- 10. step only moves forward
-  perform public.update_lead(v ->> 'token', '{"step_reached":"offer_chosen","chosen_offer_luce":"00000000-0000-4000-8000-00000000c001","chosen_offer_gas":"00000000-0000-4000-8000-00000000c004"}');
-  perform public.update_lead(v ->> 'token', '{"step_reached":"page1"}');
+  perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"step_reached":"offer_chosen","chosen_offer_luce":"00000000-0000-4000-8000-00000000c001","chosen_offer_gas":"00000000-0000-4000-8000-00000000c004"}');
+  perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"step_reached":"page1"}');
 
   -- 10b. backward step is ignored on another lead C (verified as postgres); power_kw null = "Altro"
-  w := public.create_lead('{"privacy_consent":true,"commodity":"luce"}');
+  w := public.create_lead('rls-test-secret-not-the-real-one', '{"privacy_consent":true,"commodity":"luce"}');
   perform set_config('rls.c_id', w ->> 'id', true);
-  perform public.update_lead(w ->> 'token', '{"step_reached":"offer_chosen","power_kw":3}');
-  perform public.update_lead(w ->> 'token', '{"step_reached":"results","power_kw":null}');
-  ok := false; begin perform public.update_lead(w ->> 'token', '{"power_kw":7}'); exception when check_violation then ok := true; end;
+  perform public.update_lead('rls-test-secret-not-the-real-one', w ->> 'token', '{"step_reached":"offer_chosen","power_kw":3}');
+  perform public.update_lead('rls-test-secret-not-the-real-one', w ->> 'token', '{"step_reached":"results","power_kw":null}');
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', w ->> 'token', '{"power_kw":7}'); exception when check_violation then ok := true; end;
   if not ok then raise exception 'FAIL: power_kw 7 accepted'; end if;
-  ok := false; begin perform public.update_lead(w ->> 'token', '{"appliances":["lavatrice","jacuzzi"]}'); exception when check_violation then ok := true; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', w ->> 'token', '{"appliances":["lavatrice","jacuzzi"]}'); exception when check_violation then ok := true; end;
   if not ok then raise exception 'FAIL: unknown appliance accepted'; end if;
-  ok := false; begin perform public.update_lead(w ->> 'token', '{"people":6}'); exception when check_violation then ok := true; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', w ->> 'token', '{"people":6}'); exception when check_violation then ok := true; end;
   if not ok then raise exception 'FAIL: people 6 accepted'; end if;
 
   -- 11. complete_lead validates required fields (nothing is written on failure)
-  ok := false; begin perform public.complete_lead(v ->> 'token', '{"tax_code":"RSSMRA80A01H501U"}'); exception when others then ok := sqlerrm like '%missing_field%'; err := sqlerrm; end;
+  ok := false; begin perform public.complete_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"tax_code":"RSSMRA80A01H501U"}'); exception when others then ok := sqlerrm like '%missing_field%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: complete_lead with missing fields (got %)', err; end if;
 
+  -- 11b. wrong secret with a VALID token: rejected, nothing written, lead stays in progress
+  ok := false; begin perform public.complete_lead('wrong-secret', v ->> 'token', '{"tax_code":"RSSMRA80A01H501U","housing_title":"proprietario","cap":"99999","address":"Via Roma","street_number":"1","is_resident":true}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: complete_lead wrong secret + valid token (got %)', err; end if;
+  ok := false; begin perform public.update_lead('wrong-secret', v ->> 'token', '{"first_name":"Hacker"}'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: update_lead wrong secret + valid token (got %)', err; end if;
+
   -- 12. complete_lead with full data
-  w := public.complete_lead(v ->> 'token', '{"tax_code":"rssmra80a01h501u","housing_title":"proprietario","cap":"99999","address":"Via Roma","street_number":"1","is_resident":true,"pod":"it001e12345678","power_kw":3,"voltage":220,"pdr":"12345678901234","monthly_cost_shown":95.5}');
+  w := public.complete_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"tax_code":"rssmra80a01h501u","housing_title":"proprietario","cap":"99999","address":"Via Roma","street_number":"1","is_resident":true,"pod":"it001e12345678","power_kw":3,"voltage":220,"pdr":"12345678901234","monthly_cost_shown":95.5}');
   if (w ->> 'id') <> (v ->> 'id') or (w ->> 'token') <> (v ->> 'token') then raise exception 'FAIL: complete_lead returned %', w; end if;
+  -- Q7: the notification recipient (settings) is returned on successful completion
+  if (w ->> 'notification_email') is distinct from 'rls-notify@test.invalid' then
+    raise exception 'FAIL: complete_lead notification_email = %', w -> 'notification_email';
+  end if;
 
   -- 13. a completed lead is read-only for anon
-  ok := false; begin perform public.update_lead(v ->> 'token', '{"first_name":"Again"}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
+  ok := false; begin perform public.update_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{"first_name":"Again"}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: update_lead on completed lead (got %)', err; end if;
-  ok := false; begin perform public.complete_lead(v ->> 'token', '{}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
+  ok := false; begin perform public.complete_lead('rls-test-secret-not-the-real-one', v ->> 'token', '{}'); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
   if not ok then raise exception 'FAIL: complete_lead twice (got %)', err; end if;
 
   -- 14. storage: anon cannot write or list supplier logos
@@ -252,6 +305,8 @@ begin
   delete from storage.objects where bucket_id = 'supplier-logos';
   get diagnostics n = row_count;
   if n <> 0 then raise exception 'FAIL: non-admin deleted a supplier logo'; end if;
+  ok := false; begin perform 1 from private.app_secrets; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: non-admin could read private.app_secrets'; end if;
   raise notice 'ok: authenticated non-admin checks';
 end $$;
 
@@ -293,6 +348,8 @@ begin
   delete from storage.objects where bucket_id = 'supplier-logos' and name like '%/2.svg';
   get diagnostics n = row_count;
   if n <> 1 then raise exception 'FAIL: admin could not delete a supplier logo'; end if;
+  ok := false; begin perform 1 from private.app_secrets; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: admin could read private.app_secrets through the API'; end if;
   raise notice 'ok: admin checks';
 end $$;
 

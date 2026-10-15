@@ -8,6 +8,9 @@
 | `migrations/20261015120100_rls_and_lead_functions.sql` | T1.2 | RLS + policies, MFA restrictive policies, `is_admin()`, lead functions `create_lead` / `update_lead` / `complete_lead`, grants |
 | `migrations/20261015121100_comuni_data_01.sql` … `_09.sql` | T1.3 | 7,894 comuni (generated, idempotent upserts, ~1,000 rows per file) |
 | `migrations/20261015130000_storage_supplier_logos.sql` | admin logos | Storage bucket `supplier-logos` (public read, `image/svg+xml` only, 200 KB); `storage.objects` policies: select/insert/update/delete only for `is_admin()` in this bucket + bucket-scoped MFA restrictive policy; no anon policy (no anon write, no listing) |
+| `migrations/20261015140000_lead_secret_notification_placeholders.sql` | T8.2 (Q6/Q7/Q8) | `private.app_secrets` (SHA-256 of `LEAD_API_SECRET`, no grants), `private.check_lead_secret()`, lead functions recreated with `p_secret` first (old signatures dropped), `complete_lead` returns `notification_email`, `suppliers.is_placeholder` |
+| `bootstrap/comuni_01..09.json`, `bootstrap/load_comuni.mjs` | T8.1 | One-shot comuni load through the reviewer's temporary RPC `bootstrap_load_comuni` (done 2026-10-15) |
+| `bootstrap/verify_comuni.mjs` | T8.1 | Read-only check of the comuni in the REAL project with the publishable key (counts, zones, provinces, CAPs, spot checks, accent-insensitive search). Run from `app/`: `node supabase/bootstrap/verify_comuni.mjs` → `ALL COMUNI CHECKS PASSED` |
 | `seed.sql` | T1.4 | 14 suppliers (Block E list + 3 special options), the 8 test offers of TASKS.md T1.4, settings row. Idempotent |
 | `tests/rls_test.sql` | T1.2 | RLS / lead-function security test (one transaction, rolled back) |
 | `tests/data_checks.sql` | T1.3/T1.4 | Read-only checks: counts, seed values, search normalization, climate zones |
@@ -23,13 +26,20 @@ Apply order: migrations in filename order, then `seed.sql`. Then (optional) run
 - **anon** (publishable key): `select` on active `suppliers`, active `offers` whose supplier is
   active, all `comuni`. No privilege at all on `leads`, `settings`, `admins`.
 - **Leads** only through `SECURITY DEFINER` functions (`search_path = ''`), executable by
-  `anon`/`authenticated` only:
-  - `create_lead(p_data jsonb) -> {"id","token"}`: requires `privacy_consent: true` (JSON boolean),
-    else `privacy_consent_required`. Token = 32 random bytes, hex (256 bit).
-  - `update_lead(p_token text, p_patch jsonb) -> void`: only the **in-progress** lead owning the
-    token; otherwise `lead_not_found` (also for completed leads).
-  - `complete_lead(p_token text, p_data jsonb) -> {"id","token"}`: writes data, checks required
-    fields (`missing_field: <name>`), sets `step_reached = 'completed'`, `status = 'new'`.
+  `anon`/`authenticated`, but every call needs the **server-only shared secret** as first
+  parameter `p_secret` (env `LEAD_API_SECRET`, 32 random bytes hex, never sent to the browser).
+  The DB stores only its SHA-256 in `private.app_secrets` (no API grants); a wrong / missing
+  secret raises `invalid_secret` (SQLSTATE `28000`, PostgREST HTTP 403) before anything else.
+  Rotation: new secret in the server env + `update private.app_secrets set sha256 = '<sha256 hex>'
+  where name = 'lead_api_secret'`.
+  - `create_lead(p_secret text, p_data jsonb) -> {"id","token"}`: requires `privacy_consent: true`
+    (JSON boolean), else `privacy_consent_required`. Token = 32 random bytes, hex (256 bit).
+  - `update_lead(p_secret text, p_token text, p_patch jsonb) -> void`: only the **in-progress**
+    lead owning the token; otherwise `lead_not_found` (also for completed leads).
+  - `complete_lead(p_secret text, p_token text, p_data jsonb) -> {"id","token","notification_email"}`:
+    writes data, checks required fields (`missing_field: <name>`), sets
+    `step_reached = 'completed'`, `status = 'new'`. `notification_email` =
+    `settings.notification_email` (may be `null`), returned only on successful completion.
     Afterwards the lead is read-only for anon.
   - Writable keys: every `LeadData` column (see `private.lead_writable_fields()`). Any other key
     (`status`, `notes`, `token`, `id`, timestamps…) → `invalid_field: <key>`.
@@ -41,6 +51,9 @@ Apply order: migrations in filename order, then `seed.sql`. Then (optional) run
     only ids from `config/consumption.ts`, `power_kw` ∈ {1.5, 3, 3.5, 4, 4.5, 5, 6, 10, 15} or
     NULL ("Altro"), `voltage` 220/380. `estimated_kwh_year` / `estimated_smc_year` store the
     annual figure actually used (estimated or manual, flag `manual_consumption`).
+- `suppliers.is_placeholder`: true for the special "Fornitore attuale" options (`tutela`,
+  `altro-fornitore`, `non-lo-so`); they have no offers and must be hidden from the admin
+  offer-supplier selects and the loading orbit.
 - **Admin** = Supabase Auth user with a row in `public.admins` (create it manually:
   `insert into public.admins (user_id) values ('<auth.users.id>');`). `public.is_admin()`
   (SECURITY DEFINER, STABLE, executable by `authenticated`) backs all admin policies:

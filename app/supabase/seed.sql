@@ -4,29 +4,35 @@
 -- Offer names are invented on purpose (not real commercial products).
 -- All offers: fixed, monorario, customer_type both, active, price_verified = false,
 -- activation 0 €, other fixed costs 0 €/month.
+-- Advantages: luce shows "Tariffa **monoraria**"; gas shows "Prezzo **fisso** per tutta la
+-- durata del blocco" instead (time bands apply only to electricity — QUESTIONS.md Q4).
 -- =====================================================================================
 
 -- Suppliers ---------------------------------------------------------------------------
 -- The three special options are listed in the "Fornitore attuale" dropdown and have no
 -- offers. They carry sells_luce/sells_gas = true (same as the app mock data) so a
 -- per-commodity dropdown filter keeps them; with no offers they never appear in results.
-insert into public.suppliers (name, slug, logo_path, sells_luce, sells_gas, show_in_dropdown, sort_order, active)
+-- They are flagged is_placeholder = true (QUESTIONS.md Q8).
+insert into public.suppliers (name, slug, logo_path, sells_luce, sells_gas, show_in_dropdown, sort_order, active, is_placeholder)
 values
-  ('Enel Energia',                         'enel-energia',    null, true, true, true,   1, true),
-  ('Eni Plenitude',                        'eni-plenitude',   null, true, true, true,   2, true),
-  ('Edison Energia',                       'edison-energia',  null, true, true, true,   3, true),
-  ('A2A Energia',                          'a2a-energia',     null, true, true, true,   4, true),
-  ('Hera Comm',                            'hera-comm',       null, true, true, true,   5, true),
-  ('Iren',                                 'iren',            null, true, true, true,   6, true),
-  ('Acea Energia',                         'acea-energia',    null, true, true, true,   7, true),
-  ('Sorgenia',                             'sorgenia',        null, true, true, true,   8, true),
-  ('Engie',                                'engie',           null, true, true, true,   9, true),
-  ('E.ON Energia',                         'eon-energia',     null, true, true, true,  10, true),
-  ('Iberdrola',                            'iberdrola',       null, true, true, true,  11, true),
-  ('Servizio di Tutela / Tutele Graduali', 'tutela',          null, true, true, true, 100, true),
-  ('Altro fornitore',                      'altro-fornitore', null, true, true, true, 101, true),
-  ('Non lo so',                            'non-lo-so',       null, true, true, true, 102, true)
+  ('Enel Energia',                         'enel-energia',    null, true, true, true,   1, true, false),
+  ('Eni Plenitude',                        'eni-plenitude',   null, true, true, true,   2, true, false),
+  ('Edison Energia',                       'edison-energia',  null, true, true, true,   3, true, false),
+  ('A2A Energia',                          'a2a-energia',     null, true, true, true,   4, true, false),
+  ('Hera Comm',                            'hera-comm',       null, true, true, true,   5, true, false),
+  ('Iren',                                 'iren',            null, true, true, true,   6, true, false),
+  ('Acea Energia',                         'acea-energia',    null, true, true, true,   7, true, false),
+  ('Sorgenia',                             'sorgenia',        null, true, true, true,   8, true, false),
+  ('Engie',                                'engie',           null, true, true, true,   9, true, false),
+  ('E.ON Energia',                         'eon-energia',     null, true, true, true,  10, true, false),
+  ('Iberdrola',                            'iberdrola',       null, true, true, true,  11, true, false),
+  ('Servizio di Tutela / Tutele Graduali', 'tutela',          null, true, true, true, 100, true, true),
+  ('Altro fornitore',                      'altro-fornitore', null, true, true, true, 101, true, true),
+  ('Non lo so',                            'non-lo-so',       null, true, true, true, 102, true, true)
 on conflict (slug) do nothing;
+-- Keep the flag right on databases seeded before is_placeholder existed (idempotent).
+update public.suppliers set is_placeholder = true
+ where slug in ('tutela', 'altro-fornitore', 'non-lo-so') and not is_placeholder;
 
 -- Offers ------------------------------------------------------------------------------
 with spec (supplier_slug, name, commodity, energy_price, other_variable_costs, fixed_fee_monthly,
@@ -55,7 +61,8 @@ select
   spec.locked_months, 0, spec.promo_text,
   array_remove(array[
     'Prezzo **bloccato** ' || spec.locked_months || ' mesi',
-    'Tariffa **monoraria**',
+    case when spec.commodity = 'gas' then 'Prezzo **fisso** per tutta la durata del blocco'
+         else 'Tariffa **monoraria**' end,
     spec.promo_text,
     'Attivala **online** con noi, **gratis** e in **1 minuto**',
     'Puoi **revocare** il contratto entro 14 giorni'
