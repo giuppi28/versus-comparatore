@@ -106,25 +106,49 @@ export default async function SettingsPage() {
               a mano prima di pubblicare.
             </p>
             <ul className="flex flex-col gap-3" aria-label="Verifiche manuali">
-              {MANUAL_CHECKS.map((m) => (
-                <li key={m.id} data-check={m.id} data-manual="true" className="flex items-start gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-warning text-sm font-bold text-white"
+              {MANUAL_CHECKS.map((m) =>
+                m.doneNote ? (
+                  <li
+                    key={m.id}
+                    data-check={m.id}
+                    data-manual="true"
+                    data-done="true"
+                    className="flex items-start gap-3"
                   >
-                    ?
-                  </span>
-                  <div>
-                    <p className="font-semibold">
-                      {m.label}
-                      <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold uppercase tracking-wide">
-                        Da verificare manualmente
-                      </span>
-                    </p>
-                    <p className="text-sm break-words">{m.detail}</p>
-                  </div>
-                </li>
-              ))}
+                    <span
+                      aria-hidden="true"
+                      className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                    >
+                      ✓
+                    </span>
+                    <div>
+                      <p className="font-semibold">
+                        {m.label}
+                        <span className="sr-only"> — completato</span>
+                      </p>
+                      <p className="text-sm text-ink-muted break-words">{m.doneNote}</p>
+                    </div>
+                  </li>
+                ) : (
+                  <li key={m.id} data-check={m.id} data-manual="true" className="flex items-start gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-warning text-sm font-bold text-white"
+                    >
+                      ?
+                    </span>
+                    <div>
+                      <p className="font-semibold">
+                        {m.label}
+                        <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold uppercase tracking-wide">
+                          Da verificare manualmente
+                        </span>
+                      </p>
+                      <p className="text-sm break-words">{m.detail}</p>
+                    </div>
+                  </li>
+                ),
+              )}
             </ul>
           </div>
 

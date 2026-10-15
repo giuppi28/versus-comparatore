@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MANUAL_CHECKS,
+  PRIVACY_PLACEHOLDERS,
   computeGoLiveChecks,
   hasRealTurnstileKeys,
   isReadyForGoLive,
@@ -69,15 +70,35 @@ describe("go-live checks", () => {
     expect(isReadyForGoLive(checks)).toBe(true);
   });
 
-  it("lists the three manual go-live items", () => {
+  it("lists the manual go-live items (three pending, one already done)", () => {
     expect(MANUAL_CHECKS.map((m) => m.id)).toEqual([
       "manual-signup-disabled",
       "manual-admin-account",
+      "manual-privacy-placeholders",
       "manual-bootstrap-dropped",
     ]);
     expect(MANUAL_CHECKS[0].detail).toContain("Allow new users to sign up");
     expect(MANUAL_CHECKS[0].detail).toContain("Authentication → Sign In / Providers");
     expect(MANUAL_CHECKS[1].detail).toContain("public.admins");
-    expect(MANUAL_CHECKS[2].label).toContain("public.bootstrap_load_comuni");
+    expect(MANUAL_CHECKS.filter((m) => !m.doneNote).map((m) => m.id)).toEqual([
+      "manual-signup-disabled",
+      "manual-admin-account",
+      "manual-privacy-placeholders",
+    ]);
+  });
+
+  it("lists every privacy placeholder in the pending privacy item", () => {
+    expect(PRIVACY_PLACEHOLDERS).toHaveLength(6);
+    const privacy = MANUAL_CHECKS.find((m) => m.id === "manual-privacy-placeholders")!;
+    expect(privacy.doneNote).toBeUndefined();
+    for (const ph of PRIVACY_PLACEHOLDERS) expect(privacy.detail).toContain(ph);
+  });
+
+  it("shows the bootstrap function item as done by the reviewer", () => {
+    const b = MANUAL_CHECKS.find((m) => m.id === "manual-bootstrap-dropped")!;
+    expect(b.label).toContain("public.bootstrap_load_comuni");
+    expect(b.doneNote).toBe(
+      "Completato dal revisore il 15/10/2026: funzione disattivata e spostata nello schema private.",
+    );
   });
 });

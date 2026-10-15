@@ -133,7 +133,7 @@ mv .env.local.bak .env.local
    "Verified".
 3. API Keys → create a key with "Sending access" restricted to that domain → `RESEND_API_KEY`.
 4. `RESEND_FROM` = `VERSUS <notifiche@mail.yourdomain.it>` (must be on the verified domain).
-5. `NOTIFICATION_EMAIL` = Aldo's inbox (Q3, still unanswered). Aldo can also set the address in
+5. `NOTIFICATION_EMAIL` = Aldo's inbox (Q3: `giuppips@gmail.com` for now, change to Aldo's before go-live). Aldo can also set the address in
    `/admin/impostazioni`, but until Q7 is resolved the server only uses the env value.
 6. The email is sent inside the request that completes the lead; a failure is logged and never
    blocks the customer.
@@ -297,9 +297,19 @@ automatic checks only, so tick these here yourself before going live.
       select id from auth.users where email = '<email di Aldo>';
       ```
       Check that it inserted one row (`select count(*) from public.admins;`).
-- [ ] **Temporary function `public.bootstrap_load_comuni` dropped** (reviewer, after the comuni load
-      printed `TOTAL 7894`). Verify: `select proname from pg_proc where proname = 'bootstrap_load_comuni';`
-      returns no row.
+- [x] **Temporary function `public.bootstrap_load_comuni` removed**: done by the reviewer on 2026-10-15
+      (privileges revoked, moved to schema `private` and renamed `old_*_disabled`; not reachable through
+      the API). Shown as done in `/admin/impostazioni`.
+- [ ] **Notification email: change `settings.notification_email` to Aldo's address before go-live.**
+      In the real DB it is currently `giuppips@gmail.com` (Q3, answered: Aldo's address comes later).
+      Change it in `/admin/impostazioni` and set the `NOTIFICATION_EMAIL` secret to the same value.
+      Aldo's admin account (item above) is still to be created, once we have his email.
+- [ ] **Privacy notice (Q9, deferred to go-live; go-live blocker).** Replace the six placeholders in the
+      `/privacy` page with the data controller's details (ask Aldo): `[Ragione sociale del titolare]`,
+      `[Indirizzo completo del titolare]`, `[Partita IVA del titolare]`,
+      `[Indirizzo email di contatto privacy]`, `[Periodo di conservazione dei dati]`,
+      `[Data di aggiornamento]`. Shown as a manual item in `/admin/impostazioni`. Verify: open
+      `/privacy` and make sure no square-bracket text remains.
 
 - [ ] Real offers entered/verified in `/admin/offerte` (all active offers `price_verified = true`).
 - [ ] Section 3 variables: build with the five `NEXT_PUBLIC_*`, five secrets set (including `LEAD_API_SECRET`).
@@ -310,7 +320,7 @@ automatic checks only, so tick these here yourself before going live.
 - [ ] Complete one real test lead end to end (use your own data): it appears in `/admin/leads`, the
       email arrives, the thank-you page shows. Delete/mark the test lead afterwards.
 - [ ] Check mobile (390 px) and desktop; no "demo" wording anywhere.
-- [ ] `/privacy` has the final text (Q9). WAF rule(s) active (section 8). Keep-alive enabled (section 7).
+- [ ] `/privacy` has the final text (Q9, see the privacy item above). WAF rule(s) active (section 8). Keep-alive enabled (section 7).
 - [ ] Cookie/CSP sanity: the lead cookies are `HttpOnly; Secure` (they are, in production).
 - [ ] Supabase Security Advisors (dashboard → Advisors): only the expected warnings (SECURITY DEFINER
       lead functions, `is_admin()`).

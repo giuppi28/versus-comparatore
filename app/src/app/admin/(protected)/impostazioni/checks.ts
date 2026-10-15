@@ -120,7 +120,19 @@ export interface ManualCheck {
   label: string;
   /** Where / how to do it, in Italian. */
   detail: string;
+  /** Set when the item was already completed by someone else: shown as done, not pending. */
+  doneNote?: string;
 }
+
+/** Placeholders still to be replaced in the /privacy page (owned elsewhere; kept in sync by hand). */
+export const PRIVACY_PLACEHOLDERS = [
+  "[Ragione sociale del titolare]",
+  "[Indirizzo completo del titolare]",
+  "[Partita IVA del titolare]",
+  "[Indirizzo email di contatto privacy]",
+  "[Periodo di conservazione dei dati]",
+  "[Data di aggiornamento]",
+] as const;
 
 export const MANUAL_CHECKS: readonly ManualCheck[] = [
   {
@@ -136,8 +148,15 @@ export const MANUAL_CHECKS: readonly ManualCheck[] = [
       "Authentication → Users → Add user (email di Aldo, Auto Confirm), poi nel SQL editor: insert into public.admins (user_id) select id from auth.users where email = '<email di Aldo>';",
   },
   {
+    id: "manual-privacy-placeholders",
+    label: "Informativa privacy: sostituire i segnaposto con i dati del titolare",
+    detail: `Nella pagina /privacy sostituire: ${PRIVACY_PLACEHOLDERS.join(", ")}.`,
+  },
+  {
     id: "manual-bootstrap-dropped",
-    label: "Funzione temporanea public.bootstrap_load_comuni rimossa (reviewer)",
-    detail: "Dopo il caricamento dei comuni, il reviewer elimina la funzione: da confermare prima della pubblicazione.",
+    label: "Funzione temporanea public.bootstrap_load_comuni rimossa",
+    detail: "La funzione non è più raggiungibile dal sito.",
+    doneNote:
+      "Completato dal revisore il 15/10/2026: funzione disattivata e spostata nello schema private.",
   },
 ];

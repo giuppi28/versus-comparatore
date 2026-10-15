@@ -108,13 +108,23 @@ test.describe("admin settings and go-live checklist", () => {
     // Manual items: shown prominently, never auto-checked, never part of the automatic status.
     const manual = page.getByTestId("manual-checks");
     await expect(manual.getByRole("heading", { name: "Verifiche manuali" })).toBeVisible();
-    await expect(manual.locator("[data-manual]")).toHaveCount(3);
+    await expect(manual.locator("[data-manual]")).toHaveCount(4);
     await expect(manual.getByText("Da verificare manualmente")).toHaveCount(3);
+    await expect(manual.locator('[data-manual]:not([data-done])')).toHaveCount(3);
     await expect(manual).toContainText("Registrazione pubblica disattivata in Supabase Auth");
     await expect(manual).toContainText("Authentication → Sign In / Providers");
     await expect(manual).toContainText("Allow new users to sign up");
     await expect(manual).toContainText("Account amministratore di Aldo creato e inserito in public.admins");
-    await expect(manual).toContainText("Funzione temporanea public.bootstrap_load_comuni rimossa");
+    await expect(manual).toContainText("Informativa privacy: sostituire i segnaposto");
+    await expect(manual).toContainText("[Ragione sociale del titolare]");
+    await expect(manual).toContainText("[Data di aggiornamento]");
+    const done = page.locator('[data-check="manual-bootstrap-dropped"]');
+    await expect(done).toHaveAttribute("data-done", "true");
+    await expect(done).toContainText("public.bootstrap_load_comuni");
+    await expect(done).toContainText(
+      "Completato dal revisore il 15/10/2026: funzione disattivata e spostata nello schema private",
+    );
+    await expect(done.getByText("Da verificare manualmente")).toHaveCount(0);
     await expect(page.locator('[data-check="manual-signup-disabled"][data-ok]')).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
