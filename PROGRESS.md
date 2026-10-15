@@ -54,3 +54,9 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Verified by orchestrator: PGlite run_local.mjs → ALL DATA CHECKS PASSED, ALL RLS TESTS PASSED.
 - Commit: f9da2a4
 - Also: 8645f3e fix(admin-auth) non-canonical signature rejection + stable tamper test.
+
+## 2026-10-15 12:55 — T3.7 Thank-you page
+- Agent: thankyou-builder (haiku).
+- Changed: `(public)/grazie` — "Grazie, [Nome]!", exact callback sentence (only place), offer summary (+ total for dual), "Torna alla home"; snapshot copied then flow reset; renders only when flow `leadCompleted` is true (activation must set it after complete succeeds — relayed to activation-form-builder).
+- Verified by orchestrator: vitest 6/6 ✓, eslint ✓, playwright thankyou 16/16 (desktop+mobile) ✓. Screenshots e2e/screenshots/thankyou-*.png.
+- Commit: fd6444f
