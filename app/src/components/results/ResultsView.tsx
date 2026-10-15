@@ -6,9 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { LoadingScreen, type LoadingSupplier } from "@/components/loading";
 import { OfferModal, type OfferModalOffer } from "@/components/offer-modal";
 import { Button, SpinnerIcon } from "@/components/ui";
-import { getRepository } from "@/lib/data";
-import type { Commodity, OfferWithSupplier } from "@/lib/data/types";
-import { commoditiesOf } from "@/lib/lead/rules";
+import type { Commodity, LeadCustomerType, OfferWithSupplier } from "@/lib/data/types";
 import { useFlow } from "@/lib/lead/flow-context";
 import { updateLead } from "@/lib/lead/client";
 import { annualKwh, annualSmc, applyFlowPatch, snapshotOffer, toLeadPatchData } from "@/lib/lead/flow-state";
@@ -30,7 +28,13 @@ import {
 } from "./results-logic";
 
 type Phase = "loading" | "results";
-type OffersByCommodity = Partial<Record<Commodity, OfferWithSupplier[]>>;
+/** Active offers loaded on the server, per commodity and customer type (see offerte/page.tsx). */
+export type ServerOffers = Record<Commodity, Record<LeadCustomerType, OfferWithSupplier[]>>;
+
+export interface ResultsViewProps {
+  /** null when the server could not load the offers (the page shows a retry). */
+  offers: ServerOffers | null;
+}
 
 function readLoadedSignature(): string | null {
   try {
@@ -73,7 +77,7 @@ function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col items-center gap-4 py-20 text-center text-ink-muted">{children}</div>;
 }
 
-export function ResultsView() {
+export function ResultsView({ offers: serverOffers }: ResultsViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { state, hydrated, update } = useFlow();
@@ -82,39 +86,21 @@ export function ResultsView() {
   const steps = useMemo(() => stepsFor(state), [state]);
   const isDual = steps.length === 2;
   const customerType = state.customerType;
-  const commodityKey = state.commodity;
 
   // ---- redirect when Page 1 data are missing ----
   useEffect(() => {
     if (hydrated && incomplete) router.replace("/");
   }, [hydrated, incomplete, router]);
 
-  // ---- offers ----
-  const [offers, setOffers] = useState<OffersByCommodity | null>(null);
-  const [loadError, setLoadError] = useState(false);
-  const [reloadToken, setReloadToken] = useState(0);
+  // ---- offers (loaded on the server so admin changes reach customers) ----
+  const loadError = serverOffers === null;
   const [loadingDone, setLoadingDone] = useState(false);
-
-  useEffect(() => {
-    if (!hydrated || incomplete || !customerType) return;
-    let cancelled = false;
-    const wanted = commoditiesOf(commodityKey);
-    const repo = getRepository();
-    Promise.all(wanted.map((c) => repo.listActiveOffers(c, customerType)))
-      .then((lists) => {
-        if (cancelled) return;
-        const next: OffersByCommodity = {};
-        wanted.forEach((c, i) => (next[c] = lists[i]));
-        setOffers(next);
-        setLoadError(false);
-      })
-      .catch(() => {
-        if (!cancelled) setLoadError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [hydrated, incomplete, customerType, commodityKey, reloadToken]);
+  const offers = useMemo(() => {
+    if (!serverOffers || !customerType) return null;
+    const byCommodity: Partial<Record<Commodity, OfferWithSupplier[]>> = {};
+    for (const c of steps) byCommodity[c] = serverOffers[c][customerType];
+    return byCommodity;
+  }, [serverOffers, customerType, steps]);
 
   // The loading animation plays unless this very comparison was already loaded in this
   // session (e.g. browser back from /attivazione). Safe to read storage here: before
@@ -234,14 +220,7 @@ export function ResultsView() {
           <p role="alert" data-testid="results-error" className="text-ink">
             Non siamo riusciti a caricare le offerte. Controlla la connessione e riprova.
           </p>
-          <Button
-            onClick={() => {
-              setLoadError(false);
-              setReloadToken((n) => n + 1);
-            }}
-          >
-            Riprova
-          </Button>
+          <Button onClick={() => router.refresh()}>Riprova</Button>
         </Centered>
       </Shell>
     );

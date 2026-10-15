@@ -335,4 +335,70 @@ test.describe("results page", () => {
       monthlyCost(iberdrola, annualFromMonthly(225)) + monthlyCost(engie, annualFromMonthly(60));
     expectCents(last.monthly_cost_shown, total);
   });
+
+  // Offers must come from the SERVER repository: an admin change (made through the admin UI,
+  // server side) has to reach the customers' results. Uses a business-only gas offer created by
+  // the test itself (no other results test looks at gas + Partita IVA) and leaves it deactivated.
+  test("results reflect server-side admin changes (create + feature, then deactivate)", async ({ page }, info) => {
+    await setup(page, gasCasa({ customerType: "business", manualConsumption: true, manualSmcYear: 720 }));
+    const name = `E2E Gas risultati ${info.project.name} ${Date.now()}`;
+
+    await page.goto("/admin/login");
+    await page.getByLabel("Email").fill("admin@versus.test");
+    await page.getByLabel("Password").fill("Versus-Test-Password-2026!");
+    const submit = page.getByRole("button", { name: "Accedi" });
+    await expect(submit).toBeEnabled({ timeout: 20_000 });
+    await submit.click();
+    await page.waitForURL((url) => url.pathname === "/admin");
+
+    await page.goto("/admin/offerte/nuova");
+    await page.locator("[name=supplier_id]").selectOption("iren");
+    await page.locator("[name=name]").fill(name);
+    await page.locator("[name=commodity]").selectOption("gas");
+    await page.locator("[name=customer_type]").selectOption("business");
+    await page.locator("[name=energy_price]").fill("0,0100");
+    await page.locator("[name=other_variable_costs]").fill("0");
+    await page.locator("[name=fixed_fee]").fill("1");
+    await page.locator("[name=fixed_fee_period]").selectOption("month");
+    await page.locator("[name=locked_months]").fill("12");
+    await page.locator("[name=featured]").check();
+    await page.getByRole("button", { name: "Crea offerta" }).click();
+    await page.waitForURL(/\/admin\/offerte\/[^/]+\?esito=creata$/);
+    const id = new URL(page.url()).pathname.split("/").pop()!;
+
+    try {
+      await page.goto("/offerte?fast=1");
+      const mine = page.locator(`[data-testid="offer-card"][data-offer-id="${id}"]`);
+      await expect(mine).toBeVisible();
+      await expect(mine).toHaveAttribute("data-featured", "true");
+      await expect(mine.getByTestId("offer-name")).toHaveText(name);
+      // Featured offers come first.
+      await expect(page.getByTestId("offer-card").first()).toHaveAttribute("data-featured", "true");
+      // Not offered to private customers: the same offer is business-only.
+      await page.evaluate((key) => {
+        const raw = JSON.parse(window.sessionStorage.getItem(key)!);
+        window.sessionStorage.setItem(key, JSON.stringify({ ...raw, customerType: "casa" }));
+      }, FLOW_KEY);
+      await page.reload();
+      await expect(page.getByTestId("offer-card").first()).toBeVisible();
+      await expect(mine).toHaveCount(0);
+      await page.evaluate((key) => {
+        const raw = JSON.parse(window.sessionStorage.getItem(key)!);
+        window.sessionStorage.setItem(key, JSON.stringify({ ...raw, customerType: "business" }));
+      }, FLOW_KEY);
+    } finally {
+      // Always restore: un-feature, then deactivate (the default admin view hides inactive rows).
+      await page.goto("/admin/offerte");
+      const row = page.locator(`[data-testid="offer-row"][data-offer-id="${id}"]`);
+      await row.getByTestId("toggle-featured").click();
+      await expect(row).toHaveAttribute("data-featured", "false");
+      await row.getByTestId("toggle-active").click();
+      await expect(row).toHaveCount(0);
+    }
+
+    // Deactivated on the server: gone from the results.
+    await page.goto("/offerte?fast=1");
+    await expect(page.getByTestId("offer-card").first()).toBeVisible();
+    await expect(page.locator(`[data-offer-id="${id}"]`)).toHaveCount(0);
+  });
 });

@@ -1,4 +1,5 @@
 export { ResultsView } from "./ResultsView";
+export type { ResultsViewProps, ServerOffers } from "./ResultsView";
 export { OfferCard } from "./OfferCard";
 export type { OfferCardProps } from "./OfferCard";
 export { ConsumptionPanel } from "./ConsumptionPanel";
