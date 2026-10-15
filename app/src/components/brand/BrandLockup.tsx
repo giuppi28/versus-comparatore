@@ -25,11 +25,11 @@ const SIZES: Record<BrandLockupSize, { mark: string; brand: string; main: string
     gap: "gap-2.5",
   },
   md: {
-    mark: "h-9 sm:h-12",
+    mark: "h-8 min-[360px]:h-9 sm:h-12",
     brand: "text-[0.625rem] sm:text-[0.8125rem]",
-    main: "text-[1.1875rem] sm:text-[1.875rem]",
+    main: "text-base min-[360px]:text-[1.1875rem] sm:text-[1.875rem]",
     sub: "text-[0.68em]",
-    gap: "gap-2.5 sm:gap-3",
+    gap: "gap-2 min-[360px]:gap-2.5 sm:gap-3",
   },
   lg: {
     mark: "h-12",

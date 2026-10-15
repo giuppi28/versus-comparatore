@@ -15,7 +15,7 @@ export interface SiteHeaderProps {
 
 /**
  * Top bar of all customer-facing pages: light green tint + a thin green gradient strip,
- * the VERSUS lockup on the left, a short trust line on the right (hidden on phones).
+ * the VERSUS lockup on the left, a short trust line on the right (hidden below 1024px: lockup + trust line do not fit side by side between 640 and ~800px).
  *
  * The strip is absolutely positioned so the bar keeps the 3.5rem / 4rem height other
  * screens (loading overlay) compute their min-height from.
@@ -45,7 +45,7 @@ export function SiteHeader({ homeLink = true, className }: SiteHeaderProps) {
         ) : (
           lockup
         )}
-        <p className="hidden shrink-0 items-center gap-2 text-sm font-medium text-brand-800 sm:flex">
+        <p className="hidden shrink-0 items-center gap-2 text-sm font-medium text-brand-800 lg:flex">
           <CheckIcon width={16} height={16} aria-hidden="true" className="text-brand-600" />
           Confronto gratuito · 100% online
         </p>
