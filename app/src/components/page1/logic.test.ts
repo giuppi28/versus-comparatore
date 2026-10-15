@@ -107,7 +107,7 @@ describe("computeEstimates", () => {
     expect(s.estimatedSmcYear).toBe(105 * 13);
   });
 
-  it("the climate zone follows the comune; unknown zone falls back to E", () => {
+  it("the climate zone follows the comune; unknown zone falls back to the province capital's zone", () => {
     const base = edit(INITIAL_FLOW_STATE, {
       commodity: "gas",
       customerType: "casa",
@@ -117,6 +117,9 @@ describe("computeEstimates", () => {
     });
     expect(edit(base, { comune: { ...MILANO, climate_zone: "A" } }).estimatedSmcYear).toBe(50 * 2);
     expect(edit(base, { comune: { ...MILANO, climate_zone: null } }).estimatedSmcYear).toBe(50 * 13);
+    // Null-zone comune in a non-E province (BL capital = zone F).
+    const borgo = { istat: "025074", name: "Borgo Valbelluna", province: "BL", caps: ["32030"], climate_zone: null };
+    expect(edit(base, { comune: borgo }).estimatedSmcYear).toBe(50 * 16);
   });
 
   it("dual computes both; Partita IVA has no estimate", () => {

@@ -109,7 +109,7 @@ export function derive(c: MatrixCase): Derived {
     ? null
     : manual
       ? c.manualSmc!
-      : estimateGas({ people: c.people!, uses: c.gasUses, sqmRange: c.sqm, climateZone: c.zone });
+      : estimateGas({ people: c.people!, uses: c.gasUses, sqmRange: c.sqm, climateZone: c.zone, provinceCode: c.provinceCode });
   const luceService = luce ? c.service : null;
   const gasService: ServiceType | null = gas ? (c.hasGas === false ? "primo_allaccio" : c.service) : null;
   return {

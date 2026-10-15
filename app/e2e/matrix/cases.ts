@@ -60,6 +60,8 @@ export interface MatrixCase {
   /** Comune typed in the autocomplete (mock sample). */
   comune: string;
   zone: ClimateZone | null;
+  /** Province code of the comune; estimateGas falls back to the province capital's zone when `zone` is null. */
+  provinceCode: string | null;
   /** Current suppliers selected on Page 1 (null = block not shown). */
   supplierLuce: string | null;
   supplierGas: string | null;
@@ -216,10 +218,10 @@ const GAS_MANUAL_PROFILES: GasProfile[] = [
 
 const SERVICES: ServiceType[] = ["cambio_fornitore", "subentro", "voltura", "primo_allaccio"];
 
-function zoneOf(comuneName: string): ClimateZone | null {
+function comuneByName(comuneName: string) {
   const c = MOCK_COMUNI.find((x) => x.name === comuneName);
   if (!c) throw new Error(`Unknown mock comune "${comuneName}"`);
-  return c.climate_zone;
+  return c;
 }
 
 // ---------------------------------------------------------------------------
@@ -287,7 +289,8 @@ export function generateMatrix(): MatrixCase[] {
       gasUses: business ? [] : (gasProfile?.uses ?? []),
       sqm: !business && !manual ? (gasProfile?.sqm ?? null) : null,
       comune,
-      zone: zoneOf(comune),
+      zone: comuneByName(comune).climate_zone,
+      provinceCode: comuneByName(comune).province_code,
       supplierLuce,
       supplierGas,
       manualKwh: manual || business ? 1500 + ((index * 733) % 9000) : null,

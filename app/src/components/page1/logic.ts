@@ -100,6 +100,7 @@ export function computeEstimates(state: FlowState): Estimates {
           uses: state.gasUses,
           sqmRange: state.sqmRange,
           climateZone: state.comune?.climate_zone ?? null,
+          provinceCode: state.comune?.province ?? null,
         })
       : null;
   return { estimatedKwhYear: kwh, estimatedSmcYear: smc };
