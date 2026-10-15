@@ -13,7 +13,7 @@ assets. Data/Auth/Storage in Supabase (project `felnnfisnobpgetgtxle`, eu-centra
 
 | # | Decision | Why it matters |
 |---|---|---|
-| D1 | **Workers plan.** The Free plan allows only 10 ms CPU per request and a 3 MB (compressed) Worker. Our bundle is about 2.1 MB gzip (measured by gzipping the OpenNext output; the exact number is printed by the first `deploy`). Server-rendering Next.js pages and the admin area routinely exceeds 10 ms CPU, so expect `Exceeded CPU` errors (HTTP 1102) on Free. **Workers Paid (USD 5/month)** raises CPU to 30 s (configurable) and the size limit to 10 MB. | It is a paid resource: nobody creates it without you. Try Free first only for a smoke test on the `workers.dev` URL. |
+| D1 | **Workers plan. DECIDED (Q10): start on Workers Free** (project constraint: zero cost). Monitor for error 1102 (CPU limit) in real use; if it appears, Giuseppe decides whether to move to Paid. Background: The Free plan allows only 10 ms CPU per request and a 3 MB (compressed) Worker. Our bundle is about 2.1 MB gzip (measured by gzipping the OpenNext output; the exact number is printed by the first `deploy`). Server-rendering Next.js pages and the admin area routinely exceeds 10 ms CPU, so expect `Exceeded CPU` errors (HTTP 1102) on Free. **Workers Paid (USD 5/month)** raises CPU to 30 s (configurable) and the size limit to 10 MB. | Paid is a paid resource: nobody creates it without you. Watch Worker → Observability/Logs for 1102 after launch. |
 | D2 | **Open questions Q3–Q9** in `QUESTIONS.md` (section 9). Q6 (Turnstile bypass via direct RPC) and Q9 (privacy text) should be answered before real traffic. | Legal + abuse risk. |
 | D3 | **Real offers.** `/admin/impostazioni` stays "Non pronto" while any active offer has `price_verified = false`. | Seed offers are placeholders. |
 
@@ -79,6 +79,7 @@ runtime value, stored as a Cloudflare secret** (never in git, never in a file th
 | `TURNSTILE_SECRET_KEY` | **secret** | runtime | Cloudflare secret | real secret key (section 4) |
 | `RESEND_API_KEY` | **secret** | runtime | Cloudflare secret | `re_...` (section 5) |
 | `RESEND_FROM` | server | runtime | Cloudflare secret | e.g. `VERSUS <notifiche@yourdomain.it>` (verified domain) |
+| `LEAD_API_SECRET` | **secret** | runtime | Cloudflare secret | Shared secret the lead API sends to the Supabase lead functions (Q6; the database stores only its hash). **Server-only: a Cloudflare secret, never `NEXT_PUBLIC_*`, never in `.env.production.local`.** Generate a long random value (e.g. `openssl rand -hex 32`); the reviewer stores the matching hash in the DB. Added by the Q6 lead-function work: confirm the exact name in `app/.env.example` when that lands. |
 | `NOTIFICATION_EMAIL` | server | runtime | Cloudflare secret | Aldo's address (required in supabase mode: `/admin/impostazioni` cannot be read by the lead API under RLS; see Q7) |
 | `SUPABASE_PROJECT_REF` | server | not read by the app code today | optional | `felnnfisnobpgetgtxle` |
 | `ADMIN_MOCK_EMAIL`, `ADMIN_MOCK_PASSWORD`, `ADMIN_MOCK_SESSION_SECRET` | **never** | local tests only | do not set | The mock admin login is refused when `NODE_ENV=production`. |
@@ -206,6 +207,7 @@ npx wrangler secret put TURNSTILE_SECRET_KEY
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put RESEND_FROM
 npx wrangler secret put NOTIFICATION_EMAIL
+npx wrangler secret put LEAD_API_SECRET
 ```
 
 (There is intentionally no `deploy` script in `package.json`.)
@@ -219,7 +221,7 @@ to `wrangler.jsonc` before the first deploy and attach the custom domain from th
 Dashboard → Workers & Pages → Create → Import a repository (`giuppi28/versus-comparatore`),
 root directory `app`, build command `npm ci && npm run build:cf`, deploy command
 `npx opennextjs-cloudflare deploy`. Put the five `NEXT_PUBLIC_*` values under "Build variables and
-secrets" (they must exist at build time) and the four secrets under the Worker's "Variables and
+secrets" (they must exist at build time) and the five secrets (`TURNSTILE_SECRET_KEY`, `RESEND_API_KEY`, `RESEND_FROM`, `NOTIFICATION_EMAIL`, `LEAD_API_SECRET`) under the Worker's "Variables and
 Secrets". There is no `.env.local` on the build machine, so the env guard passes naturally.
 Disable automatic builds on push if you want deploys to stay manual.
 
@@ -276,9 +278,31 @@ Also enable (free): Security → Bots → Bot Fight Mode; SSL/TLS mode Full (str
 
 Tick in order. Everything is on the production URL.
 
-- [ ] Section 2 done (migrations + seed + both SQL tests green, sign-ups off, admins row, TOTP on).
+- [ ] Section 2 done (migrations + seed + both SQL tests green, TOTP on).
+
+**Manual items (also listed in `/admin/impostazioni` under "Verifiche manuali").** The app cannot
+detect these with the publishable key (no service role, and no DB column to persist an
+acknowledgement), so the admin page shows them as informational "Da verificare manualmente" items.
+They do **not** feed the automatic "Pronto per la pubblicazione" status: that status covers the
+automatic checks only, so tick these here yourself before going live.
+
+- [ ] **Public sign-up disabled in Supabase Auth**: dashboard → Authentication → Sign In / Providers →
+      "Allow new users to sign up" OFF. (Cannot be switched off through the reviewer's connector.
+      Non-admin users would only get anon-level access, but disable it anyway: PRD §4.1.)
+- [ ] **Aldo's admin account created and inserted in `public.admins`** (needs his email, Q3).
+      Authentication → Users → Add user (email + strong password, "Auto Confirm User"), then in the
+      SQL editor:
+      ```sql
+      insert into public.admins (user_id)
+      select id from auth.users where email = '<email di Aldo>';
+      ```
+      Check that it inserted one row (`select count(*) from public.admins;`).
+- [ ] **Temporary function `public.bootstrap_load_comuni` dropped** (reviewer, after the comuni load
+      printed `TOTAL 7894`). Verify: `select proname from pg_proc where proname = 'bootstrap_load_comuni';`
+      returns no row.
+
 - [ ] Real offers entered/verified in `/admin/offerte` (all active offers `price_verified = true`).
-- [ ] Section 3 variables: build with the five `NEXT_PUBLIC_*`, four secrets set.
+- [ ] Section 3 variables: build with the five `NEXT_PUBLIC_*`, five secrets set (including `LEAD_API_SECRET`).
 - [ ] `/admin/login` works with Aldo's account + TOTP; `/admin` while logged out redirects to the login.
 - [ ] `/admin/impostazioni` shows **"Pronto per la pubblicazione"** (every check green: offers verified,
       notification email, `NOTIFICATION_EMAIL`, Resend key and sender, real Turnstile keys, site URL,

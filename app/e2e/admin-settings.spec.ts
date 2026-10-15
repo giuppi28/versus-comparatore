@@ -105,6 +105,17 @@ test.describe("admin settings and go-live checklist", () => {
     await expect(check).toHaveAttribute("data-ok", "false");
     // Mock data source never counts as ready.
     await expect(page.locator('[data-check="data-source"]')).toHaveAttribute("data-ok", "false");
+    // Manual items: shown prominently, never auto-checked, never part of the automatic status.
+    const manual = page.getByTestId("manual-checks");
+    await expect(manual.getByRole("heading", { name: "Verifiche manuali" })).toBeVisible();
+    await expect(manual.locator("[data-manual]")).toHaveCount(3);
+    await expect(manual.getByText("Da verificare manualmente")).toHaveCount(3);
+    await expect(manual).toContainText("Registrazione pubblica disattivata in Supabase Auth");
+    await expect(manual).toContainText("Authentication → Sign In / Providers");
+    await expect(manual).toContainText("Allow new users to sign up");
+    await expect(manual).toContainText("Account amministratore di Aldo creato e inserito in public.admins");
+    await expect(manual).toContainText("Funzione temporanea public.bootstrap_load_comuni rimossa");
+    await expect(page.locator('[data-check="manual-signup-disabled"][data-ok]')).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
     await page.screenshot({
       path: `${SHOTS}/admin-settings-golive-${testInfo.project.name}.png`,

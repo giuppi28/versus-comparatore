@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import { getDataSource } from "@/lib/data";
 import { normalizeEmail } from "@/lib/notify/email-address";
-import { computeGoLiveChecks, hasRealTurnstileKeys, isReadyForGoLive } from "./checks";
+import { MANUAL_CHECKS, computeGoLiveChecks, hasRealTurnstileKeys, isReadyForGoLive } from "./checks";
 import { SettingsForm } from "./SettingsForm";
 
 export const metadata = { title: "Impostazioni — Area riservata VERSUS" };
@@ -95,6 +95,38 @@ export default async function SettingsPage() {
               </li>
             ))}
           </ul>
+
+          <div
+            data-testid="manual-checks"
+            className="flex flex-col gap-3 rounded-control border border-warning bg-warning-soft p-4"
+          >
+            <h3 className="text-lg font-bold">Verifiche manuali</h3>
+            <p className="text-sm">
+              Queste voci non si possono rilevare dal sito e non cambiano lo stato qui sopra: controllale
+              a mano prima di pubblicare.
+            </p>
+            <ul className="flex flex-col gap-3" aria-label="Verifiche manuali">
+              {MANUAL_CHECKS.map((m) => (
+                <li key={m.id} data-check={m.id} data-manual="true" className="flex items-start gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-warning text-sm font-bold text-white"
+                  >
+                    ?
+                  </span>
+                  <div>
+                    <p className="font-semibold">
+                      {m.label}
+                      <span className="ml-2 rounded-full bg-white px-2 py-0.5 text-xs font-bold uppercase tracking-wide">
+                        Da verificare manualmente
+                      </span>
+                    </p>
+                    <p className="text-sm break-words">{m.detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
 
           {unverified.length > 0 && (
             <div className="flex flex-col gap-3">

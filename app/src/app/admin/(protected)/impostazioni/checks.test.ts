@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { computeGoLiveChecks, hasRealTurnstileKeys, isReadyForGoLive, isTurnstileTestKey, type GoLiveInputs } from "./checks";
+import {
+  MANUAL_CHECKS,
+  computeGoLiveChecks,
+  hasRealTurnstileKeys,
+  isReadyForGoLive,
+  isTurnstileTestKey,
+  type GoLiveInputs,
+} from "./checks";
 
 const READY: GoLiveInputs = {
   unverifiedActiveOffers: 0,
@@ -53,5 +60,24 @@ describe("go-live checks", () => {
     expect(hasRealTurnstileKeys("0x4AAAAAAA", "1x0000000000000000000000000000000AA")).toBe(false);
     expect(hasRealTurnstileKeys(undefined, "0x4BBBBBBB")).toBe(false);
     expect(hasRealTurnstileKeys("0x4AAAAAAA", "")).toBe(false);
+  });
+
+  it("keeps manual items out of the automatic checks and the ready computation", () => {
+    const checks = computeGoLiveChecks(READY);
+    for (const m of MANUAL_CHECKS) expect(checks.some((c) => c.id === m.id)).toBe(false);
+    // Ready depends on automatic checks only: manual items never block it.
+    expect(isReadyForGoLive(checks)).toBe(true);
+  });
+
+  it("lists the three manual go-live items", () => {
+    expect(MANUAL_CHECKS.map((m) => m.id)).toEqual([
+      "manual-signup-disabled",
+      "manual-admin-account",
+      "manual-bootstrap-dropped",
+    ]);
+    expect(MANUAL_CHECKS[0].detail).toContain("Allow new users to sign up");
+    expect(MANUAL_CHECKS[0].detail).toContain("Authentication → Sign In / Providers");
+    expect(MANUAL_CHECKS[1].detail).toContain("public.admins");
+    expect(MANUAL_CHECKS[2].label).toContain("public.bootstrap_load_comuni");
   });
 });

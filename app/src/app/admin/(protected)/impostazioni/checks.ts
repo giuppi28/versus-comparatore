@@ -108,3 +108,36 @@ export function computeGoLiveChecks(i: GoLiveInputs): GoLiveCheck[] {
 export function isReadyForGoLive(checks: readonly GoLiveCheck[]): boolean {
   return checks.every((c) => c.ok);
 }
+
+/**
+ * Manual go-live items: facts the app cannot detect with the publishable key (no service role,
+ * no persisted acknowledgement column). They are purely informational: they never feed
+ * `isReadyForGoLive` (which covers the automatic checks only) and are always shown, prominently,
+ * in a separate "Verifiche manuali" block next to the status.
+ */
+export interface ManualCheck {
+  id: string;
+  label: string;
+  /** Where / how to do it, in Italian. */
+  detail: string;
+}
+
+export const MANUAL_CHECKS: readonly ManualCheck[] = [
+  {
+    id: "manual-signup-disabled",
+    label: "Registrazione pubblica disattivata in Supabase Auth",
+    detail:
+      "Dashboard Supabase → Authentication → Sign In / Providers → \"Allow new users to sign up\" disattivato.",
+  },
+  {
+    id: "manual-admin-account",
+    label: "Account amministratore di Aldo creato e inserito in public.admins",
+    detail:
+      "Authentication → Users → Add user (email di Aldo, Auto Confirm), poi nel SQL editor: insert into public.admins (user_id) select id from auth.users where email = '<email di Aldo>';",
+  },
+  {
+    id: "manual-bootstrap-dropped",
+    label: "Funzione temporanea public.bootstrap_load_comuni rimossa (reviewer)",
+    detail: "Dopo il caricamento dei comuni, il reviewer elimina la funzione: da confermare prima della pubblicazione.",
+  },
+];
