@@ -85,3 +85,7 @@ Creates Storage bucket `supplier-logos` (public read, SVG only, 200 KB) with `st
 ## Q8 — Special supplier options ("Tutela", "Altro fornitore", "Non lo so")
 They are supplier rows without offers and nothing distinguishes them, so they appear in the admin offer-supplier select and the loading orbit could include them if they ever got offers. Proposal: add `suppliers.is_placeholder boolean default false` (migration) and hide placeholders from offer/supplier admin selects. OK?
 **Answer:**
+
+## Q9 (PRD §13.1) — Privacy notice text
+Page 1's consent links to `/privacy`, which doesn't exist yet. Please provide the informativa privacy text (data controller, purpose = being contacted about the chosen offer, retention, rights). Until then the orchestrator will add a `/privacy` page with the section structure and the go-live checklist will flag it as missing.
+**Answer:**
