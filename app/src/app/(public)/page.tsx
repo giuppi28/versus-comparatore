@@ -1,6 +1,10 @@
 import { SiteHeader } from "@/components/brand";
+import { BulbIllustration } from "@/components/brand/decor";
 import { Page1Form, type SupplierOption } from "@/components/page1";
+import { LandingSections, type SupplierLogo } from "@/components/page1/LandingSections";
 import { getRepository } from "@/lib/data";
+import { resolveLogoUrl } from "@/lib/data/logo";
+import { isRealSupplier } from "@/lib/data/types";
 
 // Supplier list is editable from the admin area: never bake it in at build time.
 export const dynamic = "force-dynamic";
@@ -14,28 +18,49 @@ async function loadSupplierOptions(): Promise<SupplierOption[]> {
     .map((s) => ({ id: s.id, name: s.name, sellsLuce: s.sells_luce, sellsGas: s.sells_gas }));
 }
 
+/** Real suppliers (never the Tutela / Altro / Non lo so placeholders) that have a logo. */
+async function loadSupplierLogos(): Promise<SupplierLogo[]> {
+  const suppliers = await getRepository().listActiveSuppliers();
+  return suppliers
+    .filter(isRealSupplier)
+    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "it"))
+    .flatMap((s) => {
+      const logoUrl = resolveLogoUrl(s.logo_path);
+      return logoUrl ? [{ name: s.name, logoUrl }] : [];
+    });
+}
+
 /** Page 1 — data collection + consumption estimate (PRD §6). */
 export default async function Page1() {
-  const suppliers = await loadSupplierOptions();
+  const [suppliers, logos] = await Promise.all([loadSupplierOptions(), loadSupplierLogos()]);
   return (
+    // Desktop: header content narrowed to the form column so logo / trust line line up with it.
     <>
-      <SiteHeader homeLink={false} />
+      <SiteHeader homeLink={false} className="lg:max-w-2xl" />
       <main className="flex-1 pb-section">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-          <header className="flex flex-col gap-4 pb-8 pt-8 sm:gap-5 sm:pb-10 sm:pt-12 lg:max-w-2xl">
+        {/* Hero: overflow-hidden crops the bulb; the form below never sits under it. */}
+        <div className="relative overflow-hidden">
+          <BulbIllustration
+            className="absolute -right-10 top-3 h-44 [mask-image:linear-gradient(to_bottom,#000_55%,transparent_96%)] w-auto text-brand-100 sm:-right-12 sm:top-6 sm:h-52 lg:left-[calc(50%+16.5rem)] lg:right-auto lg:top-5 lg:h-[28rem] lg:[mask-image:linear-gradient(to_bottom,#000_30%,transparent_72%)]"
+            strokeWidth={8}
+          />
+          <header className="relative mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-8 pt-8 sm:items-center sm:gap-5 sm:px-6 sm:pb-10 sm:pt-12 sm:text-center">
             <h1 className="heading-wide text-hero text-ink">
               Comparatore{" "}
               <br />
               <span className="text-brand-600">luce e gas</span>
             </h1>
-            <p className="text-lg text-ink-muted">
+            <p className="max-w-xl text-lg text-ink-muted">
               Rispondi a poche domande: ti mostriamo le offerte più convenienti per la tua casa o la
               tua attività.
             </p>
           </header>
-          <div className="lg:max-w-2xl">
-            <Page1Form suppliers={suppliers} />
-          </div>
+        </div>
+        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6">
+          <Page1Form suppliers={suppliers} />
+        </div>
+        <div className="px-4 sm:px-6">
+          <LandingSections suppliers={logos} />
         </div>
       </main>
     </>

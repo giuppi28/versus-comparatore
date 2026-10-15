@@ -96,6 +96,41 @@ test.describe("Page 1 — structure and copy", () => {
     await page.screenshot({ path: path.join(SHOTS, `page1-${testInfo.project.name}-start.png`), fullPage: true });
   });
 
+  test("hero and form column are centered; decorative bulb and landing sections", async ({ page }, testInfo) => {
+    await open(page);
+    const vw = page.viewportSize()!.width;
+    // Desktop: hero + form column centered in the viewport.
+    if (testInfo.project.name === "desktop") {
+      for (const target of [page.getByRole("heading", { level: 1 }), page.getByTestId("page1-form")]) {
+        const box = (await target.boundingBox())!;
+        expect(Math.abs(box.x + box.width / 2 - vw / 2)).toBeLessThanOrEqual(2);
+      }
+    }
+    // The bulb is purely decorative.
+    const bulb = page.locator('main svg[data-decor="bulb"]');
+    await expect(bulb).toHaveAttribute("aria-hidden", "true");
+    await expect(bulb).toHaveCSS("pointer-events", "none");
+    // Hero headline keeps the two lines.
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(/comparatore\s+luce e gas/i);
+
+    // Landing sections below the form: after it, real suppliers only (no placeholders), FAQ is native <details>.
+    const sections = page.getByTestId("landing-sections");
+    await expect(sections.getByRole("heading", { name: "Come funziona" })).toBeVisible();
+    await expect(sections.getByRole("listitem").filter({ hasText: /Confronta|Scegli|Attiva online/ })).toHaveCount(3);
+    const logos = sections.getByRole("region", { name: "Confrontiamo le offerte di" }).locator("img");
+    expect(await logos.count()).toBeGreaterThanOrEqual(10);
+    for (const name of await logos.evaluateAll((els) => els.map((e) => e.getAttribute("alt") ?? ""))) {
+      expect(name).not.toMatch(/tutela|altro|non lo so/i);
+    }
+    const formBox = (await page.getByTestId("page1-form").boundingBox())!;
+    const sectionsBox = (await sections.boundingBox())!;
+    expect(sectionsBox.y).toBeGreaterThan(formBox.y + formBox.height);
+    const faq = sections.locator("details").first();
+    await faq.locator("summary").click();
+    await expect(faq).toHaveAttribute("open", "");
+    await noOverflow(page);
+  });
+
   test("Partita IVA asks for the company name and direct consumption (no household questions)", async ({ page }) => {
     await open(page);
     await pick(page, "commodity-dual", "customer-business");
