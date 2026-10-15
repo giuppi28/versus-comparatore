@@ -155,3 +155,10 @@ Known limitations: real Supabase flow (auth/MFA, RLS, storage) untested until mi
 - T8.3 (db-builder): seed.sql gas advantage "Prezzo **fisso** per tutta la durata del blocco" (+ data checks). Mock data change pending (setup-builder).
 - T8.4 (logic-builder 4680481 + page1-builder/qa-tester 72d00e9): null zone → province capital zone (110-province generated map); page1 passes province code; matrix null-zone cases 15/15 ✓.
 - T8.2 SQL (db-builder, 2e9ee30): migration 20261015140000 — private.app_secrets (sha256 only, no grants), p_secret first param on the 3 lead functions (invalid_secret / 28000), complete_lead returns notification_email, suppliers.is_placeholder. LEAD_API_SECRET in app/.env.local only (verified gitignored, not in git). PGlite: ALL DATA CHECKS PASSED, ALL RLS TESTS PASSED. APPLY requested — must ship together with the app route changes (next: lead-api-builder).
+
+## 2026-10-15 16:45 — T8.2 app half
+- Agent: lead-api-builder (opus).
+- Changed: src/lib/lead/secret.ts (server-only, sole reader of LEAD_API_SECRET) registers provider with supabase repo; all 3 RPCs pass p_secret; missing/invalid secret → 500 server_error, no leak; completeLead returns notification_email; recipient order completion → env → settings; bundle guard rejects secret-looking NEXT_PUBLIC names and scans .open-next for secret values; secret-exposure test walks client import graph.
+- Verified by orchestrator: typecheck ✓, lint ✓, vitest 745/745 ✓ (agent: lead e2e 107 passed).
+- Ship note: migration 20261015140000 and this commit must go live together; hosting LEAD_API_SECRET must match the hash in the migration.
+- Commit: 3f92e05
