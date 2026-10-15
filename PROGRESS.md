@@ -175,3 +175,22 @@ Blocked on reviewer/Giuseppe: APPLY 20261015140000 (then T7.5 + T7.7 final sign-
 - T7.5 (qa-tester, 31fb197): `npm run test:security` — standalone Vitest suite against the REAL Supabase project with the publishable key: public read rules (comuni 7894, only active suppliers/offers), leads/settings/admins/app_secrets unreachable, admin writes rejected, private RPCs unreachable, 8 bad-secret variants × 3 functions → invalid_secret (secret checked first), old signatures 404, create_lead input rules, token isolation (13 forged tokens, completed-lead lock), storage writes rejected. Orchestrator run: 74 passed / 1 skipped (no bucket object yet). Creates exactly 2 TEST-SECURITY leads per run (cleanup SQL in QUESTIONS.md). Note: lead_not_found surfaces as HTTP 500 from PostgREST (P0002) — app maps by message; possible future errcode change.
 - 14243a0 (admin-settings): bootstrap removal shown done; privacy placeholders as manual go-live item; DEPLOY.md notification-email note (Q3).
 - 5a13cd1 (db-builder): idempotent doc migration 20261015150000 for the reviewer's disable-and-move of old functions; Q11 asks to confirm names. PGlite ✓.
+
+## 2026-10-15 18:15 — T5.1 Logo pack
+- logopack-builder (sonnet), 0786b9d + d1e4563 (db-builder seed): 11 real suppliers normalized (tight viewBox + 5% padding, height 48, prefixed ids, no metadata), color/black/white + preview; all 33 SVGs are fixed points of the app sanitizer; app/public/logos wired into mock + seed; migration 20261015160000 sets logo_path only where null (APPLY requested). Placeholders have no logo.
+
+## 2026-10-15 18:20 — T7.7 FINAL REPORT (definition of done)
+Orchestrator final regression on one clean server, mock data layer:
+- typecheck ✓ · lint ✓ · Vitest 806/806 ✓
+- Standard Playwright suites (page1, results, activation, thankyou, admin-auth/leads/suppliers/offers/settings, smoke): 185 passed, 1 skipped (keyboard-only case on mobile by design) ✓
+- Phase 7 matrix (`npm run e2e:matrix`): 382/382 parallel + 6/6 serial = **388/388 (100%)** ✓ — T7.1 flow matrix 218 desktop + 42 mobile combinations; T7.2 validation 32+29; T7.3 copy; T7.4 admin; T7.6 screenshots + Lighthouse a11y ≥ 96 on every public page.
+- T7.5 against the REAL Supabase project (`npm run test:security`): 74 passed, 1 skipped (no bucket-stored logo yet) ✓. SQL-level rls_test.sql / data_checks.sql on the real DB requested from the reviewer (QUESTIONS REQUEST); both pass locally on PGlite.
+Known limitations / go-live items (see app/DEPLOY.md + /admin/impostazioni checklist):
+- Full app flow has been e2e-tested on the mock layer; against the real DB it is covered at the API level (T7.5). A full browser run in supabase mode needs Aldo's admin user (go-live).
+- Privacy notice placeholders (Q9, deferred); Aldo's admin account + his notification email (Q3); public sign-up off; Turnstile/Resend real keys; LEAD_API_SECRET as Cloudflare secret; WAF rate-limit rule (in-memory limiter is per isolate); Workers Free CPU limit to monitor (Q10).
+- TEST-SECURITY leads (2 per security run) remain in the real DB until the admin deletes them (cleanup SQL in QUESTIONS.md).
+- PostgREST surfaces lead_not_found as HTTP 500 (P0002); app maps it correctly — cosmetic for monitoring.
+- Pending reviewer: APPLY 20261015160000 (logo paths), Q11 (disabled function names), REQUEST SQL tests.
+
+## 2026-10-15 18:20 — LOOP SUMMARY (stopping: no unblocked task left)
+All TASKS.md items are [x]. Remaining actions belong to the reviewer/Giuseppe (listed above).

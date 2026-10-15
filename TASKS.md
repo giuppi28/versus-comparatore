@@ -57,7 +57,7 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [x] T4.5 Settings (notification email) + go-live checklist (unverified offers) + Resend notification (log-only when no key) → `admin-settings-builder`
 
 ## Phase 5 — Logo pack  → agent: `logopack-builder`
-- [~] T5.1 Normalize SVGs from `/Users/pippo/Desktop/versus elementi/loghi energia /` (folder name ends with a space) and `/Users/pippo/Desktop/versus elementi/logopack/originali/` (see its MANIFEST.md) (clean, tight viewBox, consistent height/padding), produce `logopack/color/`, `logopack/black/`, `logopack/white/`, `logopack/preview.html`. Never alter logo shapes. Wire into the app.
+- [x] T5.1 Normalize SVGs from `/Users/pippo/Desktop/versus elementi/loghi energia /` (folder name ends with a space) and `/Users/pippo/Desktop/versus elementi/logopack/originali/` (see its MANIFEST.md) (clean, tight viewBox, consistent height/padding), produce `logopack/color/`, `logopack/black/`, `logopack/white/`, `logopack/preview.html`. Never alter logo shapes. Wire into the app.
 
 ## Phase 6 — Deploy preparation (NO deploy)  → agent: `deploy-prep-builder`
 - [x] T6.1 OpenNext Cloudflare config, build passing. Supabase keep-alive job design. `DEPLOY.md` with exact steps.
@@ -69,7 +69,7 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [x] T7.4 Admin e2e: login/logout, unauthenticated access blocked, leads list/detail/status, supplier CRUD + malicious SVG rejected/sanitized, offer CRUD incl. deactivate → disappears from results, featured → appears first.
 - [x] T7.5 (API-level suite 74/74 green vs real project, 31fb197; SQL-level rls_test/data_checks requested from reviewer) Security: anon cannot read leads or inactive offers via the Supabase API directly; token cannot update another lead.
 - [x] T7.6 Mobile (390px) and desktop (1440px) screenshots of every screen in `app/e2e/screenshots/`; Lighthouse ≥ 90 accessibility on public pages.
-- [ ] T7.7 BLOCKED: final 100% sign-off needs T7.5 (and T5.1 logos) — interim report in PROGRESS.md — Final report in PROGRESS.md: matrix size, pass rate (must be 100%), known limitations.
+- [x] T7.7 Final report in PROGRESS.md: matrix size, pass rate (must be 100%), known limitations.
 
 ## Phase 8 — Reviewer follow-ups (2026-10-15)
 - [x] T8.1 Load comuni into the real DB with `app/supabase/bootstrap/load_comuni.mjs` (expects TOTAL 7894), verify with data checks, write `## DONE: comuni loaded` in QUESTIONS.md → `db-builder`
