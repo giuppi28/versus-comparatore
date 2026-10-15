@@ -94,3 +94,10 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - T4.4 (2da5c9b): /admin/offerte list ("Visibili ai clienti"), create/edit with every PRD §5.3 field, month/year toggle (÷12), advantages editor with bold preview, live cost preview, toggles.
 - Verified by orchestrator: vitest svg+fornitori 153/153, notify+lead+impostazioni 141/141, offerte 20/20 ✓; eslint ✓. E2E reported green by agents (suppliers 6/6, settings 6/6, offers 14/14) but my own re-run was disrupted by concurrent dev servers → tasks stay [~] until the consolidated e2e run.
 - Found gap: results page loads offers client-side → admin changes invisible in mock mode; sent back to results-builder.
+
+## 2026-10-15 13:45 — T3.2 Page 1 (unit-verified; e2e pending consolidated run)
+- Agent: page1-builder (sonnet).
+- Changed: `(public)/page.tsx` (server, suppliers for dropdowns), `src/components/page1` (blocks A–F, visibility rules, live estimates, manual consumption, inline validation + focus first error), `/api/comuni` (search, rate limited), lead created on consent + Turnstile, PATCH + navigate /offerte on submit; old placeholder `src/app/page.tsx` removed.
+- Decisions: edits to result-affecting inputs reset chosen offers; privacy link → /privacy (page not yet built, PRD §13.1 open); Partita IVA not asked "Hai già il gas".
+- Verified by orchestrator: vitest 29/29 ✓, eslint ✓. Agent ran e2e 61 passed / 1 skipped in a scratch copy (dev-server lock).
+- Commit: b3b7fc0
