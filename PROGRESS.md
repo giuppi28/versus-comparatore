@@ -113,3 +113,6 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - /privacy (26dad34, page1-builder): GDPR structure with placeholders (Q9).
 - Orchestrator consolidated run on a single clean dev server: typecheck ✓, lint ✓ (0 errors), vitest 681/681 ✓, Playwright full suite 182 passed / 1 skipped / 1 failed (admin-settings exact offer count, test-isolation issue with parallel specs → sent back to admin-settings-builder).
 - T3.2, T4.2, T4.3, T4.4 marked done (their e2e green in the consolidated run).
+
+## 2026-10-15 14:20 — T4.5 done
+- admin-settings-builder: go-live e2e asserts seed unverified offers by id (robust to parallel specs). Full suite rerun: all admin-settings green; only failure = activation 'back buttons keep the data' (cold-start flaky, 1/3 runs) → sent to activation-form-builder.
