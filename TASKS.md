@@ -50,7 +50,7 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [ ] T3.7 Thank-you page (PRD §11) → `thankyou-builder`
 
 ## Phase 4 — Admin screens (one agent per screen)
-- [~] T4.1 Login + server-side protection + optional TOTP MFA → `admin-auth-builder`
+- [x] T4.1 Login + server-side protection + optional TOTP MFA → `admin-auth-builder`
 - [ ] T4.2 Leads list/detail/status/notes → `admin-leads-builder`
 - [ ] T4.3 Suppliers CRUD + sanitized SVG upload → `admin-suppliers-builder`
 - [ ] T4.4 Offers CRUD (all PRD §5.3 fields, month/year toggle) → `admin-offers-builder`

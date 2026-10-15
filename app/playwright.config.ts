@@ -35,6 +35,12 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    env: { NEXT_PUBLIC_DATA_SOURCE: "mock" },
+    env: {
+      NEXT_PUBLIC_DATA_SOURCE: "mock",
+      // Mock admin credentials (test-only values; mock auth is refused in production).
+      ADMIN_MOCK_EMAIL: "admin@versus.test",
+      ADMIN_MOCK_PASSWORD: "Versus-Test-Password-2026!",
+      ADMIN_MOCK_SESSION_SECRET: "e2e-only-mock-session-secret-0123456789abcdef",
+    },
   },
 });
