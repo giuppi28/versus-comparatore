@@ -1,6 +1,6 @@
 ---
 name: loading-builder
-description: Builds the animated loading screen with orbiting supplier logos (TASKS T3.3).
+description: Builds the minimal animated loading screen (VERSUS icon, progress, greyscale supplier logos) (TASKS T3.3).
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

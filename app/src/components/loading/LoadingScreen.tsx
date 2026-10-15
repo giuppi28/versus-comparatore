@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { VersusLogo } from "@/components/brand";
 import { cn } from "@/components/ui/cn";
 
 export interface LoadingSupplier {
@@ -11,7 +12,7 @@ export interface LoadingSupplier {
 }
 
 export interface LoadingScreenProps {
-  /** Suppliers to orbit. The caller should already exclude the current supplier. */
+  /** Suppliers being "compared". The caller should already exclude the current supplier. */
   suppliers: LoadingSupplier[];
   /** Extra guarantee: suppliers with these ids are never shown nor counted. */
   excludeSupplierIds?: string[];
@@ -24,18 +25,34 @@ export interface LoadingScreenProps {
   className?: string;
 }
 
-/** Max logos on the orbit (more would overlap on a 390px screen). */
+/** Max suppliers counted in the "N fornitori" message. */
 export const MAX_ORBIT_SUPPLIERS = 10;
+/** Max small logos in the quiet row under the progress bar (6 fit in a 390px viewport). */
+export const MAX_VISIBLE_LOGOS = 6;
 export const DEFAULT_DURATION_MS = 4000;
 const TICK_MS = 50;
-const STAGGER_MS = 160;
+const STAGGER_MS = 110;
 
 /** Progress thresholds (0..1) at which each message starts. */
 const MESSAGE_STARTS = [0, 0.25, 0.55, 0.85] as const;
 
+/** The logo row "highlights" each supplier in turn between these progress values. */
+const HIGHLIGHT_FROM = 0.2;
+const HIGHLIGHT_TO = 0.85;
+
+/** Index of the logo currently highlighted (full colour), or -1 outside the compare phase. */
+export function getHighlightIndex(progress: number, count: number): number {
+  if (count <= 0 || progress < HIGHLIGHT_FROM || progress >= HIGHLIGHT_TO) return -1;
+  const ratio = (progress - HIGHLIGHT_FROM) / (HIGHLIGHT_TO - HIGHLIGHT_FROM);
+  return Math.min(count - 1, Math.floor(ratio * count));
+}
+
+function getMessageStep(progress: number): number {
+  return MESSAGE_STARTS.reduce<number>((acc, start, i) => (progress >= start ? i : acc), 0);
+}
+
 export function getLoadingMessage(progress: number, supplierCount: number): string {
-  const step = MESSAGE_STARTS.reduce<number>((acc, start, i) => (progress >= start ? i : acc), 0);
-  switch (step) {
+  switch (getMessageStep(progress)) {
     case 0:
       return "Analizziamo i tuoi consumi…";
     case 1:
@@ -69,51 +86,77 @@ function usePrefersReducedMotion(): boolean {
 }
 
 /*
- * Scoped styles: orbit radius is responsive through --vs-orbit-r (mobile 112px,
- * >=640px 168px). Keyframes live here so the component is self-contained.
+ * Scoped keyframes (transform / opacity only). Reduced motion: everything static;
+ * progress and messages still advance.
  */
 const STYLES = `
-.vs-loading { --vs-orbit-r: 112px; --vs-chip-w: 76px; --vs-chip-h: 40px; }
-@media (min-width: 640px) {
-  .vs-loading { --vs-orbit-r: 168px; --vs-chip-w: 108px; --vs-chip-h: 52px; }
-}
-.vs-orbit { width: calc(var(--vs-orbit-r) * 2 + var(--vs-chip-w)); height: calc(var(--vs-orbit-r) * 2 + var(--vs-chip-w)); max-width: 100%; }
-.vs-slot { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(var(--vs-angle)) translateY(calc(var(--vs-orbit-r) * -1)) rotate(calc(var(--vs-angle) * -1)); }
-.vs-chip-box { position: absolute; left: calc(var(--vs-chip-w) / -2); top: calc(var(--vs-chip-h) / -2); width: var(--vs-chip-w); height: var(--vs-chip-h); }
-@keyframes vs-spin { to { transform: rotate(360deg); } }
-@keyframes vs-spin-rev { to { transform: rotate(-360deg); } }
-@keyframes vs-pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
-@keyframes vs-pulse { 0% { transform: scale(0.9); opacity: 0.55; } 100% { transform: scale(1.35); opacity: 0; } }
-.vs-ring[data-animate="true"] { animation: vs-spin 28s linear infinite; }
-.vs-counter[data-animate="true"] { animation: vs-spin-rev 28s linear infinite; }
-.vs-pop[data-animate="true"] { animation: vs-pop 520ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: var(--vs-delay, 0ms); }
-.vs-pulse[data-animate="true"] { animation: vs-pulse 1.8s ease-out infinite; }
+@keyframes vs-ring { 0% { transform: scale(0.92); opacity: 0.45; } 100% { transform: scale(1.55); opacity: 0; } }
+@keyframes vs-msg { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes vs-logo-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.vs-ring[data-animate="true"] { animation: vs-ring 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
+.vs-msg[data-animate="true"] { animation: vs-msg 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.vs-logo-in[data-animate="true"] { animation: vs-logo-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards; animation-delay: var(--vs-delay, 0ms); }
+.vs-fade { transition: opacity 260ms ease; }
+.vs-bar { transition: transform 120ms linear; transform-origin: left center; }
 @media (prefers-reduced-motion: reduce) {
-  .vs-ring, .vs-counter, .vs-pop, .vs-pulse { animation: none !important; }
+  .vs-ring, .vs-msg, .vs-logo-in { animation: none !important; }
+  .vs-fade, .vs-bar { transition: none !important; }
 }
 `;
 
-function SupplierChip({ supplier }: { supplier: LoadingSupplier }) {
+function SupplierLogo({
+  supplier,
+  index,
+  active,
+  animate,
+}: {
+  supplier: LoadingSupplier;
+  index: number;
+  active: boolean;
+  animate: boolean;
+}) {
   return (
-    <div
+    <li
       data-testid="loading-supplier"
       data-supplier-id={supplier.id}
-      className="flex h-full w-full items-center justify-center overflow-hidden rounded-control border border-line bg-surface px-2 shadow-card"
+      data-active={active ? "true" : "false"}
+      data-animate={animate}
+      className="vs-logo-in relative h-6 w-11 sm:h-7 sm:w-[4.5rem]"
+      style={{ "--vs-delay": `${index * STAGGER_MS}ms` } as React.CSSProperties}
     >
       {supplier.logoUrl ? (
-        // Plain <img>: supplier logos are SVG files, no raster optimisation needed.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={supplier.logoUrl}
-          alt={supplier.name}
-          className="max-h-full max-w-full object-contain py-1.5"
-        />
+        <>
+          {/* Plain <img>: supplier logos are SVG files, no raster optimisation needed. */}
+          {/* Resting state: greyscale, quiet. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={supplier.logoUrl}
+            alt={supplier.name}
+            className="absolute inset-0 h-full w-full object-contain opacity-50 grayscale"
+          />
+          {/* Being compared: the same logo in full colour fades in on top. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={supplier.logoUrl}
+            alt=""
+            aria-hidden="true"
+            className={cn(
+              "vs-fade absolute inset-0 h-full w-full object-contain",
+              active ? "opacity-100" : "opacity-0",
+            )}
+          />
+        </>
       ) : (
-        <span className="line-clamp-2 text-center text-[11px] font-semibold leading-tight tracking-tight text-ink sm:text-sm">
-          {supplier.name}
+        <span
+          className={cn(
+            "vs-fade absolute inset-0 flex items-center justify-center text-center text-[10px] font-semibold leading-tight tracking-tight sm:text-xs",
+            active ? "text-ink" : "text-ink-subtle opacity-60",
+          )}
+        >
+          <span className="line-clamp-2">{supplier.name}</span>
         </span>
       )}
-    </div>
+    </li>
   );
 }
 
@@ -128,6 +171,7 @@ export function LoadingScreen({
   const reducedMotion = usePrefersReducedMotion();
   const animate = !reducedMotion;
 
+  // Current supplier (and duplicates) are dropped here: never shown, never counted.
   const shown = useMemo(() => {
     const excluded = new Set(excludeSupplierIds ?? []);
     const seen = new Set<string>();
@@ -140,6 +184,7 @@ export function LoadingScreen({
     }
     return result;
   }, [suppliers, excludeSupplierIds]);
+  const logos = shown.slice(0, MAX_VISIBLE_LOGOS);
 
   const [progress, setProgress] = useState(0);
 
@@ -184,7 +229,9 @@ export function LoadingScreen({
   }, [durationMs]);
 
   const percent = Math.round(progress * 100);
+  const step = getMessageStep(progress);
   const message = getLoadingMessage(progress, shown.length);
+  const highlight = getHighlightIndex(progress, logos.length);
 
   return (
     <section
@@ -192,89 +239,72 @@ export function LoadingScreen({
       data-reduced-motion={reducedMotion ? "true" : "false"}
       aria-busy={progress < 1}
       className={cn(
-        "vs-loading mx-auto flex w-full max-w-3xl flex-col items-center gap-8 px-4 py-8 sm:gap-10 sm:py-12",
+        // Fills the area below the header (header 3.5/4rem + main padding 3/5rem) and centres the content.
+        "mx-auto flex min-h-[calc(100dvh-7.5rem)] w-full max-w-xl flex-col items-center justify-center gap-7 pb-6 sm:min-h-[calc(100dvh-10rem)] sm:gap-8 sm:pb-8",
         className,
       )}
     >
       <style>{STYLES}</style>
 
-      <div className="vs-orbit relative" data-testid="loading-orbit">
-        {/* Orbit track */}
-        <div
+      {/* VERSUS icon with a soft pulsing ring */}
+      <div className="relative flex h-16 w-16 items-center justify-center" data-testid="loading-mark">
+        <span
           aria-hidden="true"
-          className="absolute rounded-full border border-dashed border-brand-200"
-          style={{
-            inset: "calc(var(--vs-chip-w) / 2)",
-          }}
+          data-animate={animate}
+          className="vs-ring absolute inset-0 rounded-[22%] border-2 border-brand-600 opacity-20"
         />
-
-        {/* Center logo with pulse */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative flex items-center justify-center">
-            <span
-              aria-hidden="true"
-              data-animate={animate}
-              className="vs-pulse absolute h-24 w-24 rounded-full bg-brand-200 sm:h-32 sm:w-32"
-            />
-            <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-surface shadow-pop sm:h-32 sm:w-32">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/brand/versus_icona.svg"
-                alt="VERSUS"
-                className="h-14 w-14 rounded-[22%] sm:h-20 sm:w-20"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Orbiting suppliers */}
-        <div data-animate={animate} className="vs-ring absolute inset-0">
-          {shown.map((supplier, i) => (
-            <div
-              key={supplier.id}
-              className="vs-slot"
-              style={{ "--vs-angle": `${(360 / shown.length) * i}deg` } as React.CSSProperties}
-            >
-              <div className="vs-chip-box">
-                <div
-                  data-animate={animate}
-                  className="vs-pop h-full w-full"
-                  style={{ "--vs-delay": `${i * STAGGER_MS}ms` } as React.CSSProperties}
-                >
-                  <div data-animate={animate} className="vs-counter h-full w-full">
-                    <SupplierChip supplier={supplier} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <VersusLogo variant="icon" title="" className="relative h-16 w-16 rounded-[22%]" />
       </div>
 
-      <div className="flex w-full max-w-md flex-col items-center gap-4">
-        <p
-          role="status"
-          aria-live="polite"
-          data-testid="loading-message"
-          className="min-h-[3.5rem] text-center text-lg font-semibold text-ink sm:min-h-0 sm:text-xl"
+      {/* Message: height reserved for two lines, so nothing moves between messages */}
+      <p
+        role="status"
+        aria-live="polite"
+        data-testid="loading-message"
+        className="flex h-[3.25rem] w-full items-center justify-center text-center text-base font-medium leading-snug text-ink sm:h-8 sm:text-lg"
+      >
+        <span
+          key={step}
+          data-animate={animate}
+          className={cn("vs-msg block", step === 3 && "text-brand-700")}
         >
           {message}
-        </p>
+        </span>
+      </p>
+
+      <div
+        role="progressbar"
+        aria-label="Avanzamento del confronto"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+        data-testid="loading-progress"
+        className="h-1 w-full max-w-80 overflow-hidden rounded-full bg-line"
+      >
         <div
-          role="progressbar"
-          aria-label="Avanzamento del confronto"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={percent}
-          data-testid="loading-progress"
-          className="h-2.5 w-full overflow-hidden rounded-full bg-brand-100"
-        >
-          <div
-            className="h-full rounded-full bg-brand-600 transition-[width] duration-100 ease-linear"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
+          className="vs-bar h-full w-full rounded-full bg-brand-600"
+          style={{ transform: `scaleX(${percent / 100})` }}
+        />
       </div>
+
+      {/* Quiet row of suppliers: greyscale at rest, the one being compared turns to colour */}
+      {logos.length > 0 && (
+        <ul
+          aria-label="Fornitori confrontati"
+          data-testid="loading-suppliers"
+          className="flex min-h-6 flex-wrap items-center justify-center gap-x-3 gap-y-3 sm:min-h-7 sm:gap-x-5"
+        >
+          {logos.map((supplier, i) => (
+            <SupplierLogo
+              key={supplier.id}
+              supplier={supplier}
+              index={i}
+              active={i === highlight}
+              animate={animate}
+            />
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

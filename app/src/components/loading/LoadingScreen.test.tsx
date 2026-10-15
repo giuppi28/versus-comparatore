@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
-import { LoadingScreen, MAX_ORBIT_SUPPLIERS, getLoadingMessage } from "./LoadingScreen";
+import {
+  LoadingScreen,
+  MAX_ORBIT_SUPPLIERS,
+  MAX_VISIBLE_LOGOS,
+  getHighlightIndex,
+  getLoadingMessage,
+} from "./LoadingScreen";
 
 const SUPPLIERS = [
   { id: "a", name: "Alfa Energia" },
@@ -60,20 +66,46 @@ describe("LoadingScreen", () => {
     expect(screen.queryByText("Alfa Energia")).not.toBeInTheDocument();
   });
 
-  it("dedupes suppliers and caps the orbit size", () => {
+  it("dedupes suppliers, caps the count and shows at most 6 small logos", () => {
     const many = Array.from({ length: 15 }, (_, i) => ({ id: `s${i}`, name: `Fornitore ${i}` }));
     render(<LoadingScreen suppliers={[...many, many[0]]} durationMs={1000} onComplete={() => {}} />);
-    expect(screen.getAllByTestId("loading-supplier")).toHaveLength(MAX_ORBIT_SUPPLIERS);
+    expect(screen.getAllByTestId("loading-supplier")).toHaveLength(MAX_VISIBLE_LOGOS);
     advance(300);
     expect(message()).toBe(`Confrontiamo le offerte di ${MAX_ORBIT_SUPPLIERS} fornitori…`);
   });
 
-  it("renders a text fallback, or an image when logoUrl is given", () => {
+  it("never renders the excluded supplier even when it is the only one", () => {
+    render(
+      <LoadingScreen suppliers={[SUPPLIERS[0]]} excludeSupplierIds={["a"]} durationMs={1000} onComplete={() => {}} />,
+    );
+    expect(screen.queryAllByTestId("loading-supplier")).toHaveLength(0);
+    advance(300);
+    expect(message()).toBe("Confrontiamo le offerte disponibili…");
+  });
+
+  it("renders a text fallback, or a greyscale image when logoUrl is given", () => {
     render(<LoadingScreen suppliers={SUPPLIERS} durationMs={1000} onComplete={() => {}} />);
     expect(screen.getByText("Alfa Energia")).toBeInTheDocument();
     const img = screen.getByAltText("Beta Luce");
     expect(img).toHaveAttribute("src", "/logos/beta.svg");
+    expect(img.className).toContain("grayscale");
     expect(screen.queryByText("Beta Luce")).not.toBeInTheDocument();
+  });
+
+  it("highlights the suppliers one at a time during the compare phase", () => {
+    render(<LoadingScreen suppliers={SUPPLIERS} durationMs={1000} onComplete={() => {}} />);
+    const active = () =>
+      screen
+        .getAllByTestId("loading-supplier")
+        .filter((el) => el.dataset.active === "true")
+        .map((el) => el.dataset.supplierId);
+    expect(active()).toEqual([]);
+    advance(250);
+    expect(active()).toEqual(["a"]);
+    advance(250);
+    expect(active()).toHaveLength(1);
+    advance(600);
+    expect(active()).toEqual([]);
   });
 
   it("calls onStart once and onComplete once after the duration", () => {
@@ -130,6 +162,7 @@ describe("LoadingScreen", () => {
     expect(screenEl.querySelector('[data-animate="true"]')).toBeNull();
     // All logos are visible (static layout).
     expect(screen.getAllByTestId("loading-supplier")).toHaveLength(4);
+    expect(screen.getByTestId("loading-progress")).toBeInTheDocument();
     advance(600);
     expect(message()).toBe("Calcoliamo la tua spesa mensile…");
     advance(400);
@@ -156,6 +189,16 @@ describe("LoadingScreen", () => {
       advance(t);
       expect(screen.getByTestId("loading-screen").textContent).not.toMatch(/chiam|telefon|call|demo/i);
     }
+  });
+});
+
+describe("getHighlightIndex", () => {
+  it("is -1 before and after the compare phase and walks through every logo", () => {
+    expect(getHighlightIndex(0.1, 4)).toBe(-1);
+    expect(getHighlightIndex(0.9, 4)).toBe(-1);
+    expect(getHighlightIndex(0.2, 0)).toBe(-1);
+    const seq = [0.21, 0.4, 0.6, 0.84].map((p) => getHighlightIndex(p, 4));
+    expect(seq).toEqual([0, 1, 2, 3]);
   });
 });
 
