@@ -101,10 +101,10 @@ Decisions: hosting = Vercel (Hobby, custom domain); Cloudflare removed entirely 
 
 ## Phase 11 — Admin deletions (Giuseppe, 2026-10-15) — spec: `PHASE11_BRIEF.md` (read it fully)
 - [x] T11.0 (fbccb05) Branch `preview/phase11` from `preview/phase10` → orchestrator
-- [~] T11.1 Migration: lead snapshots + delete triggers + placeholder protection, PGlite tests, `APPLY` request; mock layer parity (D1) → `db-builder` (opus)
-- [ ] T11.2 Leads: single + bulk delete with confirm modal, works with filters (D2) → `admin-leads-builder`
-- [ ] T11.3 Offers delete (D3) → `admin-offers-builder`
-- [ ] T11.4 Suppliers delete incl. their offers, placeholders protected, storage logo cleanup (D3) → `admin-suppliers-builder`
+- [x] T11.1 (23903b6; APPLY pending) Migration: lead snapshots + delete triggers + placeholder protection, PGlite tests, `APPLY` request; mock layer parity (D1) → `db-builder` (opus)
+- [~] T11.2 Leads: single + bulk delete with confirm modal, works with filters (D2) → `admin-leads-builder`
+- [~] T11.3 Offers delete (D3) → `admin-offers-builder`
+- [~] T11.4 Suppliers delete incl. their offers, placeholders protected, storage logo cleanup (D3) → `admin-suppliers-builder`
 - [x] T11.5 (7c8053f) Loading marquee shows all real suppliers minus current (D4) → `loading-builder`
 - [x] T11.6 (ed2fe9e) Page 1 current-supplier block check (D5) → `qa-tester` (+ `page1-builder` if needed)
 - [ ] T11.7 Tests + full regression + PROGRESS summary + push `preview/phase11` (D6) → `qa-tester` + orchestrator
