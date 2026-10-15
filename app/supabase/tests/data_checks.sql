@@ -129,6 +129,16 @@ begin
      and name in ('Sorgenia Luce Sicura 24','A2A Luce Smart','Iberdrola Luce Stabile','Hera Gas Sereno','Engie Gas Facile','Iren Gas Chiaro');
   if n <> 0 then raise exception 'FAIL: unexpected featured offers'; end if;
 
+  -- ---------------------------------------------------------------- supplier logos (T5.1)
+  select count(*) into n from public.suppliers
+   where slug in ('enel-energia','eni-plenitude','edison-energia','a2a-energia','hera-comm','iren',
+                  'acea-energia','sorgenia','engie','eon-energia','iberdrola')
+     and not is_placeholder and logo_path = '/logos/' || slug || '.svg';
+  if n <> 11 then raise exception 'FAIL: % of 11 real suppliers have /logos/<slug>.svg', n; end if;
+  select count(*) into n from public.suppliers
+   where slug in ('tutela','altro-fornitore','non-lo-so') and is_placeholder and logo_path is null;
+  if n <> 3 then raise exception 'FAIL: % of 3 placeholder suppliers have null logo_path', n; end if;
+
   -- ---------------------------------------------------------------- settings
   select count(*) into n from public.settings;
   if n <> 1 then raise exception 'FAIL: settings must have exactly 1 row, got %', n; end if;

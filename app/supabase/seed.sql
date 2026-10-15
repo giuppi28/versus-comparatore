@@ -15,17 +15,17 @@
 -- They are flagged is_placeholder = true (QUESTIONS.md Q8).
 insert into public.suppliers (name, slug, logo_path, sells_luce, sells_gas, show_in_dropdown, sort_order, active, is_placeholder)
 values
-  ('Enel Energia',                         'enel-energia',    null, true, true, true,   1, true, false),
-  ('Eni Plenitude',                        'eni-plenitude',   null, true, true, true,   2, true, false),
-  ('Edison Energia',                       'edison-energia',  null, true, true, true,   3, true, false),
-  ('A2A Energia',                          'a2a-energia',     null, true, true, true,   4, true, false),
-  ('Hera Comm',                            'hera-comm',       null, true, true, true,   5, true, false),
-  ('Iren',                                 'iren',            null, true, true, true,   6, true, false),
-  ('Acea Energia',                         'acea-energia',    null, true, true, true,   7, true, false),
-  ('Sorgenia',                             'sorgenia',        null, true, true, true,   8, true, false),
-  ('Engie',                                'engie',           null, true, true, true,   9, true, false),
-  ('E.ON Energia',                         'eon-energia',     null, true, true, true,  10, true, false),
-  ('Iberdrola',                            'iberdrola',       null, true, true, true,  11, true, false),
+  ('Enel Energia',                         'enel-energia',    '/logos/enel-energia.svg', true, true, true,   1, true, false),
+  ('Eni Plenitude',                        'eni-plenitude',   '/logos/eni-plenitude.svg', true, true, true,   2, true, false),
+  ('Edison Energia',                       'edison-energia',  '/logos/edison-energia.svg', true, true, true,   3, true, false),
+  ('A2A Energia',                          'a2a-energia',     '/logos/a2a-energia.svg', true, true, true,   4, true, false),
+  ('Hera Comm',                            'hera-comm',       '/logos/hera-comm.svg', true, true, true,   5, true, false),
+  ('Iren',                                 'iren',            '/logos/iren.svg', true, true, true,   6, true, false),
+  ('Acea Energia',                         'acea-energia',    '/logos/acea-energia.svg', true, true, true,   7, true, false),
+  ('Sorgenia',                             'sorgenia',        '/logos/sorgenia.svg', true, true, true,   8, true, false),
+  ('Engie',                                'engie',           '/logos/engie.svg', true, true, true,   9, true, false),
+  ('E.ON Energia',                         'eon-energia',     '/logos/eon-energia.svg', true, true, true,  10, true, false),
+  ('Iberdrola',                            'iberdrola',       '/logos/iberdrola.svg', true, true, true,  11, true, false),
   ('Servizio di Tutela / Tutele Graduali', 'tutela',          null, true, true, true, 100, true, true),
   ('Altro fornitore',                      'altro-fornitore', null, true, true, true, 101, true, true),
   ('Non lo so',                            'non-lo-so',       null, true, true, true, 102, true, true)
@@ -33,6 +33,15 @@ on conflict (slug) do nothing;
 -- Keep the flag right on databases seeded before is_placeholder existed (idempotent).
 update public.suppliers set is_placeholder = true
  where slug in ('tutela', 'altro-fornitore', 'non-lo-so') and not is_placeholder;
+-- Logos (T5.1): real suppliers point at the shipped logo pack (app/public/logos/<slug>.svg).
+-- Fills only a null logo_path (e.g. rows inserted before this seed set it), so an
+-- admin-uploaded logo is never overwritten on re-run. Placeholders keep logo_path = null.
+update public.suppliers
+   set logo_path = '/logos/' || slug || '.svg'
+ where logo_path is null
+   and not is_placeholder
+   and slug in ('enel-energia', 'eni-plenitude', 'edison-energia', 'a2a-energia', 'hera-comm', 'iren',
+                'acea-energia', 'sorgenia', 'engie', 'eon-energia', 'iberdrola');
 
 -- Offers ------------------------------------------------------------------------------
 with spec (supplier_slug, name, commodity, energy_price, other_variable_costs, fixed_fee_monthly,
