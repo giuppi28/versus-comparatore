@@ -41,7 +41,7 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [x] T2.3 Validators: codice fiscale (format, check char, consistency with name/surname), P.IVA checksum, POD, PDR, Italian mobile. 100% branch coverage on this module.
 
 ## Phase 3 — Customer screens (one agent per screen)
-- [~] T3.1 Lead API (server routes → lead functions, httpOnly token cookie, Turnstile, rate limit) → `lead-api-builder`
+- [x] T3.1 Lead API (server routes → lead functions, httpOnly token cookie, Turnstile, rate limit) → `lead-api-builder`
 - [ ] T3.2 Page 1 (PRD §6) → `page1-builder`
 - [x] T3.3 Loading screen (PRD §7) → `loading-builder`
 - [ ] T3.4 Page 2 results incl. Luce+Gas two-step (PRD §8) → `results-builder`
