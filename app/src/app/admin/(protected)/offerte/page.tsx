@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import { formatEuro, formatPrice } from "@/lib/logic";
 import { toggleOfferFlagAction } from "./actions";
+import { DeleteOfferButton } from "./DeleteOfferButton";
 import { isVisibleToCustomers } from "./visibility";
 
 export const dynamic = "force-dynamic";
@@ -56,10 +57,10 @@ function ToggleButton({
 export default async function AdminOffersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vista?: string }>;
+  searchParams: Promise<{ vista?: string; esito?: string }>;
 }) {
   await requireAdmin();
-  const { vista } = await searchParams;
+  const { vista, esito } = await searchParams;
   const showAll = vista === "tutte";
   const repo = await getAdminRepository();
   const all = await repo.listAllOffers();
@@ -78,6 +79,12 @@ export default async function AdminOffersPage({
           Nuova offerta
         </Link>
       </div>
+
+      {esito === "eliminata" && (
+        <p role="status" data-testid="deleted-notice" className="rounded-control bg-success-soft px-4 py-3 font-medium text-success">
+          Offerta eliminata.
+        </p>
+      )}
 
       <nav aria-label="Filtro offerte" className="flex gap-1 self-start rounded-control bg-disabled p-1">
         {[
@@ -164,6 +171,12 @@ export default async function AdminOffersPage({
                   >
                     Modifica
                   </Link>
+                  <DeleteOfferButton
+                    offerId={o.id}
+                    offerName={o.name}
+                    active={o.active}
+                    vista={showAll ? "tutte" : undefined}
+                  />
                 </div>
               </Card>
             </li>

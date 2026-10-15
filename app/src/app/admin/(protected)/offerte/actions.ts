@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import { OfferNotFoundError, SupplierNotFoundError } from "@/lib/data/repository";
@@ -98,4 +99,39 @@ export async function toggleOfferFlagAction(formData: FormData): Promise<void> {
     if (!(error instanceof OfferNotFoundError)) throw error;
   }
   refreshViews();
+}
+
+/** Offer ids are UUIDs in the database (the mock seed uses readable slugs): only a safe id charset is accepted. */
+const offerIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,100}$/);
+
+/** `gone`: the offer no longer exists, the caller should refresh its (stale) list. */
+export type DeleteOfferResult = { ok: false; error: string; gone?: boolean };
+
+/**
+ * Permanently deletes an offer. Leads that chose it keep a copy of its data (repository/DB trigger).
+ * On success it redirects to the offers list with a confirmation notice (from the list or the edit page);
+ * on failure it returns an error message to show in the confirmation dialog.
+ */
+export async function deleteOfferAction(
+  id: string,
+  options?: { vista?: string },
+): Promise<DeleteOfferResult> {
+  await requireAdmin();
+  const parsedId = offerIdSchema.safeParse(id);
+  if (!parsedId.success) return { ok: false, error: "Identificativo offerta non valido." };
+
+  const repo = await getAdminRepository();
+  try {
+    await repo.deleteOffer(parsedId.data);
+  } catch (error) {
+    if (error instanceof OfferNotFoundError) {
+      // No revalidation here: it would unmount the row (and the dialog) before the error is read.
+      return { ok: false, error: "Offerta non trovata: potrebbe essere già stata eliminata.", gone: true };
+    }
+    return { ok: false, error: "Eliminazione non riuscita. Riprova tra qualche istante." };
+  }
+
+  refreshViews();
+  const query = options?.vista === "tutte" ? "?vista=tutte&esito=eliminata" : "?esito=eliminata";
+  redirect(`${LIST_PATH}${query}`);
 }
