@@ -35,7 +35,7 @@ export function StepA({
   return (
     <form noValidate onSubmit={submit} data-testid="activation-step-a" className="space-y-8">
       <div>
-        <h2 className="text-title font-bold text-ink">Dati intestatario</h2>
+        <h2 className="heading-section text-ink">Dati intestatario</h2>
         <p className="mt-1 text-base text-ink-muted">
           Controlla i tuoi dati e completa quelli mancanti.
         </p>
@@ -156,7 +156,7 @@ export function StepA({
         >
           {HOUSING_OPTIONS.map((o) => (
             <div key={o.value} data-testid={`housing_title-${o.value}`}>
-              <SelectCard value={o.value} title={o.label} className="min-h-16! px-8! py-3" />
+              <SelectCard value={o.value} title={o.label} />
             </div>
           ))}
         </SelectCardGroup>

@@ -21,7 +21,7 @@ import type { StepBProps } from "./types";
 function Section({ title, testId, children }: { title: string; testId: string; children: ReactNode }) {
   return (
     <section data-testid={testId} className="space-y-5 border-t border-line pt-6">
-      <h3 className="text-xl font-bold text-ink">{title}</h3>
+      <h3 className="heading-section text-ink">{title}</h3>
       {children}
     </section>
   );
@@ -63,7 +63,7 @@ export function StepB({
   return (
     <form noValidate onSubmit={submit} data-testid="activation-step-b" className="space-y-8">
       <div>
-        <h2 className="text-title font-bold text-ink">Fornitura</h2>
+        <h2 className="heading-section text-ink">Fornitura</h2>
         <p className="mt-1 text-base text-ink-muted">Dove attivare la fornitura e i dati del contatore.</p>
       </div>
 
@@ -158,10 +158,10 @@ export function StepB({
             className="grid grid-cols-2 gap-3 sm:max-w-sm"
           >
             <div data-testid="is_resident-yes">
-              <SelectCard value="yes" title="Sì" className="min-h-16! px-8! py-3" />
+              <SelectCard value="yes" title="Sì" />
             </div>
             <div data-testid="is_resident-no">
-              <SelectCard value="no" title="No" className="min-h-16! px-8! py-3" />
+              <SelectCard value="no" title="No" />
             </div>
           </SelectCardGroup>
           <GroupError id="resident-error" message={errorFor("is_resident")} />
@@ -311,7 +311,7 @@ export function StepB({
             >
               {GAS_USES.map((u) => (
                 <div key={u.id} data-testid={`gas-use-${u.id}`}>
-                  <SelectCard value={u.id} title={u.label} className="min-h-16! px-8! py-3" />
+                  <SelectCard value={u.id} title={u.label} />
                 </div>
               ))}
             </SelectCardGroup>

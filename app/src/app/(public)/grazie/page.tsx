@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/brand";
 import { Button, Card, CheckIcon } from "@/components/ui";
 import { useFlow } from "@/lib/lead/flow-context";
 import type { ChosenOfferSnapshot } from "@/lib/lead/flow-state";
+import { resolveLogoUrl } from "@/lib/data/logo";
 import { formatEuro, formatPrice } from "@/lib/logic";
 import { thankYouSummary, type ThankYouSummary } from "./summary";
 
@@ -100,18 +101,28 @@ function OfferSummary({ offer }: { offer: ChosenOfferSnapshot }) {
   const isLuce = offer.commodity === "luce";
   const commodityLabel = isLuce ? "Luce" : "Gas";
   const unit = isLuce ? "kWh" : "Smc";
+  const logo = resolveLogoUrl(offer.supplier_logo_path);
   return (
     <article
       data-testid={`thankyou-offer-${offer.commodity}`}
-      className="rounded-card border border-line bg-surface-muted p-5"
+      className="rounded-card border border-line bg-surface p-5"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-semibold uppercase tracking-wide text-brand-700">
-          {commodityLabel}
-        </span>
-        <span className="rounded-full border border-line-strong bg-surface px-3 py-1 text-sm font-semibold">
-          {offer.supplier_name}
-        </span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="heading-section text-brand-700">{commodityLabel}</span>
+        <div
+          data-testid={`thankyou-logo-${offer.commodity}`}
+          className="flex h-11 w-28 shrink-0 items-center justify-end overflow-hidden"
+        >
+          {logo ? (
+            // Plain <img>: supplier logos are SVG files, no raster optimisation needed.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} alt={offer.supplier_name} className="max-h-full max-w-full object-contain" />
+          ) : (
+            <span className="rounded-full border border-line-strong bg-surface px-3 py-1 text-center text-sm font-semibold">
+              {offer.supplier_name}
+            </span>
+          )}
+        </div>
       </div>
       <p className="mt-2 text-lg font-semibold">{offer.offer_name}</p>
 

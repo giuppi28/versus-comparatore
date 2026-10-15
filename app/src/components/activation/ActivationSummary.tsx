@@ -3,6 +3,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { Card, ChevronDownIcon, cn } from "@/components/ui";
 import type { ChosenOfferSnapshot } from "@/lib/lead/flow-state";
+import { resolveLogoUrl } from "@/lib/data/logo";
 import { formatEuro, formatPrice } from "@/lib/logic";
 
 export interface ActivationSummaryProps {
@@ -16,13 +17,9 @@ function monthsLabel(n: number): string {
   return n === 1 ? "1 mese" : `${n} mesi`;
 }
 
-function logoUrl(path: string | null): string | null {
-  return path && (path.startsWith("/") || /^https?:\/\//.test(path)) ? path : null;
-}
-
 /** Supplier logo, or a neutral text chip when no logo is available. */
 function SupplierChip({ offer }: { offer: ChosenOfferSnapshot }) {
-  const url = logoUrl(offer.supplier_logo_path);
+  const url = resolveLogoUrl(offer.supplier_logo_path);
   return (
     <div
       data-testid="summary-logo"
@@ -61,7 +58,7 @@ function OfferBlock({ offer, label }: { offer: ChosenOfferSnapshot; label: strin
         <SupplierChip offer={offer} />
         <div className="min-w-0">
           {label && (
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{label}</p>
+            <p className="heading-section text-brand-700">{label}</p>
           )}
           <p className="text-sm font-semibold text-ink" data-testid={`summary-product-${key}`}>
             {offer.offer_name}
@@ -105,7 +102,7 @@ export function ActivationSummary({ luce, gas, total }: ActivationSummaryProps) 
     <Card data-testid="activation-summary" aria-label="La tua offerta" className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-ink">La tua offerta</h2>
+          <h2 className="heading-section text-ink">La tua offerta</h2>
           {!dual && offers[0] && (
             <p className="mt-0.5 text-sm text-ink-muted">
               {offers[0].supplier_name} · {offers[0].offer_name}

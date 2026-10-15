@@ -123,6 +123,24 @@ test.describe("thank-you page /grazie", () => {
     await page.screenshot({ path: `e2e/screenshots/${screenshotName(page.viewportSize()?.width ?? 1440, "dual")}`, fullPage: true });
   });
 
+  test("supplier logo is shown when available, text chip otherwise", async ({ page }) => {
+    await seedFlow(
+      page,
+      seededFlow({ luce: { ...luceOffer, supplier_logo_path: "/brand/versus_icona.svg" }, gas: gasOffer }, "Anna"),
+    );
+    await page.goto("/grazie");
+
+    const luceLogo = page.getByTestId("thankyou-logo-luce");
+    await expect(luceLogo.getByRole("img", { name: "Alfa Energia" })).toBeVisible();
+    // No logo path: the neutral text chip with the supplier name.
+    const gasLogo = page.getByTestId("thankyou-logo-gas");
+    await expect(gasLogo.getByRole("img")).toHaveCount(0);
+    await expect(gasLogo).toHaveText("Beta Gas");
+
+    const suffix = (page.viewportSize()?.width ?? 1440) <= 430 ? "390" : "1440";
+    await page.screenshot({ path: `e2e/screenshots/thankyou-dual-logo-${suffix}.png`, fullPage: true });
+  });
+
   test("the flow is reset after display; a refresh redirects to the home page", async ({ page }) => {
     await seedFlow(page, seededFlow({ luce: luceOffer, gas: null }));
     await page.goto("/grazie");
@@ -143,7 +161,13 @@ test.describe("thank-you page /grazie", () => {
     await page.getByRole("button", { name: "Torna alla home" }).click();
     await page.waitForURL((url) => url.pathname === "/");
     const stored = await page.evaluate(() => sessionStorage.getItem("versus.flow.v1"));
-    expect(stored).toBeNull();
+    // Page 1 may re-seed a pristine state (preselected service type): no lead data may remain.
+    if (stored !== null) {
+      const flow = JSON.parse(stored);
+      expect(flow.firstName).toBe("");
+      expect(flow.leadCompleted).toBe(false);
+      expect(flow.chosenOffers).toEqual({ luce: null, gas: null });
+    }
   });
 
   test("chosen offer but lead not completed redirects to /", async ({ page }) => {
