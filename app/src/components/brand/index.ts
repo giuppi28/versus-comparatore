@@ -1,4 +1,10 @@
 export { VersusLogo, LOGO_TITLE } from "./VersusLogo";
 export type { VersusLogoProps, VersusLogoVariant } from "./VersusLogo";
+export { BrandLockup, LOCKUP_TITLE } from "./BrandLockup";
+export type { BrandLockupProps, BrandLockupSize } from "./BrandLockup";
+export { VersusMark } from "./VersusMark";
+export type { VersusMarkProps } from "./VersusMark";
 export { SiteHeader } from "./SiteHeader";
 export type { SiteHeaderProps } from "./SiteHeader";
+export { SiteFooter } from "./SiteFooter";
+export * from "./decor";

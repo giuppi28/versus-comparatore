@@ -17,4 +17,4 @@ export type { StepperProps } from "./Stepper";
 export { Modal } from "./Modal";
 export type { ModalProps } from "./Modal";
 export { cn } from "./cn";
-export { CheckIcon, CloseIcon, ChevronDownIcon, SpinnerIcon } from "./icons";
+export * from "./icons";

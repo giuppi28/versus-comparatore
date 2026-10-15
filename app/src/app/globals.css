@@ -127,6 +127,29 @@ h3 {
   text-wrap: balance;
 }
 
+/* VERSUS mark: the white knockouts of the logo follow the surface colour it sits on. */
+.versus-mark [fill="#FFFFFF"] {
+  fill: var(--mark-knockout, #ffffff);
+}
+.versus-mark [stroke="#FFFFFF"] {
+  stroke: var(--mark-knockout, #ffffff);
+}
+
+/* Decorative illustrations (components/brand/decor): VERSUS green unless a `text-*` class or
+   --decor-color says otherwise. Components layer so utilities win. */
+@layer components {
+  .decor {
+    color: var(--decor-color, var(--color-brand-600));
+    pointer-events: none;
+    user-select: none;
+  }
+}
+
+/* The footer is not shown while the full-screen loading view is mounted. */
+body:has([data-testid="loading-screen"]) [data-site-footer] {
+  display: none;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-brand-600);
   outline-offset: 2px;

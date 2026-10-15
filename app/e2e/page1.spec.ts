@@ -73,7 +73,7 @@ test.describe("Page 1 — structure and copy", () => {
   test("shows blocks A–D; consumption appears after commodity + customer type", async ({ page }, testInfo) => {
     await open(page);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.getByRole("img", { name: "VERSUS — comparatore luce e gas" })).toBeVisible();
+    await expect(page.getByRole("img", { name: "VERSUS — comparatore luce e gas" }).first()).toBeVisible();
     for (const id of ["block-commodity", "block-customer", "block-personal", "block-service"]) {
       await expect(page.getByTestId(id)).toBeVisible();
     }
