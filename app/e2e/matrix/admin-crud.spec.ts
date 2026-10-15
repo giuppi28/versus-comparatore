@@ -1,8 +1,8 @@
 /**
  * T7.4 (part 2) — supplier and offer CRUD through the admin UI, and its effect on what customers see.
  * These tests change the public offers / dropdown, so they are tagged @serial: run-matrix.mjs runs them
- * alone, after the parallel phase. Everything created here has a unique name and is left DEACTIVATED
- * and un-featured (the mock repository has no delete), so the mock state is restored.
+ * alone, after the parallel phase. Everything created here has a unique name and is either deleted again
+ * (Phase 11 deletions) or left DEACTIVATED and un-featured, so the mock state is restored.
  */
 import { request, type Page } from "@playwright/test";
 import { MOCK_OFFERS } from "../../src/lib/data/mock/data";
@@ -348,6 +348,93 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
     await openPublic();
     await expect(pub.locator(`[data-offer-id="${offerId}"]`)).toHaveCount(0);
     expect(await publicIds()).toEqual(rankOffers(luceOffers, annualFromMonthly(225), { excludeSupplierId: "edison-energia" }).map((r) => r.offer.id));
+  });
+
+  test("deletions: an offer, then a supplier with offers, disappear for customers; placeholders are protected", TAG, async ({ page }, testInfo) => {
+    const suffix = unique(testInfo.project.name);
+    const supplierName = `QA Cancellabile ${suffix}`;
+    page.on("dialog", (d) => {
+      throw new Error(`Unexpected native dialog: ${d.message()}`);
+    });
+
+    // Supplier + two offers (luce, Casa).
+    await page.goto("/admin/fornitori/nuovo");
+    await page.getByLabel("Nome").fill(supplierName);
+    const slug = await page.getByLabel("Slug").inputValue();
+    await submit(page, /Crea fornitore/).click();
+    await expect(page).toHaveURL(/\/admin\/fornitori\/[^/]+\?creato=1/);
+    const supplierId = new URL(page.url()).pathname.split("/").pop()!;
+    try {
+      const offerIds: string[] = [];
+      for (const n of ["A", "B"]) {
+        await page.goto("/admin/offerte/nuova");
+        await page.locator("[name=supplier_id]").selectOption(supplierId);
+        await page.locator("[name=name]").fill(`QA Offerta ${n} ${suffix}`);
+        await page.locator("[name=commodity]").selectOption("luce");
+        await page.locator("[name=customer_type]").selectOption("casa");
+        await page.locator("[name=energy_price]").fill("0,0900");
+        await page.locator("[name=fixed_fee]").fill("5");
+        await page.locator("[name=fixed_fee_period]").selectOption("month");
+        await page.locator("[name=locked_months]").fill("12");
+        await submit(page, /Crea offerta/).click();
+        await page.waitForURL(/\/admin\/offerte\/[^/]+\?esito=creata$/);
+        offerIds.push(new URL(page.url()).pathname.split("/").pop()!);
+      }
+      // Seed the flow before every document (a late hydration of Page 1 could overwrite a one-off write).
+      await page.addInitScript(
+        ([key, value]) => window.sessionStorage.setItem(key, value),
+        [FLOW_KEY, JSON.stringify({ version: 1, commodity: "luce", customerType: "casa", serviceType: "cambio_fornitore", currentSupplierLuce: "edison-energia", estimatedKwhYear: 2700 })],
+      );
+      const publicOfferIds = async () => {
+        await page.goto("/offerte?fast=1");
+        await expect(page.getByTestId("offer-card").first()).toBeVisible();
+        return page.getByTestId("offer-card").evaluateAll((els) => els.map((e) => e.getAttribute("data-offer-id")));
+      };
+      expect(await publicOfferIds()).toEqual(expect.arrayContaining(offerIds));
+
+      // Offer A: cancel keeps it, confirm removes it (B stays).
+      await page.goto("/admin/offerte");
+      const row = (id: string) => page.locator(`[data-testid="offer-row"][data-offer-id="${id}"]`);
+      await row(offerIds[0]).getByTestId("delete-offer").click();
+      await page.getByTestId("confirm-dialog-cancel").click();
+      await expect(row(offerIds[0])).toHaveCount(1);
+      await row(offerIds[0]).getByTestId("delete-offer").click();
+      await page.getByTestId("confirm-dialog-confirm").click();
+      await expect(page.getByTestId("deleted-notice")).toHaveText("Offerta eliminata.");
+      await expect(row(offerIds[0])).toHaveCount(0);
+      const afterOffer = await publicOfferIds();
+      expect(afterOffer).not.toContain(offerIds[0]);
+      expect(afterOffer).toContain(offerIds[1]);
+
+      // Supplier: the dialog counts the remaining offer, confirm removes supplier and offer.
+      await page.goto("/admin/fornitori");
+      const supplierRow = page.locator(`[data-testid="supplier-row"][data-slug="${slug}"]`);
+      await supplierRow.getByTestId("delete-supplier").click();
+      await expect(page.getByTestId("delete-supplier-offers")).toHaveText("Questo fornitore ha 1 offerta: verrà eliminata anche l'offerta.");
+      await page.getByTestId("confirm-dialog-confirm").click();
+      await expect(page.getByTestId("deleted-banner")).toContainText(`Fornitore «${supplierName}» eliminato.`);
+      await expect(supplierRow).toHaveCount(0);
+      expect(await publicOfferIds()).not.toContain(offerIds[1]);
+      expect((await page.goto(`/admin/offerte/${offerIds[1]}`))?.status()).toBe(404);
+
+      // Placeholder suppliers (Tutela / Altro fornitore / Non lo so) cannot be deleted from the UI.
+      await page.goto("/admin/fornitori");
+      for (const placeholder of ["tutela", "altro-fornitore"]) {
+        const r = page.locator(`[data-testid="supplier-row"][data-slug="${placeholder}"]`);
+        await expect(r).toBeVisible();
+        await expect(r.getByTestId("delete-supplier")).toHaveCount(0);
+      }
+  
+    } finally {
+      // Failure path: the supplier delete removes its offers too, so no fixture leaks into later tests.
+      await page.goto("/admin/fornitori");
+      const leftover = page.locator(`[data-testid="supplier-row"][data-slug="${slug}"]`);
+      if ((await leftover.count()) > 0) {
+        await leftover.getByTestId("delete-supplier").click();
+        await page.getByTestId("confirm-dialog-confirm").click();
+        await expect(page.getByTestId("deleted-banner")).toBeVisible();
+      }
+    }
   });
 
   test("offers: invalid input is refused and the form is protected", TAG, async ({ page }) => {

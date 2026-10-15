@@ -84,6 +84,11 @@ test.describe("admin offers", () => {
     const visibleFlags = await rows.evaluateAll((els) => els.map((e) => e.getAttribute("data-visible")));
     expect(visibleFlags.length).toBeGreaterThanOrEqual(8);
     expect(new Set(visibleFlags)).toEqual(new Set(["true"]));
+    // Other specs create and delete their own offers at the same time: compare SEEDED offers only.
+    const seededVisible = (await rows.evaluateAll((els) => els.map((e) => e.getAttribute("data-offer-id") ?? ""))).filter(
+      (id) => id.startsWith("offer-"),
+    );
+    expect(seededVisible.length).toBeGreaterThanOrEqual(8);
 
     const edison = row(page, "offer-edison-luce-fissa-12");
     await expect(edison).toContainText("Edison Energia");
@@ -102,7 +107,9 @@ test.describe("admin offers", () => {
     await page.getByTestId("filter-all").click();
     await expect(page).toHaveURL(/vista=tutte/);
     await expect(page.getByTestId("filter-all")).toHaveAttribute("aria-current", "page");
-    expect(await page.getByTestId("offer-row").count()).toBeGreaterThanOrEqual(visibleFlags.length);
+    await expect(page.getByTestId("offer-row").first()).toBeVisible();
+    const allIds = await page.getByTestId("offer-row").evaluateAll((els) => els.map((e) => e.getAttribute("data-offer-id") ?? ""));
+    for (const id of seededVisible) expect(allIds, `${id} in "Tutte"`).toContain(id);
 
     await noOverflow(page);
     await page.screenshot({ path: `${SHOTS}/admin-offers-${info.project.name}-list.png`, fullPage: true });

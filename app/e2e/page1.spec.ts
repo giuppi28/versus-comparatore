@@ -135,9 +135,15 @@ test.describe("Page 1 — structure and copy", () => {
       expect(name).not.toMatch(/tutela|altro|non lo so/i);
     }
     // Black logo set, no greyscale filter.
-    for (const src of await logos.evaluateAll((els) => els.map((e) => e.getAttribute("src") ?? ""))) {
-      expect(src).toMatch(/^\/logos\/black\/[a-z0-9-]+\.svg$/);
-    }
+    // Seeded suppliers ship the black set; suppliers created at the same time by other specs (admin
+    // fixtures named "E2E ..." / "QA ...", with an uploaded logo) only have to show a real image.
+    const shown = await logos.evaluateAll((els) =>
+      els.map((e) => ({ alt: e.getAttribute("alt") ?? "", src: e.getAttribute("src") ?? "" })),
+    );
+    const seeded = shown.filter(({ alt }) => !/^(E2E|QA) /.test(alt));
+    expect(seeded.length).toBeGreaterThanOrEqual(10);
+    for (const { src } of seeded) expect(src).toMatch(/^\/logos\/black\/[a-z0-9-]+\.svg$/);
+    for (const { src } of shown) expect(src).not.toBe("");
     const formBox = (await page.getByTestId("page1-form").boundingBox())!;
     const sectionsBox = (await sections.boundingBox())!;
     expect(sectionsBox.y).toBeGreaterThan(formBox.y + formBox.height);
@@ -238,7 +244,10 @@ test.describe("Page 1 — Block D/E rules", () => {
   test("supplier list comes from the dropdown suppliers, ordered", async ({ page }) => {
     await open(page);
     await pick(page, "commodity-luce", "customer-casa", "service-cambio");
-    const labels = await page.getByTestId("supplier-luce").locator("option").allTextContents();
+    // Ignore suppliers other specs create at the same time (admin fixtures named "E2E ..." / "QA ...").
+    const labels = (await page.getByTestId("supplier-luce").locator("option").allTextContents()).filter(
+      (l) => !/^(E2E|QA) /.test(l),
+    );
     expect(labels.slice(0, 4)).toEqual(["Seleziona il fornitore", "Enel Energia", "Eni Plenitude", "Edison Energia"]);
     expect(labels).toEqual(expect.arrayContaining(["Servizio di Tutela / Tutele Graduali", "Altro fornitore", "Non lo so"]));
     expect(labels.at(-1)).toBe("Non lo so");
@@ -549,7 +558,9 @@ test.describe("Page 1 — lead creation and submit", () => {
     await page.getByTestId("submit").click();
     await expect(page).toHaveURL(/\/offerte$/);
     expect(creates).toBe(2);
-    expect(patches).toBe(2);
+    // The failed save, the retry, and possibly the results page's own lead update (it is routed too and
+    // may fire before this assertion under load): at least the first two.
+    expect(patches).toBeGreaterThanOrEqual(2);
   });
 
   test("a failing save keeps the user on the page with an Italian message", async ({ page }) => {

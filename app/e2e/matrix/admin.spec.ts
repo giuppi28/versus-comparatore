@@ -172,6 +172,61 @@ test.describe("admin: leads", () => {
     await expect(items(page)).toHaveCount(1);
   });
 
+  test("bulk delete: cancel keeps the data, confirm removes only the ticked leads, modal wording is clean", TAG, async ({ page }, testInfo) => {
+    // Own leads with a unique surname; the seeded matrix leads are never touched.
+    const base = String(testInfo.project.use.baseURL);
+    const surname = `Canc${testInfo.project.name}${Math.random().toString(36).replace(/[^a-z]/g, "").slice(0, 8).padEnd(8, "q")}`;
+    for (const first_name of ["Anna", "Bruno", "Carla"]) {
+      const ctx = await request.newContext({
+        baseURL: base,
+        storageState: { cookies: [], origins: [] },
+        extraHTTPHeaders: { Origin: base, "x-forwarded-for": randomIp() },
+      });
+      const res = await ctx.post("/api/lead", { data: { data: page1Data({ first_name, last_name: surname }) } });
+      expect(res.status(), await res.text()).toBeLessThan(300);
+      await ctx.dispose();
+    }
+    page.on("dialog", (d) => {
+      throw new Error(`Unexpected native dialog: ${d.message()}`);
+    });
+
+    await page.goto(`/admin/leads?tab=tutti&q=${surname}`);
+    await expect(items(page)).toHaveCount(3);
+    const bulk = page.getByTestId("lead-bulk-delete");
+    await items(page).filter({ hasText: "Anna" }).getByTestId("lead-select").check();
+    await items(page).filter({ hasText: "Bruno" }).getByTestId("lead-select").check();
+    await expect(bulk).toHaveText("Elimina selezionati (2)");
+
+    // Cancel (button, then Escape): nothing is deleted, the selection survives.
+    await bulk.click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toContainText("Eliminare 2 lead?");
+    await expect(dialog).toContainText("L'operazione non può essere annullata");
+    const modalText = (await dialog.innerText()) + (await page.getByTestId("lead-bulk-bar").innerText());
+    expect(modalText).not.toMatch(/demo|facile\.it|tariffa esclusiva|annuncio pubblicitario|parla con un esperto/i);
+    await page.getByTestId("confirm-dialog-cancel").click();
+    await expect(dialog).toBeHidden();
+    await bulk.click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await page.reload();
+    await expect(items(page)).toHaveCount(3);
+
+    // Confirm: only the ticked leads go.
+    await items(page).filter({ hasText: "Anna" }).getByTestId("lead-select").check();
+    await items(page).filter({ hasText: "Bruno" }).getByTestId("lead-select").check();
+    await bulk.click();
+    await page.getByTestId("confirm-dialog-confirm").click();
+    await expect(page.getByTestId("lead-delete-notice")).toHaveText("2 lead eliminati");
+    await expect(items(page)).toHaveCount(1);
+    await expect(items(page).first()).toContainText("Carla");
+
+    // Single delete from the row finishes the cleanup.
+    await items(page).first().getByTestId("lead-row-delete").click();
+    await page.getByTestId("confirm-dialog-confirm").click();
+    await expect(page.getByTestId("lead-empty")).toBeVisible();
+  });
+
   test("detail: every group of data, no token leak, status walks through all states, notes persist", TAG, async ({ page }) => {
     await page.goto(`/admin/leads?q=${seed.completedPod}`);
     await items(page).first().getByRole("link", { name: "Mario Rossi" }).click();
