@@ -15,3 +15,10 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Decisions: null climate zone → fallback zone E; riscaldamento requires sqm range in UI; people 5+ = 5; monthly prefill rounded to integer; formatters use NBSP before €; POD 15 chars → keep first 14; phone stored as national digits.
 - Verified by orchestrator: typecheck ✓, lint ✓, vitest 145/145 ✓, coverage logic 100% stmts/branches/functions/lines ✓.
 - Commit: d58f03e
+
+## 2026-10-15 12:05 — T3.3 Loading screen
+- Agent: loading-builder (sonnet).
+- Changed: `src/components/loading` — LoadingScreen (orbiting supplier chips with text fallback, logoUrl-ready; PRD §7 messages; progressbar; reduced-motion path; excludeSupplierIds; onStart/onComplete).
+- Notes: orbit capped at 10 suppliers, N = shown count; centre uses versus_icona.svg. Browser check at 390/1440 pending until a route mounts it (covered by flow e2e).
+- Verified by orchestrator: vitest loading 12/12 ✓, eslint ✓, no tsc errors in folder ✓.
+- Commit: 7a2f1f4
