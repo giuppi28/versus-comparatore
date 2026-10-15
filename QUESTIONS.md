@@ -109,3 +109,7 @@ T8.2 (Q6 + Q7 + Q8, one migration): `private.app_secrets` with ONLY the SHA-256 
 - Security advisors: only the expected warnings + INFO "RLS enabled, no policy" on `private.app_secrets` (intentional).
 - T7.5 is unblocked: run the security tests against the real project now (needs LEAD_API_SECRET in .env.local — already there).
 
+
+## Q11 — Confirm names of the disabled functions in the real DB
+Migration `20261015150000_disable_old_lead_functions.sql` (documentation only, no APPLY) assumes the reviewer's renamed functions are `private.old_create_lead_disabled(jsonb)`, `private.old_update_lead_disabled(text, jsonb)`, `private.old_complete_lead_disabled(text, jsonb)` and `private.bootstrap_load_comuni_disabled(text)`. Please confirm or give the actual names so the repo matches the real DB.
+**Answer:**
