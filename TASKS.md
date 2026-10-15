@@ -107,4 +107,4 @@ Decisions: hosting = Vercel (Hobby, custom domain); Cloudflare removed entirely 
 - [x] T11.4 (5995521) Suppliers delete incl. their offers, placeholders protected, storage logo cleanup (D3) → `admin-suppliers-builder`
 - [x] T11.5 (7c8053f) Loading marquee shows all real suppliers minus current (D4) → `loading-builder`
 - [x] T11.6 (ed2fe9e) Page 1 current-supplier block check (D5) → `qa-tester` (+ `page1-builder` if needed)
-- [~] T11.7 Tests + full regression + PROGRESS summary + push `preview/phase11` (D6) → `qa-tester` + orchestrator
+- [x] T11.7 (5a7dc88, 9893313, 84c9485 + this summary) Tests + full regression + PROGRESS summary + push `preview/phase11` (D6) → `qa-tester` + orchestrator
