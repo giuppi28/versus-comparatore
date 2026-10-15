@@ -72,8 +72,8 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [ ] T7.7 BLOCKED: final 100% sign-off needs T7.5 (and T5.1 logos) — interim report in PROGRESS.md — Final report in PROGRESS.md: matrix size, pass rate (must be 100%), known limitations.
 
 ## Phase 8 — Reviewer follow-ups (2026-10-15)
-- [~] T8.1 Load comuni into the real DB with `app/supabase/bootstrap/load_comuni.mjs` (expects TOTAL 7894), verify with data checks, write `## DONE: comuni loaded` in QUESTIONS.md → `db-builder`
+- [x] T8.1 Load comuni into the real DB with `app/supabase/bootstrap/load_comuni.mjs` (expects TOTAL 7894), verify with data checks, write `## DONE: comuni loaded` in QUESTIONS.md → `db-builder`
 - [~] T8.2 One migration for Q6 (hashed LEAD_API_SECRET on the three lead functions) + Q7 (complete_lead returns the notification recipient) + Q8 (`suppliers.is_placeholder`); update server routes, bundle secret guard, mock layer and tests → `db-builder` (SQL) then `lead-api-builder` (routes) → `APPLY`
-- [~] T8.3 Seed + mock alignment for the gas advantage wording (Q4) → `db-builder`
-- [~] T8.4 Null climate zone → fallback to the province capital's zone (Q5) + tests → `logic-builder`
+- [x] T8.3 Seed + mock alignment for the gas advantage wording (Q4) → `db-builder`
+- [x] T8.4 Null climate zone → fallback to the province capital's zone (Q5) + tests → `logic-builder`
 - [x] T8.5 Go-live checklist additions (admin widget + DEPLOY.md): disable public sign-up in Supabase Auth; create Aldo's admin user and insert into public.admins; reviewer drops `public.bootstrap_load_comuni` → `admin-settings-builder`

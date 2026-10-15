@@ -149,3 +149,9 @@ Known limitations: real Supabase flow (auth/MFA, RLS, storage) untested until mi
 - Changed: 'Verifiche manuali' block (sign-up disabled, Aldo admin row, bootstrap function dropped) — informational, not part of the automatic Pronto status; DEPLOY.md: Q10 decision (Workers Free, monitor 1102), LEAD_API_SECRET as Cloudflare secret, manual items with SQL.
 - Verified by orchestrator: vitest 14/14 ✓, eslint ✓ (agent: e2e admin-settings 6/6).
 - Commit: 825fda9
+
+## 2026-10-15 16:20 — T8.1, T8.3, T8.4, T8.2 (SQL half)
+- T8.1 (db-builder, opus): comuni loaded via reviewer bootstrap RPC → TOTAL 7894; new `supabase/bootstrap/verify_comuni.mjs` (REST, publishable key) → zones A2 B158 C981 D1566 E4159 F1007 null21, 110 provinces, accent-insensitive search OK. `## DONE: comuni loaded` in QUESTIONS.md (reviewer can drop bootstrap_load_comuni). Orchestrator re-ran verify_comuni: ALL COMUNI CHECKS PASSED.
+- T8.3 (db-builder): seed.sql gas advantage "Prezzo **fisso** per tutta la durata del blocco" (+ data checks). Mock data change pending (setup-builder).
+- T8.4 (logic-builder 4680481 + page1-builder/qa-tester 72d00e9): null zone → province capital zone (110-province generated map); page1 passes province code; matrix null-zone cases 15/15 ✓.
+- T8.2 SQL (db-builder, 2e9ee30): migration 20261015140000 — private.app_secrets (sha256 only, no grants), p_secret first param on the 3 lead functions (invalid_secret / 28000), complete_lead returns notification_email, suppliers.is_placeholder. LEAD_API_SECRET in app/.env.local only (verified gitignored, not in git). PGlite: ALL DATA CHECKS PASSED, ALL RLS TESTS PASSED. APPLY requested — must ship together with the app route changes (next: lead-api-builder).
