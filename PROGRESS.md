@@ -8,3 +8,10 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Notes: removed generated `cacheComponents`/`partialPrefetching` from next.config (cookie/token routes, OpenNext); lead.commodity = luce|gas|dual; current_supplier_* stores suppliers.id; special dropdown options seeded as supplier rows without offers. RPC contract documented in `supabase-repository.ts`.
 - Verified by orchestrator: typecheck ✓, lint ✓, vitest 76/76 ✓, e2e smoke 2/2 (desktop+mobile) ✓.
 - Commit: 4431fb4
+
+## 2026-10-15 12:00 — T2.1–T2.3 Core logic
+- Agent: logic-builder (sonnet).
+- Changed: `src/config/consumption.ts` (all PRD §6 coefficients), `src/lib/logic` (estimateLuce/estimateGas, monthlyCost, rankOffers, formatEuro/formatPrice, validators CF/P.IVA/POD/PDR/phone with Italian messages); coverage-v8 + 100% threshold on validators.
+- Decisions: null climate zone → fallback zone E; riscaldamento requires sqm range in UI; people 5+ = 5; monthly prefill rounded to integer; formatters use NBSP before €; POD 15 chars → keep first 14; phone stored as national digits.
+- Verified by orchestrator: typecheck ✓, lint ✓, vitest 145/145 ✓, coverage logic 100% stmts/branches/functions/lines ✓.
+- Commit: d58f03e
