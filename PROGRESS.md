@@ -72,3 +72,10 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Changed: migration 20261015130000_storage_supplier_logos.sql (public bucket, SVG only, 200 KB, admin-only write + MFA restrictive policy); storage stub + RLS assertions; APPLY request.
 - Verified by orchestrator: PGlite runner → ALL DATA CHECKS PASSED, ALL RLS TESTS PASSED.
 - Commit: 4d3a8e9
+
+## 2026-10-15 13:15 — T3.4 Results page
+- Agent: results-builder (sonnet).
+- Changed: `(public)/offerte` + `src/components/results` — loading screen integration (onStart PATCH step results; `?fast=1` / NEXT_PUBLIC_LOADING_MS override; not replayed for same inputs via `versus.results.loaded.v1`), editable monthly consumption recalculating instantly, offer cards (featured band, promo, stima tooltip IVA esclusa, inline "Vedi dettagli"), current-supplier exclusion per commodity (only for cambio fornitore/voltura), OfferModal → chosenOffers + PATCH, Luce+Gas two-step with back.
+- Note: dual luce choice PATCHes chosen_offer_luce without step change; offer_chosen set after gas choice.
+- Verified by orchestrator: vitest 19/19 ✓, eslint ✓, tsc ✓, playwright results 22/22 (desktop+mobile) ✓. Infra note: parallel Playwright runs collide on app/test-results → use `--output` per run.
+- Commit: 2ae0417
