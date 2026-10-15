@@ -77,3 +77,12 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 - [x] T8.3 Seed + mock alignment for the gas advantage wording (Q4) → `db-builder`
 - [x] T8.4 Null climate zone → fallback to the province capital's zone (Q5) + tests → `logic-builder`
 - [x] T8.5 Go-live checklist additions (admin widget + DEPLOY.md): disable public sign-up in Supabase Auth; create Aldo's admin user and insert into public.admins; reviewer drops `public.bootstrap_load_comuni` → `admin-settings-builder`
+
+## Phase 9 — Giuseppe's review round (2026-10-15)
+Decisions: hosting = Vercel (Hobby, custom domain); Cloudflare removed entirely (no Turnstile; keep rate limiting + hashed LEAD_API_SECRET); keep-alive = daily Vercel Cron; "Cambio fornitore" preselected on Page 1. Design reference: `versus elementi/_archivio/comparatore-demo-reference.html` (visual style only) with the VERSUS green palette.
+- [ ] T9.1 Remove Cloudflare (Turnstile, OpenNext, wrangler, cloudflare/, build:cf) + Vercel deploy docs + Vercel Cron keep-alive + Vercel-only client IP → `lead-api-builder` (opus, security-critical)
+- [ ] T9.2 Design system refresh: tokens (grey bg, white cards, thin borders, 10px radius, Archivo wide + Inter), header with inline SVG VERSUS logo, hero "Comparatore luce e gas" → `setup-builder`
+- [ ] T9.3 Page 1: "Cambio fornitore" preselected, animated reveal of the current-supplier block, restyle to the new system → `page1-builder`
+- [ ] T9.4 Minimal loading screen (replaces orbit), ~4 s, never the current supplier → `loading-builder`
+- [ ] T9.5 Full aesthetic review of every screen (1440 + 390) → `DESIGN_REVIEW.md`, fixes by the owning builders, re-check → orchestrator + builders
+- [ ] T9.6 Full regression (unit, e2e, matrix, security) + screenshots → `qa-tester`

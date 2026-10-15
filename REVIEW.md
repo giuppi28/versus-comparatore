@@ -12,3 +12,6 @@ Overall: very solid work. Schema, RLS, lead functions and storage policies revie
 - [x] fixed in 31fb197 (npm run test:security: 74 passed, 1 skipped vs real project; SQL files: see QUESTIONS REQUEST) — [medium] T7.5 — after the comuni load, run `rls_test.sql` logic and the API-level security tests against the real project (switch NEXT_PUBLIC_DATA_SOURCE=supabase for that suite).
 - [x] fixed in 2e9ee30 (seed) + 6394331 (mock) — [medium] Seed alignment: `seed.sql` + mock data must use the gas advantage "Prezzo **fisso** per tutta la durata del blocco" (Q4) — the real DB already does.
 - [x] fixed in 4680481 + 72d00e9 — [low] `estimateGas` falls back to a national zone (E) when a comune has no zone; use the zone of the province capital instead (Q5) — 21 comuni affected.
+
+## Review 2026-10-15 14:50 (reviewer) — final
+Logo-path migration applied; data checks and anon RLS checks pass on the real DB; disabled function names aligned with the repo. No open code issues. Only go-live items remain (all owned by Giuseppe, listed in DEPLOY.md and the admin checklist): privacy controller data (Q9), Aldo's admin account + email, disable public sign-up, real Turnstile/Resend keys, LEAD_API_SECRET on Cloudflare, rate-limit rule, delete the 10 TEST-SECURITY leads from the admin, Aldo verifies all offer prices.
