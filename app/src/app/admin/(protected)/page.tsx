@@ -14,13 +14,13 @@ export default async function AdminDashboardPage() {
   await requireAdmin();
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+      <h1 className="heading-wide text-title break-words">Dashboard</h1>
       <ul className="grid gap-4 sm:grid-cols-2">
         {SECTIONS.map((s) => (
           <li key={s.href}>
             <Link href={s.href} className="block h-full">
               <Card className="h-full transition-colors hover:border-brand-600">
-                <h2 className="text-lg font-bold">{s.title}</h2>
+                <h2 className="heading-section">{s.title}</h2>
                 <p className="mt-1 text-ink-muted">{s.text}</p>
               </Card>
             </Link>

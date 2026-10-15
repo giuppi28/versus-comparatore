@@ -45,7 +45,7 @@ function ToggleButton({
       <button
         type="submit"
         data-testid={`toggle-${flag}`}
-        className="min-h-10 rounded-control border border-line-strong px-3 text-sm font-semibold hover:border-brand-600 hover:bg-brand-50"
+        className="min-h-10 rounded-control border border-control bg-surface px-3 text-sm font-semibold text-ink transition-colors hover:border-ink"
       >
         {label}
       </button>
@@ -69,7 +69,7 @@ export default async function AdminOffersPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold tracking-tight">Offerte</h1>
+        <h1 className="heading-wide text-title break-words">Offerte</h1>
         <Link
           href="/admin/offerte/nuova"
           data-testid="new-offer"
@@ -79,7 +79,7 @@ export default async function AdminOffersPage({
         </Link>
       </div>
 
-      <nav aria-label="Filtro offerte" className="flex flex-wrap gap-2">
+      <nav aria-label="Filtro offerte" className="flex gap-1 self-start rounded-control bg-disabled p-1">
         {[
           { href: "/admin/offerte", label: `Visibili ai clienti (${visible.length})`, current: !showAll, id: "filter-visible" },
           { href: "/admin/offerte?vista=tutte", label: `Tutte (${all.length})`, current: showAll, id: "filter-all" },
@@ -90,10 +90,10 @@ export default async function AdminOffersPage({
             data-testid={f.id}
             aria-current={f.current ? "page" : undefined}
             className={cn(
-              "inline-flex min-h-10 items-center rounded-full border px-4 text-sm font-semibold",
+              "inline-flex items-center whitespace-nowrap rounded-[0.4rem] border px-3 py-1.5 text-sm font-semibold sm:px-4",
               f.current
-                ? "border-brand-600 bg-brand-600 text-white"
-                : "border-line-strong bg-surface hover:border-brand-600 hover:bg-brand-50",
+                ? "border-line bg-surface text-ink shadow-card"
+                : "border-transparent text-ink-muted hover:text-ink",
             )}
           >
             {f.label}

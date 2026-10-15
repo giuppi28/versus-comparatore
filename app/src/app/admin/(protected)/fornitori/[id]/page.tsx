@@ -27,7 +27,7 @@ export default async function EditSupplierPage({
         <Link href="/admin/fornitori" className="text-sm font-semibold text-brand-700 underline">
           Fornitori
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight">{supplier.name}</h1>
+        <h1 className="heading-wide text-title break-words">{supplier.name}</h1>
       </div>
       {query.creato === "1" && (
         <div role="status" data-testid="created-banner" className="rounded-control border border-success bg-success-soft px-4 py-3 text-sm font-medium text-brand-800">

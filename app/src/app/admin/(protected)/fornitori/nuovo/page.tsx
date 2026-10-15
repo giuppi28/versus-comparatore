@@ -19,7 +19,7 @@ export default async function NewSupplierPage() {
         <Link href="/admin/fornitori" className="text-sm font-semibold text-brand-700 underline">
           Fornitori
         </Link>
-        <h1 className="text-3xl font-bold tracking-tight">Nuovo fornitore</h1>
+        <h1 className="heading-wide text-title break-words">Nuovo fornitore</h1>
       </div>
       <SupplierForm initial={null} logoUrl={null} defaultSortOrder={defaultSortOrder} />
     </div>

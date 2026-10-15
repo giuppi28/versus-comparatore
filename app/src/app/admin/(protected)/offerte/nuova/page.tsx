@@ -16,7 +16,7 @@ export default async function NewOfferPage() {
         <Link href="/admin/offerte" className="text-sm font-semibold text-brand-700 hover:underline">
           ← Tutte le offerte
         </Link>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Nuova offerta</h1>
+        <h1 className="mt-2 heading-wide text-title break-words">Nuova offerta</h1>
       </div>
       <OfferForm initial={DEFAULT_OFFER_VALUES} suppliers={suppliers} />
     </div>

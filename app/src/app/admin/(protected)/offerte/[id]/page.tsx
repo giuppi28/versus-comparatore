@@ -28,7 +28,7 @@ export default async function EditOfferPage({
         <Link href="/admin/offerte" className="text-sm font-semibold text-brand-700 hover:underline">
           ← Tutte le offerte
         </Link>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Modifica offerta</h1>
+        <h1 className="mt-2 heading-wide text-title break-words">Modifica offerta</h1>
         <p className="text-ink-muted">{offer.name}</p>
       </div>
       {(esito === "creata" || esito === "salvata") && (

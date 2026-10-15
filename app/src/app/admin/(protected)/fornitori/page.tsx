@@ -27,7 +27,7 @@ export default async function SuppliersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Fornitori</h1>
+          <h1 className="heading-wide text-title break-words">Fornitori</h1>
           <p className="text-ink-muted">{sorted.length} fornitori, inclusi quelli non attivi.</p>
         </div>
         <Link

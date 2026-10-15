@@ -30,7 +30,7 @@ export default async function AdminLeadsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold tracking-tight">Lead</h1>
+      <h1 className="heading-wide text-title break-words">Lead</h1>
       <LeadFilters params={params} />
       <p className="text-sm text-ink-muted" data-testid="lead-total" aria-live="polite">
         {result.total === 1 ? "1 lead" : `${result.total} lead`}
@@ -45,7 +45,7 @@ export default async function AdminLeadsPage({
       {result.pageCount > 1 && (
         <nav aria-label="Pagine" className="flex items-center justify-between gap-3">
           {result.page > 1 ? (
-            <a rel="prev" href={listHref({ ...params, page: result.page - 1 })} className="rounded-control border border-line-strong px-4 py-2 font-semibold hover:border-brand-600 hover:bg-brand-50">
+            <a rel="prev" href={listHref({ ...params, page: result.page - 1 })} className="inline-flex min-h-11 items-center rounded-control border border-control bg-surface px-4 font-semibold text-ink transition-colors hover:border-ink">
               ← Precedente
             </a>
           ) : (
@@ -55,7 +55,7 @@ export default async function AdminLeadsPage({
             Pagina {result.page} di {result.pageCount}
           </span>
           {result.page < result.pageCount ? (
-            <a rel="next" href={listHref({ ...params, page: result.page + 1 })} className="rounded-control border border-line-strong px-4 py-2 font-semibold hover:border-brand-600 hover:bg-brand-50">
+            <a rel="next" href={listHref({ ...params, page: result.page + 1 })} className="inline-flex min-h-11 items-center rounded-control border border-control bg-surface px-4 font-semibold text-ink transition-colors hover:border-ink">
               Successiva →
             </a>
           ) : (

@@ -44,8 +44,8 @@ export function LeadEditForm({
           aria-invalid={notesError ? true : undefined}
           aria-describedby={notesError ? "lead-notes-error" : undefined}
           className={
-            "w-full rounded-control border bg-surface px-4 py-3 text-base text-ink focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30 " +
-            (notesError ? "border-danger" : "border-line-strong")
+            "w-full rounded-control border-[1.5px] bg-surface px-4 py-3 text-base text-ink focus:border-brand-600 focus:outline-none focus:ring-[3px] focus:ring-brand-100 " +
+            (notesError ? "border-danger" : "border-control")
           }
         />
         {notesError && (

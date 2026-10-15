@@ -115,7 +115,7 @@ export function OfferForm({
       )}
 
       <Card padding="lg" className="flex flex-col gap-5">
-        <h2 className="text-lg font-bold">Offerta</h2>
+        <h2 className="heading-section">Offerta</h2>
         <div className="grid gap-5 md:grid-cols-2">
           <Select
             label="Fornitore"
@@ -164,7 +164,7 @@ export function OfferForm({
       </Card>
 
       <Card padding="lg" className="flex flex-col gap-5">
-        <h2 className="text-lg font-bold">Prezzi (IVA esclusa)</h2>
+        <h2 className="heading-section">Prezzi (IVA esclusa)</h2>
         <div className="grid gap-5 md:grid-cols-2">
           <Input
             label={`Prezzo energia (€/${unit})`}
@@ -269,7 +269,7 @@ export function OfferForm({
       </Card>
 
       <Card padding="lg" className="flex flex-col gap-5">
-        <h2 className="text-lg font-bold">Testi</h2>
+        <h2 className="heading-section">Testi</h2>
         <Input
           label="Testo promo / sconto"
           name="promo_text"
@@ -310,7 +310,7 @@ export function OfferForm({
                         list.map((a) => (a.key === item.key ? { ...a, text: e.target.value } : a)),
                       )
                     }
-                    className="min-h-11 w-full min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-3 text-base focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+                    className="min-h-11 w-full min-w-0 flex-1 rounded-control border border-control bg-surface px-3 text-base focus:border-brand-600 focus:outline-none focus:ring-[3px] focus:ring-brand-100"
                   />
                   <div className="flex shrink-0 gap-2">
                     <Button
@@ -376,14 +376,14 @@ export function OfferForm({
             value={v.details}
             onChange={(e) => set("details", e.target.value)}
             aria-invalid={errors.details ? true : undefined}
-            className="w-full rounded-control border border-line-strong bg-surface px-4 py-3 text-base focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/30"
+            className="w-full rounded-control border border-control bg-surface px-4 py-3 text-base focus:border-brand-600 focus:outline-none focus:ring-[3px] focus:ring-brand-100"
           />
           {errors.details && <p role="alert" className="text-sm font-medium text-danger">{errors.details}</p>}
         </div>
       </Card>
 
       <Card padding="lg" className="flex flex-col gap-4">
-        <h2 className="text-lg font-bold">Stato</h2>
+        <h2 className="heading-section">Stato</h2>
         <Toggle
           name="active"
           label="Attiva"
@@ -410,11 +410,11 @@ export function OfferForm({
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Link
           href="/admin/offerte"
-          className="inline-flex min-h-11 items-center justify-center rounded-control border border-line-strong px-5 font-semibold hover:border-brand-600 hover:bg-brand-50"
+          className="inline-flex min-h-11 items-center justify-center rounded-control border border-control bg-surface px-5 font-semibold text-ink transition-colors hover:border-ink"
         >
           Annulla
         </Link>
-        <Button type="submit" size="lg" loading={pending}>
+        <Button type="submit" loading={pending}>
           {offerId ? "Salva modifiche" : "Crea offerta"}
         </Button>
       </div>
@@ -442,7 +442,7 @@ function Toggle({
         name={name}
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 size-5 shrink-0 accent-brand-600"
+        className="mt-1 size-5 shrink-0 rounded border-2 border-control accent-brand-600"
       />
       <span>
         <span className="block font-semibold">{label}</span>

@@ -34,13 +34,13 @@ function Check({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-control border border-line-strong px-4 py-3 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
+    <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-control border border-control px-4 py-3 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
       <input
         type="checkbox"
         name={name}
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-5 shrink-0 accent-brand-600"
+        className="mt-0.5 size-5 shrink-0 rounded border-2 border-control accent-brand-600"
       />
       <span className="flex flex-col">
         <span className="font-semibold">{label}</span>
@@ -54,7 +54,7 @@ function Banner({ tone, children, testId }: { tone: "success" | "error" | "info"
   const cls = {
     success: "border-success bg-success-soft text-brand-800",
     error: "border-danger bg-danger-soft text-danger",
-    info: "border-line-strong bg-surface-muted text-ink",
+    info: "border-control bg-surface-muted text-ink",
   }[tone];
   return (
     <div role={tone === "error" ? "alert" : "status"} data-testid={testId} className={`rounded-control border px-4 py-3 text-sm font-medium ${cls}`}>
@@ -141,7 +141,7 @@ export function SupplierForm({
       )}
 
       <Card padding="lg" className="flex flex-col gap-5">
-        <h2 className="text-lg font-bold">Dati del fornitore</h2>
+        <h2 className="heading-section">Dati del fornitore</h2>
         <Input
           label="Nome"
           name="name"
@@ -186,7 +186,7 @@ export function SupplierForm({
       </Card>
 
       <Card padding="lg" className="flex flex-col gap-4">
-        <h2 className="text-lg font-bold">Impostazioni</h2>
+        <h2 className="heading-section">Impostazioni</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <Check name="sells_luce" label="Vende luce" checked={sellsLuce} onChange={setSellsLuce} />
           <Check name="sells_gas" label="Vende gas" checked={sellsGas} onChange={setSellsGas} />
@@ -208,7 +208,7 @@ export function SupplierForm({
       </Card>
 
       <Card padding="lg" className="flex flex-col gap-4">
-        <h2 className="text-lg font-bold">Logo</h2>
+        <h2 className="heading-section">Logo</h2>
         <div className="flex flex-wrap items-center gap-4">
           <div
             className="flex h-20 w-44 items-center justify-center rounded-control border border-line bg-surface-muted p-3"
@@ -245,7 +245,7 @@ export function SupplierForm({
             onChange={(e) => onFileChange(e.target.files?.[0])}
             aria-invalid={fieldErrors.logo || clientLogoError ? true : undefined}
             aria-describedby={fieldErrors.logo || clientLogoError ? "logo-error" : undefined}
-            className="block w-full rounded-control border border-line-strong bg-surface p-2 text-sm file:mr-3 file:min-h-10 file:rounded-control file:border-0 file:bg-brand-50 file:px-4 file:font-semibold file:text-brand-700"
+            className="block w-full rounded-control border border-control bg-surface p-2 text-sm file:mr-3 file:min-h-10 file:rounded-control file:border-0 file:bg-brand-50 file:px-4 file:font-semibold file:text-brand-700"
           />
           {(fieldErrors.logo || clientLogoError) && (
             <p id="logo-error" role="alert" data-testid="logo-error" className="text-sm font-medium text-danger">
@@ -261,11 +261,11 @@ export function SupplierForm({
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
         <Link
           href="/admin/fornitori"
-          className="inline-flex min-h-11 items-center justify-center rounded-control border border-line-strong px-5 font-semibold hover:border-brand-600 hover:bg-brand-50"
+          className="inline-flex min-h-11 items-center justify-center rounded-control border border-control bg-surface px-5 font-semibold text-ink transition-colors hover:border-ink"
         >
           Torna all&apos;elenco
         </Link>
-        <Button type="submit" size="lg" loading={pending} className="sm:ml-auto">
+        <Button type="submit" loading={pending} className="sm:ml-auto">
           {isEdit ? "Salva modifiche" : "Crea fornitore"}
         </Button>
       </div>

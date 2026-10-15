@@ -31,11 +31,11 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-3xl font-bold tracking-tight">Impostazioni</h1>
+      <h1 className="heading-wide text-title break-words">Impostazioni</h1>
 
       <section aria-labelledby="notifiche-title">
         <Card padding="lg" className="flex max-w-2xl flex-col gap-4">
-          <h2 id="notifiche-title" className="text-xl font-bold">
+          <h2 id="notifiche-title" className="heading-section">
             Notifiche
           </h2>
           <p className="text-ink-muted">
@@ -57,7 +57,7 @@ export default async function SettingsPage() {
       <section aria-labelledby="golive-title">
         <Card padding="lg" className="flex flex-col gap-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="golive-title" className="text-xl font-bold">
+            <h2 id="golive-title" className="heading-section">
               Checklist di pubblicazione
             </h2>
             <p
@@ -96,7 +96,7 @@ export default async function SettingsPage() {
             data-testid="manual-checks"
             className="flex flex-col gap-3 rounded-control border border-warning bg-warning-soft p-4"
           >
-            <h3 className="text-lg font-bold">Verifiche manuali</h3>
+            <h3 className="heading-section">Verifiche manuali</h3>
             <p className="text-sm">
               Queste voci non si possono rilevare dal sito e non cambiano lo stato qui sopra: controllale
               a mano prima di pubblicare.
@@ -150,7 +150,7 @@ export default async function SettingsPage() {
 
           {unverified.length > 0 && (
             <div className="flex flex-col gap-3">
-              <h3 className="text-lg font-bold">Offerte attive da verificare</h3>
+              <h3 className="heading-section">Offerte attive da verificare</h3>
               <ul data-testid="unverified-offers" className="flex flex-col gap-2">
                 {unverified.map((o) => (
                   <li key={o.id}>

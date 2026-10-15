@@ -29,7 +29,7 @@ const yesNo = (v: boolean | null) => (v === null ? null : v ? "Sì" : "No");
 function Group({ title, children, testId }: { title: string; children: ReactNode; testId: string }) {
   return (
     <Card data-testid={testId} className="flex flex-col gap-4">
-      <h2 className="text-lg font-bold">{title}</h2>
+      <h2 className="heading-section">{title}</h2>
       <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">{children}</dl>
     </Card>
   );
@@ -76,7 +76,7 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
         <Link href="/admin/leads" className="text-sm font-semibold text-brand-700 underline underline-offset-2">
           ← Tutti i lead
         </Link>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">{leadDisplayName(lead)}</h1>
+        <h1 className="mt-2 heading-wide text-title break-words">{leadDisplayName(lead)}</h1>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <StepBadge step={lead.step_reached} />
           <StatusBadge status={lead.status} />
@@ -150,7 +150,7 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
         </div>
 
         <Card className="flex flex-col gap-4 lg:sticky lg:top-6" data-testid="lead-edit-card">
-          <h2 className="text-lg font-bold">Gestione</h2>
+          <h2 className="heading-section">Gestione</h2>
           <LeadEditForm id={lead.id} status={lead.status} notes={lead.notes} />
         </Card>
       </div>
