@@ -37,3 +37,11 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Needs: public.is_admin() from db-builder; reviewer must create Aldo's user + admins row, disable sign-ups, enable TOTP + leaked-password protection; real Turnstile keys before go-live. In-memory rate limiter is per-isolate (deploy-prep decision).
 - Verified by orchestrator: vitest auth 67/67 ✓, eslint ✓, tsc ✓, playwright admin-auth + smoke 14/14 (desktop+mobile) ✓.
 - Commit: 01744cd
+
+## 2026-10-15 12:25 — T3.1 Lead API + customer flow state
+- Agent: lead-api-builder (opus).
+- Changed: `/api/lead` (POST create / PATCH forward-only update / DELETE), `/api/lead/complete` (full PRD §10 server validation, notifyNewLead stub, cookies expired); `src/lib/lead` (zod strict schemas, Turnstile w/ offline test keys, in-memory rate limit, Origin check, client helpers, sessionStorage flow state + FlowProvider/useFlow); `(public)/layout.tsx` mounts provider; README section.
+- Decisions: power "Altro" stored as null; estimated_*_year stores the annual figure actually used (manual flag separate); create requires only consent; CAP checked as 5 digits only.
+- Follow-ups: db-builder SQL must also enforce forward-only step / no update after completed; deploy-prep: WAF rate-limit rule + Turnstile keys; admin-settings: Resend inside notify.ts from `data`; page1: move home into (public).
+- Verified by orchestrator: vitest lead 114/114 ✓, eslint ✓, no tsc errors in its folders ✓ (agent also ran full e2e 14/14 + curl lifecycle).
+- Commit: 2cba8c6
