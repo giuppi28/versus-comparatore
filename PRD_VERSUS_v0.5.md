@@ -1,7 +1,7 @@
 # VERSUS — Comparatore luce e gas — PRD v0.5
 
 Status: brainstorming complete — ready to build.
-Last update: 2026-10-15 — v0.5.1: hosting Vercel, Cloudflare removed (no Turnstile; rate limiting kept)
+Last update: 2026-10-15 — v0.5.2: visual upgrade (Phase 10, `PHASE10_BRIEF.md`) — visual/layout notes only; v0.5.1: hosting Vercel, Cloudflare removed (no Turnstile; rate limiting kept)
 Owner: Giuseppe Pappalardo (SiteXP) — Client: Aldo (energy broker)
 
 The previous demo is discarded. Reference material lives in the read-only folder `/Users/pippo/Desktop/versus elementi/`; the project lives in `/Users/pippo/Desktop/versus-comparatore/`. Everything is rebuilt from scratch.
@@ -12,7 +12,8 @@ The previous demo is discarded. Reference material lives in the read-only folder
 
 Public website where private customers and businesses (Partita IVA) compare **electricity (luce)**, **gas**, or **luce + gas** offers. The site shows an **estimate only**. After choosing an offer the customer fills in an activation form ("Attiva online in 1 minuto"); an operator from Aldo's call center always calls back to confirm and complete the activation (same model as Facile.it).
 
-Brand: **VERSUS — comparatore luce e gas**. Existing black & white logo, green palette. Layouts are inspired by Facile.it but fully restyled with VERSUS identity — never copy Facile.it-specific elements (Club/points, "Tariffa esclusiva", "Annuncio pubblicitario", orange, "Parla con un esperto").
+Brand: **VERSUS — comparatore luce e gas**. Existing black & white logo, green palette.
+*v0.5.2 visual:* header lockup = black VERSUS icon (no square) + typeset "VERSUS" / dominant **COMPARATORE** / green "luce e gas"; light-green tinted header with a thin green gradient strip and the trust line "Confronto gratuito · 100% online" (≥1024px); simple footer on public pages (lockup, Privacy link, © VERSUS). Decorative illustrations (bulb, flame, bolt-drop, house) derived from the logo, always aria-hidden and never under text. Layouts are inspired by Facile.it but fully restyled with VERSUS identity — never copy Facile.it-specific elements (Club/points, "Tariffa esclusiva", "Annuncio pubblicitario", orange, "Parla con un esperto").
 
 Target: all of Italy. Customers: private households and businesses.
 
@@ -99,7 +100,7 @@ Supabase free projects pause after 7 days of inactivity → daily Vercel Cron Jo
 
 ## 6. Page 1 — data collection
 
-Layout: **single left column**, visual **blocks with icons**.
+Layout: **single centered column** (v0.5.2: hero and form centered at desktop), visual **blocks with icons**. Hero "COMPARATORE / LUCE E GAS" with a large low-emphasis green bulb in the background (≥1280px only). Below the form: "Come funziona" (3 steps), "Confrontiamo le offerte di" (real supplier logos, static) and a short factual FAQ.
 
 ### Block A — What to compare
 **Luce** / **Gas** / **Luce + Gas** (icon cards).
@@ -169,7 +170,7 @@ Annual kWh and/or Smc entered directly, with a hint on where to find it in the b
 
 ## 7. Loading screen
 
-~4 s. Minimal: VERSUS icon centered with a soft pulse, a quiet row of greyscale supplier logos highlighted one at a time (no orbit). Progress bar + messages: "Analizziamo i tuoi consumi…" → "Confrontiamo le offerte di N fornitori…" → "Calcoliamo la tua spesa mensile…" → "Ecco le migliori offerte per te!". Current supplier not shown. Lead update during the animation.
+~4 s. *v0.5.2:* large black VERSUS icon centered inside a green progress ring; big rotating messages with key words in green, adapted to luce / gas / luce e gas ("Analizziamo i **tuoi consumi**" → "Stiamo confrontando le **offerte luce** per te" → "Analizziamo i **migliori fornitori**" → "Calcoliamo la tua **spesa mensile**" → "Ecco le **migliori offerte** per te!"; no supplier count); below, an infinite marquee of black supplier logos with faded edges (static row under reduced motion). Current supplier and placeholders never shown. Lead update during the animation.
 
 ---
 
@@ -178,6 +179,8 @@ Annual kWh and/or Smc entered directly, with a hint on where to find it in the b
 **Left — "I tuoi consumi"**: only consumption, editable (monthly kWh / Smc, prefilled = estimate ÷ 12); editing recalculates instantly. No potenza, fascia, filters.
 
 **Right — offer cards**: supplier logo, Prodotto, "Bloccato N mesi", Prezzo/kWh (or /Smc), Quota fissa, "Vedi dettagli", **Spesa mensile** (large, tooltip "stima"), promo box, "In evidenza" band for featured, **single CTA "Attiva online in 1 minuto"**. No date, no filters.
+
+*v0.5.2:* title "Le migliori offerte Luce|Gas **per te**" with "per te" in green in every variant (dual steps included; the step indicator distinguishes them), title block centered.
 
 **Order:** featured first, then monthly cost ascending. **Excluded:** current supplier's offers.
 
@@ -201,6 +204,8 @@ Luce + Gas: modal for each choice; activation form follows the gas choice.
 
 Two columns: form left, **"La tua offerta" sticky summary right** (logo, Spesa mensile large, Prodotto, Attivazione 0,00 €, Cambio contatore NO, Bloccato N mesi, Prezzo/kWh and/or /Smc, Quota fissa; dual: both offers + total). No documents, no payment method, no Club/points.
 
+*v0.5.2:* every option card in steps A and B has a decorative icon (same set as Page 1).
+
 ### Step A — "Dati intestatario" (all required)
 - Nome, Cognome (prefilled, editable); Telefono cellulare (prefilled)
 - **Codice fiscale**: format + check character + **consistency with name and surname** (official algorithm for the first 6 chars) → inline error on mismatch.
@@ -222,6 +227,7 @@ Two columns: form left, **"La tua offerta" sticky summary right** (logo, Spesa m
 ## 11. Thank-you page
 
 "Grazie, [Nome]!" — "Sarai ricontattato a breve da un nostro consulente per confermare l'attivazione della tua offerta." + summary of chosen offer(s). No email/quote promise. Only place where the callback is mentioned.
+*v0.5.2:* card unchanged; subtle background decoration (gas flame left, light bulb right) in the side margins, ≥1024px only.
 
 ---
 
