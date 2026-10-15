@@ -113,7 +113,8 @@ const MISSING: Missing[] = [
   { key: "phone", kind: "casa", message: "Inserisci il numero di cellulare." },
   { key: "comune", kind: "casa", message: "Cerca e seleziona il tuo comune dall'elenco." },
   { key: "privacy", kind: "casa", message: "Per proseguire devi accettare l'informativa sulla privacy.", errorTestId: "error-privacy" },
-  { key: "service", kind: "casa", message: "Scegli il tipo di servizio.", errorTestId: "error-serviceType" },
+  // No "service" entry: Cambio fornitore is preselected, so the service can never be missing (see the
+  // "service is preselected" test below).
   { key: "supplierLuce", kind: "casa", message: "Seleziona il fornitore attuale." },
   { key: "supplierGas", kind: "casa", message: "Seleziona il fornitore attuale." },
   { key: "people", kind: "casa", message: "Indica quante persone vivono in casa.", errorTestId: "error-people" },
@@ -160,9 +161,12 @@ test.describe("Page 1: every required field", () => {
   test("a completely empty form lists every missing section and focuses the first", TAG, async ({ page }) => {
     await openPage1(page);
     await page.getByTestId("submit").click();
-    for (const id of ["error-commodity", "error-customerType", "error-privacy", "error-serviceType"]) {
+    for (const id of ["error-commodity", "error-customerType", "error-privacy"]) {
       await expect(page.getByTestId(id)).toBeVisible();
     }
+    // The service is preselected, so there is no service error.
+    await expect(page.getByTestId("error-serviceType")).toHaveCount(0);
+    await expect(page.getByTestId("service-cambio")).toHaveAttribute("data-selected", "true");
     for (const text of ["Inserisci il tuo nome.", "Inserisci il tuo cognome.", "Inserisci il numero di cellulare.", "Cerca e seleziona il tuo comune dall'elenco."]) {
       await expect(page.getByText(text)).toBeVisible();
     }

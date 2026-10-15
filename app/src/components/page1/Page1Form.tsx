@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { ComuneSuggestion, ComuniResponse } from "@/app/api/comuni/types";
 import {
@@ -41,6 +41,7 @@ import {
   FieldError,
   FieldGroup,
   legendId,
+  Reveal,
 } from "./parts";
 import {
   firstErrorKey,
@@ -48,6 +49,7 @@ import {
   isLeadMissingError,
   isServiceTypeLocked,
   mapApiError,
+  withDefaultService,
   reduceChange,
   showCurrentSupplierBlock,
   showGasSupplier,
@@ -128,6 +130,14 @@ export function Page1Form({ suppliers }: Page1FormProps) {
     },
     [update],
   );
+
+  // PRD §6 Block D (Giuseppe, G4): "Cambio fornitore" is preselected so the current-supplier block
+  // is visible right away. Applied once the persisted state is loaded, only while no service is set,
+  // so a refresh or a return from the results never overrides a service the customer already chose.
+  useEffect(() => {
+    if (!hydrated) return;
+    update((prev) => withDefaultService(prev));
+  }, [hydrated, state.serviceType, update]);
 
   const clientErrors = useMemo(
     () => (submitted ? validatePage1(state, suppliers) : {}),
@@ -229,7 +239,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
       className="flex flex-col gap-6"
     >
       <Block id="commodity" title="Cosa vuoi confrontare?" testId="block-commodity">
-        <FieldGroup fieldKey="commodity" legend="Tipo di fornitura" error={errors.commodity}>
+        <FieldGroup fieldKey="commodity" legend="Tipo di fornitura" hideLegend error={errors.commodity}>
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("commodity")}
@@ -252,7 +262,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
       </Block>
 
       <Block id="customer" title="Per chi è la fornitura?" testId="block-customer">
-        <FieldGroup fieldKey="customerType" legend="Tipo di cliente" error={errors.customerType}>
+        <FieldGroup fieldKey="customerType" legend="Tipo di cliente" hideLegend error={errors.customerType}>
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("customerType")}
@@ -377,7 +387,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
       </Block>
 
       <Block id="service" title="Di quale servizio hai bisogno?" testId="block-service">
-        <FieldGroup fieldKey="serviceType" legend="Tipo di servizio" error={errors.serviceType}>
+        <FieldGroup fieldKey="serviceType" legend="Tipo di servizio" hideLegend error={errors.serviceType}>
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("serviceType")}
@@ -408,7 +418,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
         </FieldGroup>
       </Block>
 
-      {showCurrentSupplierBlock(state) && (
+      <Reveal open={showCurrentSupplierBlock(state)}>
         <Block id="supplier" title="Il tuo fornitore attuale" testId="block-supplier">
           {showLuceSupplier(state) && (
             <Anchor fieldKey="supplierLuce">
@@ -441,7 +451,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
             </Anchor>
           )}
         </Block>
-      )}
+      </Reveal>
 
       {showConsumption && <ConsumptionBlock state={state} change={change} errors={errors} />}
 

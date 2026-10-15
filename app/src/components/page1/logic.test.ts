@@ -16,6 +16,7 @@ import {
   showLuceSupplier,
   usesManualEntry,
   validatePage1,
+  withDefaultService,
   type SupplierOption,
 } from "./logic";
 
@@ -219,6 +220,40 @@ describe("reduceChange", () => {
     // Re-selecting the same value is not a change.
     const same = applyFlowPatch(s, reduceChange(s, { people: 3 }));
     expect(same.chosenOffers.luce).not.toBeNull();
+  });
+});
+
+describe("withDefaultService (Cambio fornitore preselected)", () => {
+  it("preselects Cambio fornitore when no service is chosen, so Block E shows once the commodity is set", () => {
+    const s0 = edit(INITIAL_FLOW_STATE, { commodity: "luce", customerType: "casa" });
+    expect(s0.serviceType).toBeNull();
+    const s1 = applyFlowPatch(s0, withDefaultService(s0));
+    expect(s1.serviceType).toBe("cambio_fornitore");
+    expect(showCurrentSupplierBlock(s1)).toBe(true);
+  });
+
+  it("never overrides a service the customer already chose (refresh / back from results)", () => {
+    for (const service of ["subentro", "voltura", "primo_allaccio", "cambio_fornitore"] as const) {
+      const s = edit(INITIAL_FLOW_STATE, { commodity: "luce", customerType: "casa", serviceType: service });
+      expect(withDefaultService(s)).toEqual({});
+    }
+  });
+
+  it("gas-only without gas at home keeps the forced Primo allaccio (locked block)", () => {
+    const s = edit(INITIAL_FLOW_STATE, { commodity: "gas", customerType: "casa", hasGas: false });
+    expect(s.serviceType).toBe("primo_allaccio");
+    expect(withDefaultService(s)).toEqual({});
+    // Back to "Sì": the forced value is cleared and the default applies again.
+    const unlocked = edit(s, { hasGas: true });
+    expect(unlocked.serviceType).toBeNull();
+    expect(applyFlowPatch(unlocked, withDefaultService(unlocked)).serviceType).toBe("cambio_fornitore");
+  });
+
+  it("subentro / primo allaccio still hide Block E after the default", () => {
+    const base = edit(INITIAL_FLOW_STATE, { commodity: "dual", customerType: "casa", serviceType: "cambio_fornitore" });
+    expect(showCurrentSupplierBlock(base)).toBe(true);
+    expect(showCurrentSupplierBlock(edit(base, { serviceType: "subentro" }))).toBe(false);
+    expect(showCurrentSupplierBlock(edit(base, { serviceType: "primo_allaccio" }))).toBe(false);
   });
 });
 

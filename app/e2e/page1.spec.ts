@@ -77,11 +77,14 @@ test.describe("Page 1 — structure and copy", () => {
     for (const id of ["block-commodity", "block-customer", "block-personal", "block-service"]) {
       await expect(page.getByTestId(id)).toBeVisible();
     }
+    // Cambio fornitore is preselected; the supplier block only needs the commodity.
+    await selected(page, "service-cambio");
     await expect(page.getByTestId("block-supplier")).toHaveCount(0);
     await expect(page.getByTestId("block-consumption")).toHaveCount(0);
     await expect(page.getByTestId("company-name")).toHaveCount(0);
 
     await pick(page, "commodity-luce", "customer-casa");
+    await expect(page.getByTestId("block-supplier")).toBeVisible();
     await expect(page.getByTestId("block-consumption")).toBeVisible();
     await expect(page.getByRole("button", { name: "Confronta le offerte" })).toBeVisible();
 
@@ -131,6 +134,39 @@ test.describe("Page 1 — structure and copy", () => {
 });
 
 test.describe("Page 1 — Block D/E rules", () => {
+  test("Cambio fornitore is preselected: the current supplier block shows as soon as the commodity is chosen", async ({ page }) => {
+    await open(page);
+    await selected(page, "service-cambio");
+    await notSelected(page, "service-subentro");
+    await pick(page, "commodity-gas");
+    await expect(page.getByTestId("block-supplier")).toBeVisible();
+    await expect(page.getByTestId("supplier-gas")).toBeVisible();
+    // Clicking the preselected card again keeps it selected (radio semantics).
+    await pick(page, "service-cambio");
+    await selected(page, "service-cambio");
+    // A refresh keeps the customer's own choice (it does not fall back to the default).
+    await pick(page, "service-voltura");
+    await page.reload();
+    await expect(page.getByTestId("page1-form")).toHaveAttribute("data-hydrated", "true");
+    await selected(page, "service-voltura");
+    await expect(page.getByTestId("block-supplier")).toBeVisible();
+    await pick(page, "service-subentro");
+    await page.reload();
+    await expect(page.getByTestId("page1-form")).toHaveAttribute("data-hydrated", "true");
+    await selected(page, "service-subentro");
+    await expect(page.getByTestId("block-supplier")).toHaveCount(0);
+  });
+
+  test("the supplier block is revealed with an animation and does not scroll the page", async ({ page }) => {
+    await open(page);
+    await pick(page, "commodity-luce", "customer-casa", "service-subentro");
+    await expect(page.getByTestId("block-supplier")).toHaveCount(0);
+    const y = await page.evaluate(() => window.scrollY);
+    await pick(page, "service-cambio");
+    await expect(page.getByTestId("block-supplier")).toBeVisible();
+    expect(await page.evaluate(() => window.scrollY)).toBe(y);
+  });
+
   test("current supplier only for Cambio fornitore and Voltura", async ({ page }) => {
     await open(page);
     await pick(page, "commodity-luce", "customer-casa");
@@ -276,7 +312,9 @@ test.describe("Page 1 — validation", () => {
     await expect(page.getByText("Inserisci il numero di cellulare.")).toBeVisible();
     await expect(page.getByText("Cerca e seleziona il tuo comune dall'elenco.")).toBeVisible();
     await expect(page.getByTestId("error-privacy")).toBeVisible();
-    await expect(page.getByTestId("error-serviceType")).toBeVisible();
+    // The service is preselected (Cambio fornitore), so it can never be missing on submit.
+    await expect(page.getByTestId("error-serviceType")).toHaveCount(0);
+    await selected(page, "service-cambio");
     // Focus lands on the first invalid group and it is in view.
     await expect(card(page, "commodity-luce")).toBeFocused();
     await expect(page.getByTestId("error-commodity")).toBeInViewport();
@@ -366,7 +404,8 @@ test.describe("Page 1 — lead creation and submit", () => {
     const request = page.waitForRequest((r) => r.url().endsWith("/api/lead") && r.method() === "POST");
     await consent(page);
     const body = (await request).postDataJSON();
-    expect(body).toEqual({ data: { privacy_consent: true } });
+    // Cambio fornitore is preselected, so it is part of what is "valid so far".
+    expect(body).toEqual({ data: { privacy_consent: true, service_type: "cambio_fornitore" } });
   });
 
   test("API errors are shown inline (429 → 'Troppe richieste, riprova tra poco.')", async ({ page }) => {

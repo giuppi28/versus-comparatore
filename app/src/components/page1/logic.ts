@@ -71,6 +71,19 @@ export function usesManualEntry(state: FlowState): boolean {
   return state.customerType === "business" || state.manualConsumption;
 }
 
+/** Service type preselected on Page 1 (Giuseppe, DESIGN_REVIEW G4). */
+export const DEFAULT_SERVICE_TYPE = "cambio_fornitore" as const;
+
+/**
+ * Patch that preselects "Cambio fornitore" while no service is chosen yet; empty patch when a
+ * service is already set (a refresh / return from the results never overrides the customer's pick).
+ * Goes through `reduceChange`, so the forced Primo allaccio (gas-only + no gas) still wins.
+ */
+export function withDefaultService(prev: FlowState): FlowPatch {
+  if (prev.serviceType != null) return {};
+  return reduceChange(prev, { serviceType: DEFAULT_SERVICE_TYPE });
+}
+
 // ---------------------------------------------------------------------------
 // Estimates (client-side, PRD §6 Block F)
 
