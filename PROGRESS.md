@@ -60,3 +60,9 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Changed: `(public)/grazie` — "Grazie, [Nome]!", exact callback sentence (only place), offer summary (+ total for dual), "Torna alla home"; snapshot copied then flow reset; renders only when flow `leadCompleted` is true (activation must set it after complete succeeds — relayed to activation-form-builder).
 - Verified by orchestrator: vitest 6/6 ✓, eslint ✓, playwright thankyou 16/16 (desktop+mobile) ✓. Screenshots e2e/screenshots/thankyou-*.png.
 - Commit: fd6444f
+
+## 2026-10-15 13:00 — Support for T4.x: admin data access
+- Agent: setup-builder (sonnet).
+- Changed: `src/lib/data/admin.ts` getAdminRepository() (requireAdmin + session client under RLS; mock = shared singleton), admin CRUD methods in both repos, typed errors, resolveLogoUrl, resetMockRepository (non-prod mock only); mock comuni fixed (ISTAT codes, Aosta/Bolzano zone E, a null-zone comune added); server-only dep.
+- Verified by orchestrator: tsc ✓, eslint ✓, vitest src/lib 315/315 ✓.
+- Commit: 3bc7dc3

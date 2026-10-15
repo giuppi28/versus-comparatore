@@ -51,10 +51,10 @@ Goal: fully working service, proven by the complete test matrix (Phase 7).
 
 ## Phase 4 — Admin screens (one agent per screen)
 - [x] T4.1 Login + server-side protection + optional TOTP MFA → `admin-auth-builder`
-- [ ] T4.2 Leads list/detail/status/notes → `admin-leads-builder`
-- [ ] T4.3 Suppliers CRUD + sanitized SVG upload → `admin-suppliers-builder`
-- [ ] T4.4 Offers CRUD (all PRD §5.3 fields, month/year toggle) → `admin-offers-builder`
-- [ ] T4.5 Settings (notification email) + go-live checklist (unverified offers) + Resend notification (log-only when no key) → `admin-settings-builder`
+- [~] T4.2 Leads list/detail/status/notes → `admin-leads-builder`
+- [~] T4.3 Suppliers CRUD + sanitized SVG upload → `admin-suppliers-builder`
+- [~] T4.4 Offers CRUD (all PRD §5.3 fields, month/year toggle) → `admin-offers-builder`
+- [~] T4.5 Settings (notification email) + go-live checklist (unverified offers) + Resend notification (log-only when no key) → `admin-settings-builder`
 
 ## Phase 5 — Logo pack  → agent: `logopack-builder`
 - [ ] T5.1 BLOCKED: waits for "ready" in QUESTIONS.md Q2. Normalize SVGs from `/Users/pippo/Desktop/versus elementi/loghi energia /` (folder name ends with a space) and `/Users/pippo/Desktop/versus elementi/logopack/originali/` (see its MANIFEST.md) (clean, tight viewBox, consistent height/padding), produce `logopack/color/`, `logopack/black/`, `logopack/white/`, `logopack/preview.html`. Never alter logo shapes. Wire into the app.
