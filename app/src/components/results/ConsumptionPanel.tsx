@@ -41,7 +41,7 @@ export function ConsumptionPanel({ commodity, monthly, onChange }: ConsumptionPa
       data-testid="results-consumption"
       className="rounded-card border border-line bg-surface p-4 shadow-card sm:p-5"
     >
-      <h2 id="results-consumption-title" className="mb-3 text-lg font-bold text-ink">
+      <h2 id="results-consumption-title" className="heading-section mb-3">
         I tuoi consumi
       </h2>
       <Input

@@ -14,7 +14,7 @@ export function DualStepIndicator({ active, luceDone, gasDone }: DualStepIndicat
       data-testid="dual-step-indicator"
       data-active={active}
       aria-label="Avanzamento: prima Luce, poi Gas"
-      className="flex items-center gap-2 text-sm font-semibold"
+      className="flex items-center gap-1.5 text-sm font-semibold leading-none sm:gap-2"
     >
       <Step n={1} label="Luce" active={active === "luce"} done={luceDone} />
       <li aria-hidden="true" className="text-ink-subtle">
@@ -31,7 +31,7 @@ function Step({ n, label, active, done }: { n: number; label: string; active: bo
       aria-current={active ? "step" : undefined}
       data-done={done ? "true" : "false"}
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5",
+        "inline-flex h-10 items-center gap-1.5 rounded-full border px-2.5 leading-none sm:gap-2 sm:px-3.5",
         active ? "border-brand-600 bg-brand-600 text-white" : "border-line bg-surface text-ink-muted",
       )}
     >

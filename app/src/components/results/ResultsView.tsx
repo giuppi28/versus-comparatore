@@ -245,22 +245,27 @@ export function ResultsView({ offers: serverOffers }: ResultsViewProps) {
 
   return (
     <Shell>
-      <div className="mb-6 space-y-4">
+      <div className="mb-6 space-y-4 sm:mb-8">
         {isDual && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-3">
             <DualStepIndicator
               active={step}
               luceDone={!!state.chosenOffers.luce}
               gasDone={!!state.chosenOffers.gas}
             />
             {step === "gas" && (
-              <Button variant="ghost" onClick={() => setActiveStep("luce")} data-testid="dual-back">
+              <button
+                type="button"
+                onClick={() => setActiveStep("luce")}
+                data-testid="dual-back"
+                className="inline-flex h-10 items-center rounded-full border border-line bg-surface px-3 text-sm sm:px-4 font-semibold leading-none text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-50"
+              >
                 ← Torna alla Luce
-              </Button>
+              </button>
             )}
           </div>
         )}
-        <h1 data-testid="results-title" className="text-title font-bold tracking-tight text-ink">
+        <h1 data-testid="results-title" className="heading-wide text-[clamp(1.5rem,1.2rem+1vw,2.25rem)] leading-[1.1] text-ink">
           {isDual ? `Scegli l'offerta ${label}` : `Le migliori offerte ${label} per te`}
         </h1>
         {isDual && step === "gas" && state.chosenOffers.luce && (

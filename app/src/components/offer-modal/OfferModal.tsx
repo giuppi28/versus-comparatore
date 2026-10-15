@@ -88,7 +88,7 @@ export function OfferModal({
       onClose={onClose}
       title={offer.name}
       header={<SupplierLogo supplier={offer.supplier} />}
-      className="max-sm:h-dvh max-sm:max-h-dvh max-sm:rounded-none sm:max-w-xl"
+      className="max-sm:h-dvh max-sm:max-h-dvh max-sm:rounded-none sm:max-w-xl [&>div:first-child]:items-center"
       footer={
         <Button size="lg" fullWidth onClick={onActivate} data-testid="offer-modal-cta">
           Attiva online in 1 minuto
@@ -116,7 +116,7 @@ export function OfferModal({
 
         {advantages.length > 0 && (
           <section aria-labelledby="offer-modal-advantages-title">
-            <h3 id="offer-modal-advantages-title" className="mb-3 text-lg font-bold text-ink">
+            <h3 id="offer-modal-advantages-title" className="heading-section mb-3">
               I vantaggi dell&apos;offerta
             </h3>
             <ul data-testid="offer-modal-advantages" className="space-y-2.5">
@@ -133,7 +133,7 @@ export function OfferModal({
         )}
 
         <section aria-labelledby="offer-modal-features-title">
-          <h3 id="offer-modal-features-title" className="mb-2 text-lg font-bold text-ink">
+          <h3 id="offer-modal-features-title" className="heading-section mb-3">
             Caratteristiche principali
           </h3>
           <div
