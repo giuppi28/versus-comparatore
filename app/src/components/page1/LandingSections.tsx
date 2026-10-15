@@ -8,6 +8,16 @@ export interface SupplierLogo {
   logoUrl: string;
 }
 
+/**
+ * Local colour logos (`/logos/<slug>.svg`) have a normalised black twin in `/logos/black/`; any other
+ * URL (e.g. Supabase Storage) is forced black with a CSS filter. Mirrors `blackLogoUrl` of the loading
+ * screen (a "use client" module, so it cannot be called from this server component).
+ */
+function blackLogo(url: string): { src: string; needsFilter: boolean } {
+  const m = /^\/logos\/([a-z0-9-]+)\.svg$/i.exec(url);
+  return m ? { src: `/logos/black/${m[1]}.svg`, needsFilter: false } : { src: url, needsFilter: true };
+}
+
 const STEPS: { title: string; text: string }[] = [
   { title: "Confronta", text: "Rispondi a poche domande sulla tua fornitura di luce, gas o entrambe." },
   { title: "Scegli", text: "Vedi le offerte disponibili e scegli quella che fa per te." },
@@ -79,18 +89,21 @@ export function LandingSections({ suppliers }: { suppliers: SupplierLogo[] }) {
       {suppliers.length > 0 && (
         <Section id="fornitori" title="Confrontiamo le offerte di">
           <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-6 sm:gap-x-10">
-            {suppliers.map((s) => (
-              <li key={s.name} className="flex h-8 w-24 items-center justify-center sm:h-9 sm:w-28">
-                {/* Plain <img>: supplier logos are SVG files. Greyscale = quiet proof, not an ad. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={s.logoUrl}
-                  alt={s.name}
-                  loading="lazy"
-                  className="max-h-full max-w-full object-contain opacity-75 grayscale"
-                />
-              </li>
-            ))}
+            {suppliers.map((s) => {
+              const logo = blackLogo(s.logoUrl);
+              return (
+                <li key={s.name} className="flex h-8 w-24 items-center justify-center sm:h-9 sm:w-28">
+                  {/* Plain <img>: supplier logos are SVG files. Black set, one opacity: quiet proof. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={logo.src}
+                    alt={s.name}
+                    loading="lazy"
+                    className={`max-h-full max-w-full object-contain opacity-80${logo.needsFilter ? " brightness-0" : ""}`}
+                  />
+                </li>
+              );
+            })}
           </ul>
         </Section>
       )}

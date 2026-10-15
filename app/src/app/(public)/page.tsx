@@ -34,17 +34,18 @@ async function loadSupplierLogos(): Promise<SupplierLogo[]> {
 export default async function Page1() {
   const [suppliers, logos] = await Promise.all([loadSupplierOptions(), loadSupplierLogos()]);
   return (
-    // Desktop: header content narrowed to the form column so logo / trust line line up with it.
     <>
-      <SiteHeader homeLink={false} className="lg:max-w-2xl" />
+      <SiteHeader homeLink={false} />
       <main className="flex-1 pb-section">
         {/* Hero: overflow-hidden crops the bulb; the form below never sits under it. */}
         <div className="relative overflow-hidden">
+          {/* Below lg the text spans the whole width: the bulb only peeks in from the top-right corner
+              (faded out before the headline). From lg it sits right of the headline, clear of it. */}
           <BulbIllustration
-            className="absolute -right-10 top-3 h-44 [mask-image:linear-gradient(to_bottom,#000_55%,transparent_96%)] w-auto text-brand-100 sm:-right-12 sm:top-6 sm:h-52 lg:left-[calc(50%+16.5rem)] lg:right-auto lg:top-5 lg:h-[28rem] lg:[mask-image:linear-gradient(to_bottom,#000_30%,transparent_72%)]"
+            className="absolute -right-8 -top-12 h-40 text-brand-200 lg:text-brand-100 [mask-image:linear-gradient(to_bottom,#000_34%,transparent_62%)] sm:-right-10 sm:-top-14 sm:h-48 lg:left-[calc(50%+21.5rem)] lg:right-auto lg:top-5 lg:h-[28rem] lg:[mask-image:linear-gradient(to_bottom,#000_30%,transparent_72%)]"
             strokeWidth={8}
           />
-          <header className="relative mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-8 pt-8 sm:items-center sm:gap-5 sm:px-6 sm:pb-10 sm:pt-12 sm:text-center">
+          <header className="relative mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-8 pt-12 sm:items-center sm:gap-5 sm:px-6 sm:pb-10 sm:pt-16 sm:text-center">
             <h1 className="heading-wide text-hero text-ink">
               Comparatore{" "}
               <br />

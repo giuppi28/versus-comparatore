@@ -122,6 +122,10 @@ test.describe("Page 1 — structure and copy", () => {
     for (const name of await logos.evaluateAll((els) => els.map((e) => e.getAttribute("alt") ?? ""))) {
       expect(name).not.toMatch(/tutela|altro|non lo so/i);
     }
+    // Black logo set, no greyscale filter.
+    for (const src of await logos.evaluateAll((els) => els.map((e) => e.getAttribute("src") ?? ""))) {
+      expect(src).toMatch(/^\/logos\/black\/[a-z0-9-]+\.svg$/);
+    }
     const formBox = (await page.getByTestId("page1-form").boundingBox())!;
     const sectionsBox = (await sections.boundingBox())!;
     expect(sectionsBox.y).toBeGreaterThan(formBox.y + formBox.height);
