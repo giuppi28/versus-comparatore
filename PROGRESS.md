@@ -45,3 +45,12 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Follow-ups: db-builder SQL must also enforce forward-only step / no update after completed; deploy-prep: WAF rate-limit rule + Turnstile keys; admin-settings: Resend inside notify.ts from `data`; page1: move home into (public).
 - Verified by orchestrator: vitest lead 114/114 ✓, eslint ✓, no tsc errors in its folders ✓ (agent also ran full e2e 14/14 + curl lifecycle).
 - Commit: 2cba8c6
+
+## 2026-10-15 12:45 — T1.1–T1.4 Database
+- Agent: db-builder (opus).
+- Changed: `app/supabase/migrations` (schema; RLS + is_admin + RESTRICTIVE MFA policies (aal2 when a verified factor exists) + create/update/complete_lead SECURITY DEFINER with whitelists, forward-only step, completed-lock; 9 comuni data files), `seed.sql` (14 suppliers, 8 offers per T1.4, settings), `tests/` (rls_test.sql ~45 assertions, data_checks.sql, PGlite runner), `scripts/build_comuni.py`, README with sources.
+- Data: 7,894 comuni (ISTAT xlsx 21/02/2026 CC BY 4.0; CAPs Samurai016/Comuni-ITA MIT; zones DPR 412/93 Tab. A via Openpolis). Zones A2 B158 C981 D1566 E4159 F1007; 21 without zone (null).
+- APPLY requests + Q5 (zone source licence) + Q6 (anon RPC Turnstile bypass) in QUESTIONS.md.
+- Verified by orchestrator: PGlite run_local.mjs → ALL DATA CHECKS PASSED, ALL RLS TESTS PASSED.
+- Commit: f9da2a4
+- Also: 8645f3e fix(admin-auth) non-canonical signature rejection + stable tamper test.
