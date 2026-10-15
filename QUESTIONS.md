@@ -8,11 +8,11 @@ Migration requests: `## APPLY: <filename>` → the reviewer applies it and answe
 
 ## Q2 (T5.1) — Supplier logos
 Giuseppe is verifying the logos in the source folder `/Users/pippo/Desktop/versus elementi/` (`loghi energia /` and `logopack/originali/`). Builder: wait for "ready" here before T5.1.
-**Answer:**
+**Answer (Giuseppe via reviewer, 2026-10-15):** ready — logos approved, start T5.1.
 
 ## Q3 — Aldo's notification email
 Which address receives new-lead notifications?
-**Answer:**
+**Answer (Giuseppe via reviewer, 2026-10-15):** for now use giuppips@gmail.com (Giuseppe will change it later). Already set in the real DB (`settings.notification_email`). Use it also for NOTIFICATION_EMAIL in .env.local. Aldo's admin account: not created yet (go-live item).
 
 ## Q4 (T1.4 / T3.5) — "Tariffa monoraria" on gas offers
 TASKS T1.4 says every offer's advantages include "Tariffa **monoraria**", but monorario/time bands apply only to electricity. Proposal: for gas seed offers replace it with "Prezzo **fisso** per tutta la durata del blocco". The modal's "Caratteristiche principali" already shows "Tariffa a prezzo fisso" for gas. Seed currently follows TASKS literally until answered.
@@ -88,7 +88,7 @@ They are supplier rows without offers and nothing distinguishes them, so they ap
 
 ## Q9 (PRD §13.1) — Privacy notice text
 Page 1's consent links to `/privacy`, which doesn't exist yet. Please provide the informativa privacy text (data controller, purpose = being contacted about the chosen offer, retention, rights). A `/privacy` page now exists (commit 26dad34) with the full structure and these placeholders to fill: [Ragione sociale del titolare], [Indirizzo completo del titolare], [Partita IVA del titolare], [Indirizzo email di contatto privacy], [Periodo di conservazione dei dati], [Data di aggiornamento]. Please also confirm the "Destinatari" section (data shared with the chosen supplier) and the legal basis (consent + art. 6.1.b pre-contractual measures).
-**Answer:**
+**Answer (Giuseppe via reviewer, 2026-10-15):** DEFERRED to the end — Giuseppe will ask Aldo for the controller data. Keep the placeholders; this is a go-live blocker only (add it to the go-live checklist if not there). Not a blocker for anything else.
 
 ## Q10 (T6.1) — Cloudflare Workers plan
 Workers Free = 10 ms CPU/request; Next.js SSR + admin pages will likely exceed it (error 1102). Workers Paid is USD 5/month — a paid resource only Giuseppe can decide on (see app/DEPLOY.md "D1"). Alternatives: try Free first and monitor errors. Decision?
@@ -102,3 +102,10 @@ Reviewer: `public.bootstrap_load_comuni` can now be dropped. `tests/data_checks.
 
 ## APPLY: 20261015140000_lead_secret_notification_placeholders.sql
 T8.2 (Q6 + Q7 + Q8, one migration): `private.app_secrets` with ONLY the SHA-256 of `LEAD_API_SECRET` (plaintext only in `app/.env.local`, no grants to anon/authenticated, RLS on, no policies); `create_lead` / `update_lead` / `complete_lead` recreated with `p_secret text` as FIRST parameter (old signatures DROPPED, execute re-granted to anon/authenticated on the new ones only), wrong/missing secret → `invalid_secret` (SQLSTATE 28000); `complete_lead` returns `{id, token, notification_email}` (Q7); `suppliers.is_placeholder` + set true for tutela / altro-fornitore / non-lo-so (Q8). **The app must be updated and deployed together with this migration** (the old RPC signatures disappear, the current app calls would fail with "function not found"). Server env needs `LEAD_API_SECRET` (same value as in app/.env.local) at deploy. Afterwards re-run `tests/data_checks.sql` (now also checks Q4 wording + placeholders) and `tests/rls_test.sql` (overrides the stored hash with a test secret inside its rolled-back transaction; must end with `ALL RLS TESTS PASSED`). Validated locally with PGlite (all migrations + seed ×2 + both test files passed). Expected advisor warnings unchanged (the three lead functions are SECURITY DEFINER and executable by anon/authenticated by design; the secret gates them).
+
+## REVIEWER NOTE 2026-10-15 14:05 — real DB state
+- `20261015140000_lead_secret_notification_placeholders.sql` applied, **except its DROP FUNCTION statements**: the connector requires an interactive confirmation for destructive SQL that could not be given. Instead the old 1-arg/2-arg lead functions and `bootstrap_load_comuni` had all privileges revoked and were moved to schema `private` and renamed `old_*_disabled` (not reachable through the API). Verified: anon can execute only the three new 2/3-arg lead functions; a wrong secret raises `invalid_secret`; 3 placeholder suppliers flagged; comuni 7,894 (21 without zone).
+- Builder: add a small migration file that documents this (revoke + `alter function ... set schema private` + rename), so a fresh DB built from the repo matches; no APPLY needed for it. Mark the go-live check "bootstrap function removed" as done (disabled).
+- Security advisors: only the expected warnings + INFO "RLS enabled, no policy" on `private.app_secrets` (intentional).
+- T7.5 is unblocked: run the security tests against the real project now (needs LEAD_API_SECRET in .env.local — already there).
+
