@@ -6,6 +6,7 @@ import { Card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import type { Lead } from "@/lib/data/types";
+import { DeleteLeadButton } from "../DeleteLeadButton";
 import { LeadEditForm } from "../LeadEditForm";
 import { StatusBadge, StepBadge } from "../LeadBadges";
 import {
@@ -20,6 +21,7 @@ import {
   sqmLabel,
 } from "../labels";
 import { leadDisplayName } from "../list-params";
+import { chosenOfferView, currentSupplierLabel, type ChosenOfferView } from "../snapshot";
 
 export const metadata: Metadata = { title: "Dettaglio lead — Area riservata VERSUS" };
 
@@ -52,23 +54,27 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
   const lead = await repo.getLead(id);
   if (!lead) notFound();
 
-  const supplierName = async (sid: string | null) => (sid ? ((await repo.getSupplier(sid))?.name ?? sid) : null);
+  // A live id that no longer resolves falls through to the stored name / snapshot (PHASE11 D1).
+  const supplierName = async (sid: string | null) => (sid ? ((await repo.getSupplier(sid))?.name ?? null) : null);
   const offerName = async (oid: string | null) => {
     if (!oid) return null;
     const o = await repo.getOffer(oid);
-    return o ? `${o.supplier.name} — ${o.name}` : "Offerta non più disponibile";
+    return o ? `${o.supplier.name} — ${o.name}` : null;
   };
   const [comune, supLuce, supGas, offLuce, offGas] = await Promise.all([
     lead.comune_istat ? repo.getComune(lead.comune_istat) : null,
-    supplierName(lead.current_supplier_luce),
-    supplierName(lead.current_supplier_gas),
-    offerName(lead.chosen_offer_luce),
-    offerName(lead.chosen_offer_gas),
+    supplierName(lead.current_supplier_luce).then((n) => currentSupplierLabel(n, lead.current_supplier_luce_name)),
+    supplierName(lead.current_supplier_gas).then((n) => currentSupplierLabel(n, lead.current_supplier_gas_name)),
+    offerName(lead.chosen_offer_luce).then((n) =>
+      chosenOfferView(n, lead.chosen_offer_luce_snapshot, !!lead.chosen_offer_luce),
+    ),
+    offerName(lead.chosen_offer_gas).then((n) =>
+      chosenOfferView(n, lead.chosen_offer_gas_snapshot, !!lead.chosen_offer_gas),
+    ),
   ]);
 
   const isBusiness = lead.customer_type === "business";
-  const list = (items: string[], label: (s: string) => string) =>
-    items.length ? items.map(label).join(", ") : null;
+  const list = (items: string[], label: (s: string) => string) => (items.length ? items.map(label).join(", ") : null);
 
   return (
     <div className="flex flex-col gap-6">
@@ -101,7 +107,10 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
             ) : (
               <>
                 <Field label="Codice fiscale" value={lead.tax_code} />
-                <Field label="Titolo abitazione" value={lead.housing_title ? HOUSING_TITLE_LABELS[lead.housing_title] : null} />
+                <Field
+                  label="Titolo abitazione"
+                  value={lead.housing_title ? HOUSING_TITLE_LABELS[lead.housing_title] : null}
+                />
               </>
             )}
           </Group>
@@ -123,17 +132,32 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
             <Field label="Elettrodomestici" value={list(lead.appliances, applianceLabel)} />
             <Field label="Usi del gas" value={list(lead.gas_uses, gasUseLabel)} />
             <Field label="Superficie" value={lead.sqm_range ? sqmLabel(lead.sqm_range) : null} />
-            <Field label="Stima luce (kWh/anno)" value={lead.estimated_kwh_year === null ? null : num.format(lead.estimated_kwh_year)} />
-            <Field label="Stima gas (Smc/anno)" value={lead.estimated_smc_year === null ? null : num.format(lead.estimated_smc_year)} />
+            <Field
+              label="Stima luce (kWh/anno)"
+              value={lead.estimated_kwh_year === null ? null : num.format(lead.estimated_kwh_year)}
+            />
+            <Field
+              label="Stima gas (Smc/anno)"
+              value={lead.estimated_smc_year === null ? null : num.format(lead.estimated_smc_year)}
+            />
             <Field label="Consumo inserito a mano" value={yesNo(lead.manual_consumption)} />
-            <Field label="Consumo finale luce (kWh/mese)" value={lead.final_kwh_month === null ? null : num.format(lead.final_kwh_month)} />
-            <Field label="Consumo finale gas (Smc/mese)" value={lead.final_smc_month === null ? null : num.format(lead.final_smc_month)} />
+            <Field
+              label="Consumo finale luce (kWh/mese)"
+              value={lead.final_kwh_month === null ? null : num.format(lead.final_kwh_month)}
+            />
+            <Field
+              label="Consumo finale gas (Smc/mese)"
+              value={lead.final_smc_month === null ? null : num.format(lead.final_smc_month)}
+            />
           </Group>
 
           <Group title="Offerte scelte" testId="group-offerte">
-            <Field label="Offerta luce" value={offLuce} />
-            <Field label="Offerta gas" value={offGas} />
-            <Field label="Costo mensile mostrato" value={lead.monthly_cost_shown === null ? null : formatEuro(lead.monthly_cost_shown)} />
+            <Field label="Offerta luce" value={<OfferValue view={offLuce} testId="offer-luce" />} />
+            <Field label="Offerta gas" value={<OfferValue view={offGas} testId="offer-gas" />} />
+            <Field
+              label="Costo mensile mostrato"
+              value={lead.monthly_cost_shown === null ? null : formatEuro(lead.monthly_cost_shown)}
+            />
           </Group>
 
           <Group title="Dati tecnici" testId="group-tecnici">
@@ -152,9 +176,27 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
         <Card className="flex flex-col gap-4 lg:sticky lg:top-6" data-testid="lead-edit-card">
           <h2 className="heading-section">Gestione</h2>
           <LeadEditForm id={lead.id} status={lead.status} notes={lead.notes} />
+          <div className="border-t border-line pt-4">
+            <DeleteLeadButton id={lead.id} name={leadDisplayName(lead)} />
+          </div>
         </Card>
       </div>
     </div>
+  );
+}
+
+function OfferValue({ view, testId }: { view: ChosenOfferView; testId: string }) {
+  if (view.kind === "none") return null;
+  if (view.kind === "live") return <span data-testid={testId}>{view.label}</span>;
+  return (
+    <span data-testid={testId} data-deleted="true" className="flex flex-col gap-1">
+      <span>{view.title}</span>
+      <span className="flex flex-col text-sm font-normal text-ink-muted">
+        {view.lines.map((l) => (
+          <span key={l}>{l}</span>
+        ))}
+      </span>
+    </span>
   );
 }
 
