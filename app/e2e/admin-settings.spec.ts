@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { MOCK_OFFERS } from "../src/lib/data/mock/data";
 
 // Must match the webServer env in playwright.config.ts (mock auth, test-only).
 const ADMIN_EMAIL = "admin@versus.test";
@@ -86,13 +87,22 @@ test.describe("admin settings and go-live checklist", () => {
     await page.goto("/admin/impostazioni");
     await expect(page.getByTestId("golive-status")).toHaveText("Non pronto");
 
-    const offers = page.getByTestId("unverified-offers").getByRole("link");
-    await expect(offers).toHaveCount(8);
-    for (const href of await offers.evaluateAll((els) => els.map((e) => e.getAttribute("href")))) {
+    // Other specs may temporarily add active unverified offers to the shared mock repository,
+    // so assert on the seed offers (all 8 are active and unverified) instead of an exact count.
+    const seed = MOCK_OFFERS.filter((o) => o.active && !o.price_verified);
+    expect(seed).toHaveLength(8);
+    const list = page.getByTestId("unverified-offers");
+    for (const offer of seed) {
+      const link = list.getByRole("link").filter({ hasText: offer.name });
+      await expect(link).toHaveCount(1);
+      await expect(link).toHaveAttribute("href", `/admin/offerte/${offer.id}`);
+    }
+    for (const href of await list.getByRole("link").evaluateAll((els) => els.map((e) => e.getAttribute("href")))) {
       expect(href).toMatch(/^\/admin\/offerte\/[^/]+$/);
     }
-    await expect(page.locator('[data-check="offers-verified"]')).toContainText("8 offerte attive da verificare");
-    await expect(page.locator('[data-check="offers-verified"]')).toHaveAttribute("data-ok", "false");
+    const check = page.locator('[data-check="offers-verified"]');
+    await expect(check).toContainText(/\d+ offerte attive da verificare/);
+    await expect(check).toHaveAttribute("data-ok", "false");
     // Mock data source never counts as ready.
     await expect(page.locator('[data-check="data-source"]')).toHaveAttribute("data-ok", "false");
     await expectNoHorizontalOverflow(page);
