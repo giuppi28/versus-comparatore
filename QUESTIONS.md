@@ -77,3 +77,11 @@ Without a service role key, `create_lead`/`update_lead`/`complete_lead` are exec
 ## APPLY: 20261015130000_storage_supplier_logos.sql
 Creates Storage bucket `supplier-logos` (public read, SVG only, 200 KB) with `storage.objects` policies: select/insert/update/delete only for `public.is_admin()` in that bucket + MFA restrictive policy (verified factor => aal2); anon cannot write or list. Idempotent. Afterwards re-run `app/supabase/tests/rls_test.sql` (now also covers storage; must end with `ALL RLS TESTS PASSED`).
 **Answer:**
+
+## Q7 (T4.5) — Notification recipient in Supabase mode
+`notifyNewLead` runs with the publishable key and `settings` is admin-only under RLS, so the address Aldo saves in /admin/impostazioni can't be read when a lead completes. Current fallback: env `NOTIFICATION_EMAIL` (go-live checklist requires it). Options: (a) keep env only; (b) have `complete_lead` return the recipient (SECURITY DEFINER, only on successful completion — not readable otherwise); (c) DB webhook / Edge Function sends the email. Recommendation: (b).
+**Answer:**
+
+## Q8 — Special supplier options ("Tutela", "Altro fornitore", "Non lo so")
+They are supplier rows without offers and nothing distinguishes them, so they appear in the admin offer-supplier select and the loading orbit could include them if they ever got offers. Proposal: add `suppliers.is_placeholder boolean default false` (migration) and hide placeholders from offer/supplier admin selects. OK?
+**Answer:**

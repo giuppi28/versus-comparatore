@@ -86,3 +86,11 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Verified by orchestrator: vitest 25/25 ✓, eslint ✓, playwright activation 32/32 (desktop+mobile) ✓.
 - Infra: Next 16 refuses a second `next dev` in the same folder → parallel e2e runs must reuse the running server's PORT and use a private `--output`.
 - Commit: a328514
+
+## 2026-10-15 13:35 — T4.3 / T4.4 / T4.5 Admin suppliers, offers, settings (unit-verified; e2e pending consolidated run)
+- Agents: admin-suppliers-builder, admin-offers-builder, admin-settings-builder (sonnet).
+- T4.3 (c28cb6e): /admin/fornitori CRUD; `src/lib/svg/sanitize.ts` allowlist sanitizer on @xmldom/xmldom (Workers-safe; rejects XXE/entities, strips scripts/handlers/external refs/foreignObject/filters; real logos preserved).
+- T4.5 (c28cb6e): /admin/impostazioni notification email + go-live checklist; Resend via fetch, log-only without key/from/recipient; recipient = settings (mock) or NOTIFICATION_EMAIL env (supabase, RLS limitation — see Q7). New env keys RESEND_FROM, NOTIFICATION_EMAIL, NEXT_PUBLIC_SITE_URL.
+- T4.4 (2da5c9b): /admin/offerte list ("Visibili ai clienti"), create/edit with every PRD §5.3 field, month/year toggle (÷12), advantages editor with bold preview, live cost preview, toggles.
+- Verified by orchestrator: vitest svg+fornitori 153/153, notify+lead+impostazioni 141/141, offerte 20/20 ✓; eslint ✓. E2E reported green by agents (suppliers 6/6, settings 6/6, offers 14/14) but my own re-run was disrupted by concurrent dev servers → tasks stay [~] until the consolidated e2e run.
+- Found gap: results page loads offers client-side → admin changes invisible in mock mode; sent back to results-builder.
