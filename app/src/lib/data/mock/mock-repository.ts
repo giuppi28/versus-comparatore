@@ -13,7 +13,7 @@ import type {
   Comune,
   Lead,
   LeadData,
-  LeadRef,
+  LeadCompletion,
   Offer,
   OfferInput,
   LeadQuery,
@@ -204,12 +204,13 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       apply(leadByToken(token), patch);
     },
 
-    async completeLead(token, data): Promise<LeadRef> {
+    async completeLead(token, data): Promise<LeadCompletion> {
       const lead = leadByToken(token);
       apply(lead, data);
       lead.step_reached = "completed";
       lead.status = "new";
-      return { id: lead.id, token: lead.token };
+      // Mirrors complete_lead: the settings recipient is returned with the ref.
+      return { id: lead.id, token: lead.token, notification_email: settings.notification_email };
     },
 
     async listLeads() {

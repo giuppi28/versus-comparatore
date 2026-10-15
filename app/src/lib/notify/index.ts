@@ -4,10 +4,10 @@
  * Flow: resolve recipient + config -> (log-only when anything is missing) -> build the email
  * -> POST to Resend. Never throws: failures are logged (lead id + error code, no personal data).
  *
- * Recipient (see README "Notifications"): the `settings.notification_email` value is admin-only
- * under RLS, so with the public (anon) client of the lead API it is NOT readable in Supabase mode.
- * Resolution order: (b) settings via the repository when readable (always in mock mode),
- * then (a) env NOTIFICATION_EMAIL.
+ * Recipient (see README "Notifications"): the `settings.notification_email` table is admin-only
+ * under RLS, but the complete_lead RPC returns its value (T8.2 / Q7). Resolution order:
+ * (1) the notification_email returned by completeLead, (2) env NOTIFICATION_EMAIL,
+ * (3) settings via the repository when readable (mock mode; fails under RLS in Supabase mode).
  */
 import { getRepository } from "@/lib/data";
 import type { LeadData, Repository } from "@/lib/data";
@@ -20,6 +20,8 @@ export interface NewLeadNotificationInput {
   id: string;
   data: LeadData;
   completedAt: string;
+  /** Recipient returned by completeLead (settings.notification_email); preferred when valid. */
+  notificationEmail?: string | null;
 }
 
 export interface NotifyConfig {
@@ -47,18 +49,24 @@ export function readNotifyConfig(env: NodeJS.ProcessEnv = process.env): NotifyCo
   };
 }
 
-/** settings.notification_email when readable, else env NOTIFICATION_EMAIL, else null. */
+/**
+ * The completeLead recipient when valid, else env NOTIFICATION_EMAIL, else
+ * settings.notification_email when readable, else null.
+ */
 export async function resolveRecipient(
   repo: Pick<Repository, "getSettings">,
   envRecipient: string | null,
+  completionRecipient: string | null = null,
 ): Promise<string | null> {
+  const fromCompletion = normalizeEmail(completionRecipient);
+  if (fromCompletion) return fromCompletion;
+  if (envRecipient) return envRecipient;
   try {
-    const fromSettings = normalizeEmail((await repo.getSettings()).notification_email);
-    if (fromSettings) return fromSettings;
+    return normalizeEmail((await repo.getSettings()).notification_email);
   } catch {
-    // Not readable with the public client (RLS): fall through to the env fallback.
+    // Not readable with the public client (RLS).
+    return null;
   }
-  return envRecipient;
 }
 
 const COMMODITY_LABEL = { luce: "Luce", gas: "Gas", dual: "Luce + Gas" } as const;
@@ -101,7 +109,7 @@ export async function sendNewLeadNotification(
   try {
     const config = deps.config ?? readNotifyConfig();
     const repo = deps.repo ?? getRepository();
-    const recipient = await resolveRecipient(repo, config.envRecipient);
+    const recipient = await resolveRecipient(repo, config.envRecipient, lead.notificationEmail ?? null);
 
     const missing = [
       !config.apiKey && "RESEND_API_KEY",

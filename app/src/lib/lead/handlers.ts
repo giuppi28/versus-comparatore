@@ -9,8 +9,10 @@
  * it is never put in a response body. On successful completion both lead cookies are
  * expired (the thank-you page reads its summary from the client flow state).
  */
+import "server-only";
 import { NextResponse } from "next/server";
 import { getRepository, LeadNotFoundError, PrivacyConsentRequiredError } from "@/lib/data";
+import { LeadApiSecretError } from "@/lib/data/repository";
 import type { LeadData, LeadStepReached, Repository } from "@/lib/data";
 import {
   LEAD_COOKIE,
@@ -21,6 +23,8 @@ import {
 } from "./api-types";
 import { checkCompletion, checkCompletionReferences } from "./completion";
 import { notifyNewLead, type NotifyNewLead } from "./notify";
+// Registers the server-only LEAD_API_SECRET reader used by the Supabase lead RPCs.
+import "./secret";
 import {
   clientIp,
   LEAD_RATE_LIMITS,
@@ -212,6 +216,12 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
         if (err instanceof PrivacyConsentRequiredError) {
           return json({ ok: false, error: "privacy_consent_required" }, 400);
         }
+        if (err instanceof LeadApiSecretError) {
+          // Server misconfiguration (LEAD_API_SECRET missing / not matching the DB hash).
+          // Never the client's fault; the secret itself is never logged.
+          console.error(`[lead] ${route} failed: LEAD_API_SECRET ${err.reason} (server misconfiguration)`);
+          return json({ ok: false, error: "server_error" }, 500);
+        }
         console.error(`[lead] ${route} failed:`, err instanceof Error ? `${err.name}: ${err.message}` : err);
         return json({ ok: false, error: "server_error" }, 500);
       }
@@ -290,7 +300,7 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
       const ref = await repo.completeLead(token, data);
       const completedAt = (deps.now?.() ?? new Date()).toISOString();
       try {
-        await deps.notify({ id: ref.id, data, completedAt });
+        await deps.notify({ id: ref.id, data, completedAt, notificationEmail: ref.notification_email });
       } catch (err) {
         // The lead is saved; a notification failure must not fail the customer's submit.
         console.error("[lead] notification failed:", err instanceof Error ? err.message : err);

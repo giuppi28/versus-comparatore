@@ -174,7 +174,9 @@ describe("lead lifecycle", () => {
     expect(lead).toMatchObject({ step_reached: "results", estimated_kwh_year: 2700, first_name: "Mario" });
 
     const done = await repo.completeLead(ref.token, { tax_code: "RSSMRA80A01H501U", pod: "IT001E12345678" });
-    expect(done).toEqual(ref);
+    expect(done).toEqual({ ...ref, notification_email: null });
+    await repo.updateSettings({ notification_email: "aldo@azienda.it" });
+    expect((await repo.completeLead(ref.token, {})).notification_email).toBe("aldo@azienda.it");
     lead = (await repo.getLead(ref.id))!;
     expect(lead).toMatchObject({ step_reached: "completed", status: "new", tax_code: "RSSMRA80A01H501U" });
     expect(await repo.listLeads()).toHaveLength(1);

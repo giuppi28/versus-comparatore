@@ -3,6 +3,7 @@ import { normalizeSearch } from "../normalize";
 import {
   assertSafeSvg,
   DEFAULT_COMUNI_LIMIT,
+  LeadApiSecretError,
   LeadNotFoundError,
   OfferNotFoundError,
   PrivacyConsentRequiredError,
@@ -14,6 +15,7 @@ import {
 import type {
   Comune,
   Lead,
+  LeadCompletion,
   LeadQuery,
   LeadRef,
   Offer,
@@ -28,11 +30,13 @@ import { LEAD_PAGE_SIZE_DEFAULT, LEAD_PAGE_SIZE_MAX } from "../types";
  * - comuni.name_search: unaccented lowercase name (apostrophes/hyphens as spaces),
  *   used for accent-insensitive search
  * - settings: single row, columns per PRD §12 (notification_email, ...)
- * - rpc create_lead(p_data jsonb)            -> { id, token }
- * - rpc update_lead(p_token text, p_patch jsonb) -> void
- * - rpc complete_lead(p_token text, p_data jsonb) -> { id, token }
- *   (a single object or a one-row array are both accepted)
- * - errors: message containing "lead_not_found" / "privacy_consent_required"
+ * - rpc create_lead(p_secret text, p_data jsonb)                  -> { id, token }
+ * - rpc update_lead(p_secret text, p_token text, p_patch jsonb)   -> void
+ * - rpc complete_lead(p_secret text, p_token text, p_data jsonb)  -> { id, token, notification_email }
+ *   (a single object or a one-row array are both accepted). p_secret = server-only
+ *   lead API secret (env var, see @/lib/lead/secret; migration 20261015140000); the DB raises `invalid_secret`
+ *   (SQLSTATE 28000, HTTP 403) before any other check when it does not match.
+ * - errors: message containing "lead_not_found" / "privacy_consent_required" / "invalid_secret"
  * - admin methods run on the injected client, which must carry the admin's
  *   session (see getAdminRepository) so RLS `is_admin()` policies apply
  * - Storage: public bucket "supplier-logos" (public read; insert/update/delete
@@ -44,23 +48,52 @@ export interface SupabaseConfig {
   key: string;
 }
 
+export interface SupabaseRepositoryOptions {
+  /**
+   * Provides the server-only lead API secret for the lead RPCs, read lazily at call time.
+   * Default: the provider registered by the server-only module `@/lib/lead/secret`
+   * (imported by the lead API handlers). Never logged, never sent anywhere but the RPC.
+   */
+  leadSecret?: () => string | undefined;
+}
+
+/*
+ * This module is also reachable from client components (via "@/lib/data"), so it must not
+ * read the secret env var itself: the server-only `@/lib/lead/secret` registers the reader.
+ * Without a registered provider every lead RPC fails closed (LeadApiSecretError "missing").
+ */
+let registeredLeadSecret: (() => string | undefined) | null = null;
+
+/** Called once by `@/lib/lead/secret` (server only). */
+export function registerLeadSecretProvider(provider: () => string | undefined): void {
+  registeredLeadSecret = provider;
+}
+
+const defaultLeadSecret = () => registeredLeadSecret?.();
+
 export function createSupabaseClient(config: SupabaseConfig): SupabaseClient {
   return createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
 
-function fail(error: { message: string; code?: string }, ctx?: "supplier" | "offer"): never {
+function fail(error: { message: string; code?: string }, ctx?: "supplier" | "offer" | "lead"): never {
   // 23505 unique_violation on suppliers.slug, 23503 foreign_key_violation on offers.supplier_id
   if (error.code === "23505" && ctx === "supplier") throw new SupplierSlugTakenError();
   if (error.code === "23503" && ctx === "offer") throw new SupplierNotFoundError();
+  // Lead RPCs: invalid_secret (SQLSTATE 28000) = wrong lead API secret on the server.
+  if (ctx === "lead" && (error.code === "28000" || /invalid_secret/i.test(error.message))) throw new LeadApiSecretError("invalid");
   if (/lead_not_found/i.test(error.message)) throw new LeadNotFoundError();
   if (/privacy_consent_required/i.test(error.message)) throw new PrivacyConsentRequiredError();
   throw new Error(error.message);
 }
 
+function firstRow(data: unknown): unknown {
+  return Array.isArray(data) ? data[0] : data;
+}
+
 function toRef(data: unknown): LeadRef {
-  const row = Array.isArray(data) ? data[0] : data;
+  const row = firstRow(data);
   if (
     !row ||
     typeof row !== "object" ||
@@ -70,6 +103,15 @@ function toRef(data: unknown): LeadRef {
     throw new Error("Unexpected response from lead function");
   }
   return { id: (row as LeadRef).id, token: (row as LeadRef).token };
+}
+
+function toCompletion(data: unknown): LeadCompletion {
+  const ref = toRef(data);
+  const email = (firstRow(data) as { notification_email?: unknown }).notification_email;
+  return {
+    ...ref,
+    notification_email: typeof email === "string" && email.trim() !== "" ? email.trim() : null,
+  };
 }
 
 /** Escape LIKE wildcards in user input. */
@@ -132,7 +174,18 @@ function stripComune(row: Comune & { name_search?: string }): Comune {
   };
 }
 
-export function createSupabaseRepository(client: SupabaseClient): Repository {
+export function createSupabaseRepository(
+  client: SupabaseClient,
+  options: SupabaseRepositoryOptions = {},
+): Repository {
+  const readLeadSecret = options.leadSecret ?? defaultLeadSecret;
+  /** Fails closed: without the secret no lead RPC is attempted. */
+  function leadSecret(): string {
+    const secret = readLeadSecret()?.trim();
+    if (!secret) throw new LeadApiSecretError("missing");
+    return secret;
+  }
+
   const repo: Repository = {
     async listActiveSuppliers() {
       const { data, error } = await client
@@ -193,23 +246,31 @@ export function createSupabaseRepository(client: SupabaseClient): Repository {
 
     async createLead(data) {
       if (data.privacy_consent !== true) throw new PrivacyConsentRequiredError();
-      const { data: res, error } = await client.rpc("create_lead", { p_data: data });
-      if (error) fail(error);
+      const { data: res, error } = await client.rpc("create_lead", {
+        p_secret: leadSecret(),
+        p_data: data,
+      });
+      if (error) fail(error, "lead");
       return toRef(res);
     },
 
     async updateLead(token, patch) {
-      const { error } = await client.rpc("update_lead", { p_token: token, p_patch: patch });
-      if (error) fail(error);
+      const { error } = await client.rpc("update_lead", {
+        p_secret: leadSecret(),
+        p_token: token,
+        p_patch: patch,
+      });
+      if (error) fail(error, "lead");
     },
 
     async completeLead(token, data) {
       const { data: res, error } = await client.rpc("complete_lead", {
+        p_secret: leadSecret(),
         p_token: token,
         p_data: data,
       });
-      if (error) fail(error);
-      return toRef(res);
+      if (error) fail(error, "lead");
+      return toCompletion(res);
     },
 
     // ---- Admin: require an authenticated admin session on `client` (RLS) ----

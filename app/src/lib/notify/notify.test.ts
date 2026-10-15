@@ -151,13 +151,22 @@ describe("readNotifyConfig", () => {
 });
 
 describe("resolveRecipient", () => {
-  it("prefers settings, falls back to env, tolerates an unreadable settings table", async () => {
-    expect(await resolveRecipient({ getSettings: async () => ({ notification_email: "s@x.it" }) }, "e@x.it")).toBe("s@x.it");
-    expect(await resolveRecipient({ getSettings: async () => ({ notification_email: null }) }, "e@x.it")).toBe("e@x.it");
-    expect(
-      await resolveRecipient({ getSettings: async () => { throw new Error("rls"); } }, "e@x.it"),
-    ).toBe("e@x.it");
-    expect(await resolveRecipient({ getSettings: async () => ({ notification_email: "bad" }) }, null)).toBeNull();
+  const settings = (email: string | null) => ({ getSettings: async () => ({ notification_email: email }) });
+  const unreadable = { getSettings: async (): Promise<{ notification_email: string | null }> => { throw new Error("rls"); } };
+
+  it("order: completeLead recipient, then env NOTIFICATION_EMAIL, then settings", async () => {
+    expect(await resolveRecipient(settings("s@x.it"), "e@x.it", "c@x.it")).toBe("c@x.it");
+    expect(await resolveRecipient(unreadable, "e@x.it", " c@x.it ")).toBe("c@x.it");
+    expect(await resolveRecipient(settings("s@x.it"), "e@x.it", null)).toBe("e@x.it");
+    expect(await resolveRecipient(settings("s@x.it"), "e@x.it", "not-an-email")).toBe("e@x.it");
+    expect(await resolveRecipient(settings("s@x.it"), null, null)).toBe("s@x.it");
+    expect(await resolveRecipient(settings("s@x.it"), null)).toBe("s@x.it");
+  });
+
+  it("tolerates an unreadable settings table and invalid values", async () => {
+    expect(await resolveRecipient(unreadable, "e@x.it")).toBe("e@x.it");
+    expect(await resolveRecipient(unreadable, null)).toBeNull();
+    expect(await resolveRecipient(settings("bad"), null)).toBeNull();
   });
 });
 
@@ -244,6 +253,16 @@ describe("sendNewLeadNotification", () => {
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body.to).toEqual(["env@azienda.it"]);
     expect(body.html).toContain("Nuovo lead completato");
+  });
+
+  it("sends to the completeLead recipient ahead of env and settings", async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true, id: "m1" });
+    const r = await sendNewLeadNotification(
+      { ...lead, notificationEmail: "db@azienda.it" },
+      { repo: await repoWith("settings@azienda.it"), config: { ...CONFIG, envRecipient: "env@azienda.it" }, send },
+    );
+    expect(r).toBe("sent");
+    expect(send.mock.calls[0][1].to).toBe("db@azienda.it");
   });
 
   it("swallows send failures and unexpected errors", async () => {

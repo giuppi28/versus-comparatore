@@ -142,6 +142,14 @@ export interface LeadRef {
   token: string;
 }
 
+/**
+ * Returned by completeLead: the lead ref plus the new-lead notification recipient
+ * (settings.notification_email, returned by the complete_lead RPC; may be null).
+ */
+export interface LeadCompletion extends LeadRef {
+  notification_email: string | null;
+}
+
 /** Global settings (single row). */
 export interface Settings {
   notification_email: string | null;

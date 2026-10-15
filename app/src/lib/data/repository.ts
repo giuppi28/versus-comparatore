@@ -7,6 +7,7 @@ import type {
   LeadData,
   LeadPage,
   LeadQuery,
+  LeadCompletion,
   LeadRef,
   Offer,
   OfferCreateInput,
@@ -32,6 +33,22 @@ export class PrivacyConsentRequiredError extends Error {
   constructor() {
     super("privacy_consent must be true before a lead is stored");
     this.name = "PrivacyConsentRequiredError";
+  }
+}
+
+/**
+ * The server-only lead API secret (see @/lib/lead/secret) is missing (supabase mode) or was rejected by the DB
+ * (`invalid_secret`). Always a server misconfiguration, never a client fault.
+ * The message never contains the secret.
+ */
+export class LeadApiSecretError extends Error {
+  constructor(readonly reason: "missing" | "invalid") {
+    super(
+      reason === "missing"
+        ? "Lead API secret is not configured on the server"
+        : "Lead API secret was rejected by the database (invalid_secret)",
+    );
+    this.name = "LeadApiSecretError";
   }
 }
 
@@ -106,8 +123,11 @@ export interface Repository {
   createLead(data: LeadData): Promise<LeadRef>;
   /** Updates only the lead owning `token`. */
   updateLead(token: string, patch: LeadData): Promise<void>;
-  /** Final submit: writes `data`, sets step_reached = completed, status = new. */
-  completeLead(token: string, data: LeadData): Promise<LeadRef>;
+  /**
+   * Final submit: writes `data`, sets step_reached = completed, status = new.
+   * Also returns settings.notification_email (null when not set).
+   */
+  completeLead(token: string, data: LeadData): Promise<LeadCompletion>;
 
   // ---- Admin (authenticated admin session; get it via getAdminRepository()) ----
 
