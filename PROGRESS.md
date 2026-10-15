@@ -212,3 +212,10 @@ Orchestrator: Claude Opus (session model). Decisions by Giuseppe: hosting Vercel
 - New agent `.claude/agents/design-reviewer.md` (sonnet, writes only DESIGN_REVIEW.md). `thankyou-builder` → sonnet for this phase (per brief B6). `setup-builder` scope extended to `components/brand`, `(public)/layout.tsx`, `globals.css` (B1 needs them).
 - Before-reference screenshots `app/e2e/before-after/` committed as the visual baseline.
 - Note: this orchestrator session runs on the model selected for the session (Opus 5.5), not Sonnet as CLAUDE.md asks — Giuseppe launched it; builders keep their agent-file models.
+
+## 2026-10-15 — T10.1 Brand lockup, header, footer, decor, ui/icons (B1)
+- Agent: setup-builder (sonnet).
+- Changed: `BrandLockup` (black VERSUS mark + typeset "VERSUS" / dominant "COMPARATORE" Archivo wide 800 + green "luce e gas"; sizes sm/md/lg; compact at 390px; role=img + aria-label; data-testid kept), `VersusMark` (icon only, no square), `VersusLogo` defaults to the lockup (full/icon variants kept). Header: light green tint (brand-50) + 4px green gradient strip (absolute, no height change) + trust line "Confronto gratuito · 100% online" from 640px. `SiteFooter` (lockup, Privacy link, © VERSUS year) in `(public)/layout.tsx`, hidden while the loading screen is mounted. `brand/decor/` (Bulb, Flame, BoltDrop, HouseOutline, Swoosh). `ui/icons/` (glyphs + Page 1 option icons moved, page1/icons.tsx re-exports; new activation icons).
+- Decision (skills): tinted header over deep-green header — keeps the official black mark faithful (ui-ux-pro-max contrast 4.5:1; frontend-design restraint).
+- Verified by orchestrator: typecheck ✓, lint ✓, vitest 867/867 ✓; agent: Playwright smoke/page1/thankyou/admin-auth 95 passed / 1 skipped, admin-leads+results 36 passed. Visual check of header 1440/390 + decor sheet.
+- Process: a shared mock dev server on :3100 is started by the orchestrator so T10.2–T10.6 run in parallel without competing dev servers.
