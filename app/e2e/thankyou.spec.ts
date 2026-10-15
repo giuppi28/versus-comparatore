@@ -135,9 +135,39 @@ test.describe("thank-you page /grazie", () => {
       return { pe: cs.pointerEvents, overflow: cs.overflow, z: cs.zIndex };
     });
     expect(style).toEqual({ pe: "none", overflow: "hidden", z: "-10" });
-    // Light bulbs and flames are both present in the DOM (some hidden per breakpoint).
-    expect(await decor.locator('svg[data-decor="bulb"]').count()).toBeGreaterThan(0);
-    expect(await decor.locator('svg[data-decor="flame"]').count()).toBeGreaterThan(0);
+
+    const mobile = (page.viewportSize()?.width ?? 1440) < 1024;
+    if (mobile) {
+      // Hidden below lg: no slivers cropped by the card edge.
+      await expect(decor).toBeHidden();
+    } else {
+      await expect(decor).toBeVisible();
+      // One large bulb (right) and one large flame (left), at most one small accent per side.
+      const visible = async (name: string) =>
+        decor.locator(`svg[data-decor="${name}"]`).evaluateAll(
+          (els) => els.filter((e) => getComputedStyle(e).display !== "none").length,
+        );
+      expect(await visible("bulb")).toBe(1);
+      expect(await visible("flame")).toBeGreaterThanOrEqual(1);
+      expect(await visible("flame")).toBeLessThanOrEqual(2);
+      expect(await visible("bolt-drop")).toBeLessThanOrEqual(1);
+      // The card sits clear of the decor: every visible piece is outside the card's box.
+      const card = await page.getByTestId("thankyou-summary").evaluate((el) => {
+        const r = el.closest("div.rounded-card")!.getBoundingClientRect();
+        return { l: r.left, r: r.right };
+      });
+      const boxes = await decor
+        .locator("svg")
+        .evaluateAll((els) =>
+          els
+            .filter((e) => getComputedStyle(e).display !== "none")
+            .map((e) => {
+              const b = e.getBoundingClientRect();
+              return { l: b.left, r: b.right };
+            }),
+        );
+      for (const b of boxes) expect(b.r <= card.l || b.l >= card.r).toBe(true);
+    }
 
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
