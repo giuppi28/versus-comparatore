@@ -22,3 +22,10 @@ Format: `## YYYY-MM-DD HH:MM — T<id> <title>` · what changed · how verified 
 - Notes: orbit capped at 10 suppliers, N = shown count; centre uses versus_icona.svg. Browser check at 390/1440 pending until a route mounts it (covered by flow e2e).
 - Verified by orchestrator: vitest loading 12/12 ✓, eslint ✓, no tsc errors in folder ✓.
 - Commit: 7a2f1f4
+
+## 2026-10-15 12:10 — T3.5 Offer modal
+- Agent: offer-modal-builder (sonnet).
+- Changed: `src/components/offer-modal` — OfferModal on shared Modal/Button; advantages rendered only from offer data with safe **bold** parsing; Caratteristiche principali; promo; collapsible details; full-screen sheet on mobile with pinned CTA.
+- Notes: gas shows "Tariffa a prezzo fisso" (monoraria applies to luce only) — see QUESTIONS Q4; caller must pass resolved logoUrl (text chip fallback). Mobile layout to be checked in flow e2e.
+- Verified by orchestrator: vitest offer-modal 16/16 ✓, eslint ✓, no tsc errors in folder ✓.
+- Commit: 677ee75

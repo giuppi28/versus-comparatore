@@ -13,3 +13,7 @@ Giuseppe is verifying the logos in the source folder `/Users/pippo/Desktop/versu
 ## Q3 — Aldo's notification email
 Which address receives new-lead notifications?
 **Answer:**
+
+## Q4 (T1.4 / T3.5) — "Tariffa monoraria" on gas offers
+TASKS T1.4 says every offer's advantages include "Tariffa **monoraria**", but monorario/time bands apply only to electricity. Proposal: for gas seed offers replace it with "Prezzo **fisso** per tutta la durata del blocco". The modal's "Caratteristiche principali" already shows "Tariffa a prezzo fisso" for gas. Seed currently follows TASKS literally until answered.
+**Answer:**
