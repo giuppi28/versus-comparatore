@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { CheckIcon, Input, Select, SpinnerIcon } from "@/components/ui";
+import { Button, CheckIcon, Input, Select, SpinnerIcon } from "@/components/ui";
 import { CheckboxField } from "@/components/page1/parts";
 import { DOCUMENT_MAX_FILES } from "@/lib/logic/validators";
 import { DOCUMENT_TYPES, type DocumentType } from "@/lib/data/types";
@@ -27,8 +27,9 @@ export function PaymentFields({ state, update, errorFor, touch, edited }: Sectio
   return (
     <div className="space-y-5">
       <Input
-        label="IBAN (facoltativo, se vuoi pagare con addebito sul conto)"
+        label="IBAN"
         name="iban"
+        hint="Facoltativo, se vuoi pagare con addebito sul conto"
         autoCapitalize="characters"
         autoComplete="off"
         spellCheck={false}
@@ -145,6 +146,7 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
 
   return (
     <div className="space-y-5">
+      <p className="text-sm text-ink-muted">Compila tutti i campi, oppure carica il file.</p>
       <div className="grid gap-5 sm:grid-cols-2">
         <Select
           label="Tipo di documento"
@@ -202,8 +204,8 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
         />
       </div>
 
-      <div data-testid="document-upload" className="space-y-3">
-        <p className="text-sm font-semibold text-ink">Oppure carica il documento</p>
+      <fieldset data-testid="document-upload" className="min-w-0 space-y-3">
+        <legend className="mb-2 text-sm font-semibold text-ink">Oppure carica il documento</legend>
         {documents.length > 0 && (
           <ul data-testid="document-list" className="space-y-2">
             {documents.map((d) => (
@@ -222,21 +224,38 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
           </ul>
         )}
         {!full && (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={fileId} className="text-sm text-ink-muted">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-3 rounded-control focus-within:ring-[3px] focus-within:ring-brand-100">
+              <input
+                ref={inputRef}
+                id={fileId}
+                data-testid="document-file"
+                name="document_file"
+                type="file"
+                accept=".jpg,.jpeg,.pdf,image/jpeg,application/pdf"
+                disabled={uploading}
+                aria-describedby={`${fileId}-hint`}
+                onChange={(e) => void onFiles(e.target.files)}
+                className="peer sr-only"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={uploading}
+                className="min-h-11 peer-focus-visible:border-brand-600"
+                onClick={() => inputRef.current?.click()}
+              >
+                Scegli file
+              </Button>
+              {!uploading && (
+                <span data-testid="document-status" className="text-sm text-ink-muted">
+                  Nessun file selezionato
+                </span>
+              )}
+            </div>
+            <p id={`${fileId}-hint`} className="text-sm text-ink-muted">
               JPG o PDF, max 4 MB, fino a 2 file
-            </label>
-            <input
-              ref={inputRef}
-              id={fileId}
-              data-testid="document-file"
-              name="document_file"
-              type="file"
-              accept=".jpg,.jpeg,.pdf,image/jpeg,application/pdf"
-              disabled={uploading}
-              onChange={(e) => void onFiles(e.target.files)}
-              className="block w-full text-sm text-ink file:mr-3 file:cursor-pointer file:rounded-control file:border file:border-control file:bg-surface file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-ink"
-            />
+            </p>
           </div>
         )}
         {uploading && (
@@ -250,7 +269,7 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
             {uploadError}
           </p>
         )}
-      </div>
+      </fieldset>
     </div>
   );
 }
