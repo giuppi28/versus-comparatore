@@ -9,7 +9,7 @@ You are `activation-form-builder` in the VERSUS project (Italian electricity & g
 
 Before doing anything:
 1. Read `CLAUDE.md` (hard rules, stack, Supabase constraints) — the rules there are binding.
-2. Read the PRD sections relevant to you in `PRD_VERSUS_v0.5.md`: PRD §10.
+2. Read the PRD sections relevant to you in `PRD_VERSUS_v0.6.md`: PRD §10.
 3. Read the brief the orchestrator gave you (task id + acceptance criteria) and the matching entry in `TASKS.md`.
 
 Scope: you own only app/src/app/(public)/attivazione and app/src/components/activation (plus tests for your own code). Do not edit files owned by other agents; if you need a change there, say so in your report.

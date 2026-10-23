@@ -24,7 +24,7 @@ For any visual/UI work, agents must read `.claude/skills/frontend-design/SKILL.m
 
 ## Mandatory reading (orchestrator, at the start of EVERY loop iteration)
 1. `CLAUDE.md` (this file)
-2. `PRD_VERSUS_v0.5.md` — the full spec, source of truth. Never contradict it.
+2. `PRD_VERSUS_v0.6.md` — the full spec, source of truth. Never contradict it.
 3. `TASKS.md`, `REVIEW.md`, `QUESTIONS.md`, `PROGRESS.md` (last entries), `SUPABASE.md`, `app/README.md` (once it exists)
 Subagents read `CLAUDE.md` and the PRD sections relevant to their task.
 
@@ -52,7 +52,7 @@ Subagents read `CLAUDE.md` and the PRD sections relevant to their task.
 - **Never commit secrets.** `app/.env.local` is gitignored. Provide `app/.env.example` with empty values.
 - **Never delete** files outside `app/`.
 - **Source folder (READ-ONLY):** `/Users/pippo/Desktop/versus elementi/` contains only reference material (brand logo, supplier logos, PDFs). Read/copy files from it, **never write, move or delete anything there**. Ignore its `_archivio/` (obsolete old demo — never use it as guidance).
-- Do not modify `PRD_VERSUS_v0.5.md`. Propose changes in `QUESTIONS.md`.
+- Do not modify `PRD_VERSUS_v0.6.md`. Propose changes in `QUESTIONS.md`.
 - Work only inside this project folder (`/Users/pippo/Desktop/versus-comparatore/`). The only other folder you may read is the source folder above.
 - No "demo" wording anywhere in the UI. Placeholder offers look real but have `price_verified = false`.
 - **No mention of phone calls / call center / callback in the UI before the thank-you page.**
