@@ -235,7 +235,7 @@ test.describe("copy and brand rules", () => {
       await crawlFlow(page, c, orange);
 
       // The thank-you page: the callback sentence is there.
-      await expect(page.getByText("Sarai ricontattato a breve da un nostro consulente per confermare l'attivazione della tua offerta.")).toBeVisible();
+      await expect(page.getByText("Riceverai a breve una chiamata dal numero +39 095 0000000 da un nostro consulente per confermare l'attivazione.")).toBeVisible();
       await expectNoOrange(page, "thank-you", orange);
       await expect.poll(() => seen.some((s) => s.path === "/grazie")).toBe(true);
 
@@ -249,7 +249,7 @@ test.describe("copy and brand rules", () => {
 
       // The thank-you page does mention the callback (and only there).
       const thanks = seen.filter((s) => s.path === "/grazie").map((s) => s.text).join("\n");
-      expect(thanks).toMatch(/ricontattato/);
+      expect(thanks).toMatch(/chiamata dal numero/);
     });
   }
 

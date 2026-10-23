@@ -108,3 +108,29 @@ Decisions: hosting = Vercel (Hobby, custom domain); Cloudflare removed entirely 
 - [x] T11.5 (7c8053f) Loading marquee shows all real suppliers minus current (D4) → `loading-builder`
 - [x] T11.6 (ed2fe9e) Page 1 current-supplier block check (D5) → `qa-tester` (+ `page1-builder` if needed)
 - [x] T11.7 (5a7dc88, 9893313, 84c9485 + this summary) Tests + full regression + PROGRESS summary + push `preview/phase11` (D6) → `qa-tester` + orchestrator
+
+## Phase 12 — Activation data, callback number, Resend test (Giuseppe, 2026-10-23) — spec: `PHASE12_BRIEF.md`
+- [x] T12.1 (4d9526e) Migration (lead IBAN/holder/document fields, `callback_phone` setting + safe exposure, private `lead-documents` bucket + upload mechanism) + data layer + mock parity + delete files with lead → `db-builder` (opus)
+- [x] T12.2 (669d4c3) Logic: IBAN mod-97, POD/PDR normalize + cross-detection, distributor config + comune check, magic-byte sniff (E3, E5) → `logic-builder` (sonnet)
+- [x] T12.3 (60ab068, f563e89) Admin settings: "Invia email di prova" + resend.dev banner (E1), then `callback_phone` field (E2) → `admin-settings-builder` (sonnet)
+- [x] T12.4 (1be18ef) Lead API: document upload route bound to lead token, new fields in update/complete validation, POD/PDR normalization server-side → `lead-api-builder` (opus)
+- [x] T12.5 (dd2e9a8, e83ffd6) Admin lead detail: IBAN/holder, document data + signed-URL preview/download, distributor → `admin-leads-builder` (sonnet)
+- [x] T12.6 (08167e7) Thank-you callback number text + privacy placeholder sentence (E2, E4) → `thankyou-builder` (haiku)
+- [x] T12.7 (519c1f0) Activation step B UI: IBAN + holder, document data/upload, POD/PDR messages + distributor warning → `activation-form-builder` (sonnet)
+- [x] T12.8 (fb4efc8, design fixes see PROGRESS) Final check: typecheck, lint, Vitest, affected Playwright + one full regression, quick design pass → `qa-tester` (sonnet) + `design-reviewer` (sonnet)
+- [x] T12.9 (this commit) PRD v0.6 (§5, §10, §11), TASKS, PROGRESS, HANDOFF, push `preview/phase12` → orchestrator + haiku
+
+## Phase 12b — document removal, client compression, gas PDR, privacy (Giuseppe, 2026-10-23)
+- [x] T12b.1 (6ee93e3) Customer removal of an uploaded identity document: migration `20261023110000_lead_document_removal.sql` (window RPC, anon remove policies, finish RPC, `document_removed_count`), `DELETE /api/lead/document`, client `removeLeadDocument` → `db-builder` (opus)
+- [x] T12b.2 (d152922) Gas PDR not analyzed for the distributor: PDR table and `pdrDistributor` removed, admin gas distributor line removed; PDR format and POD/PDR swap checks kept → `logic-builder` (sonnet)
+- [x] T12b.3 (e652f8d) /privacy section "IBAN e documento d'identità (facoltativi)" (retention placeholder [DA COMPLETARE]) → `thankyou-builder` (haiku)
+- [x] T12b.4 (567aaa5) `PRD_VERSUS_v0.5.md` → `PRD_VERSUS_v0.6.md` references in CLAUDE.md, `.claude/agents/*.md`, PHASE10_BRIEF.md → `general-purpose` (haiku)
+- [x] T12b.5 (3ec2eaf) Activation step B: "Rimuovi" per uploaded file, client-side photo compression to JPEG (max 2000 px, 4 MB check), PNG/WebP/HEIC accepted → `activation-form-builder` (sonnet)
+- [x] T12b.6 (this commit) PRD v0.6.1 (§4, §5.1, §10, §12), app/README.md lead documents + PDR wording, TASKS/PROGRESS/HANDOFF/QUESTIONS → docs (haiku)
+
+## Phase 12c — final fixes and acceptance (Giuseppe, 2026-10-23)
+- [x] T12c.0 (10bd09e) QUESTIONS.md: both Phase 12 APPLY migrations recorded as applied; Resend preview note → general-purpose (haiku)
+- [x] T12c.1 (074d78f) Callback phone explanatory error + format hint → admin-settings-builder (sonnet)
+- [x] T12c.2 (68a4475) Security suite: 13 Phase 12/12b cases → db-builder (opus)
+- [x] T12c.3 (next commit) Acceptance spec `e2e/acceptance-phase12.spec.ts`; admin label "Distributore luce:"; `RESEND_FROM=onboarding@resend.dev` in Playwright webServer env → qa-tester (sonnet) + admin-leads-builder (sonnet)
+- [x] T12c.4 (this commit) docs → general-purpose (haiku)

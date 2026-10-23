@@ -19,13 +19,15 @@ import {
 import type { Voltage } from "@/lib/data/types";
 import { serviceTypeFor } from "@/lib/lead/flow-state";
 import { includesGas, includesLuce, needsCurrentSupplier, needsMeterCode } from "@/lib/lead/rules";
-import { validatePdr, validatePod } from "@/lib/logic/validators";
+import { normalizePdr, normalizePod, validatePdr, validatePod } from "@/lib/logic/validators";
 import { GroupError, GroupLabel } from "./FieldError";
+import { DocumentFields, PaymentFields } from "./PaymentDocumentSections";
 import {
   effectiveCap,
   effectiveGasUses,
   powerFromSelectValue,
   powerOptions,
+  podWarning,
   powerToSelectValue,
   supplierOptions,
 } from "./logic";
@@ -74,6 +76,8 @@ export function StepB({
   const podRequired = needsMeterCode(luceService);
   const pdrRequired = needsMeterCode(gasService);
   const gasUses = effectiveGasUses(state);
+  const podMismatch = podWarning(state);
+  const extraProps = { state, update, errorFor, touch, edited };
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -206,7 +210,8 @@ export function StepB({
               onBlur={() => touch("current_supplier_luce")}
             />
           )}
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid items-start gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
             <Input
               label={podRequired ? "Codice POD" : "Codice POD (facoltativo)"}
               name="pod"
@@ -224,7 +229,7 @@ export function StepB({
               error={errorFor("pod")}
               onChange={(e) => {
                 edited("pod");
-                update({ activation: { pod: e.target.value.toUpperCase() } });
+                update({ activation: { pod: normalizePod(e.target.value) } });
               }}
               onBlur={() => {
                 touch("pod");
@@ -232,6 +237,21 @@ export function StepB({
                 if (r.ok && r.value !== a.pod) update({ activation: { pod: r.value } });
               }}
             />
+            <div aria-live="polite">
+              {podMismatch && !errorFor("pod") && (
+                <p
+                  data-testid="pod-warning"
+                  className="flex items-start gap-2 rounded-control border border-warning bg-warning-soft px-3 py-2 text-sm font-medium text-warning"
+                >
+                  <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+                    <path d="M12 3l10 18H2L12 3z" />
+                    <path d="M12 10v5M12 18h.01" />
+                  </svg>
+                  <span>{podMismatch}</span>
+                </p>
+              )}
+            </div>
+            </div>
             <Select
               label="Potenza impegnata"
               name="power_kw"
@@ -306,7 +326,7 @@ export function StepB({
             error={errorFor("pdr")}
             onChange={(e) => {
               edited("pdr");
-              update({ activation: { pdr: e.target.value } });
+              update({ activation: { pdr: normalizePdr(e.target.value) } });
             }}
             onBlur={() => {
               touch("pdr");
@@ -339,6 +359,14 @@ export function StepB({
           </div>
         </Section>
       )}
+
+      <Section title="Pagamento (facoltativo)" testId="activation-payment">
+        <PaymentFields {...extraProps} />
+      </Section>
+
+      <Section title="Documento d'identità (facoltativo)" testId="activation-document">
+        <DocumentFields {...extraProps} />
+      </Section>
 
       {beforeActions}
 

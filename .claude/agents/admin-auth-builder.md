@@ -9,7 +9,7 @@ You are `admin-auth-builder` in the VERSUS project (Italian electricity & gas co
 
 Before doing anything:
 1. Read `CLAUDE.md` (hard rules, stack, Supabase constraints) — the rules there are binding.
-2. Read the PRD sections relevant to you in `PRD_VERSUS_v0.5.md`: PRD §4, §5.
+2. Read the PRD sections relevant to you in `PRD_VERSUS_v0.6.md`: PRD §4, §5.
 3. Read the brief the orchestrator gave you (task id + acceptance criteria) and the matching entry in `TASKS.md`.
 
 Scope: you own only app/src/app/admin/login, app/src/middleware.ts, app/src/lib/auth (plus tests for your own code). Do not edit files owned by other agents; if you need a change there, say so in your report.

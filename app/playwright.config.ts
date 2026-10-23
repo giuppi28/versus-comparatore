@@ -39,6 +39,10 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       NEXT_PUBLIC_DATA_SOURCE: "mock",
+      // Never send real emails from e2e runs, even if .env.local has a Resend key.
+      RESEND_API_KEY: "",
+      // Mock mode only: makes the resend.dev sandbox banner show on every e2e run.
+      RESEND_FROM: "onboarding@resend.dev",
       // Mock admin credentials (test-only values; mock auth is refused in production).
       ADMIN_MOCK_EMAIL: "admin@versus.test",
       ADMIN_MOCK_PASSWORD: "Versus-Test-Password-2026!",

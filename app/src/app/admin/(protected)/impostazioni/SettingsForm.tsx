@@ -2,10 +2,16 @@
 
 import { useActionState } from "react";
 import { Button, Input } from "@/components/ui";
-import { updateSettingsAction } from "./actions";
-import { INITIAL_SETTINGS_STATE } from "./settings-state";
+import { sendTestEmailAction, updateSettingsAction } from "./actions";
+import { INITIAL_SETTINGS_STATE, INITIAL_TEST_EMAIL_STATE } from "./settings-state";
 
-export function SettingsForm({ notificationEmail }: { notificationEmail: string | null }) {
+export function SettingsForm({
+  notificationEmail,
+  callbackPhone,
+}: {
+  notificationEmail: string | null;
+  callbackPhone: string;
+}) {
   const [state, formAction, pending] = useActionState(updateSettingsAction, INITIAL_SETTINGS_STATE);
   return (
     <form action={formAction} noValidate data-attempt={state.attempt} className="flex flex-col gap-4">
@@ -20,6 +26,17 @@ export function SettingsForm({ notificationEmail }: { notificationEmail: string 
         error={state.error}
         hint="Lascia vuoto per disattivare le notifiche."
       />
+      <Input
+        label="Numero da cui chiamiamo"
+        name="callback_phone"
+        type="tel"
+        inputMode="tel"
+        autoComplete="off"
+        maxLength={30}
+        defaultValue={state.phone ?? callbackPhone}
+        error={state.phoneError}
+        hint="Solo cifre e spazi, + iniziale facoltativo (6–20 caratteri). Es. +39 095 1234567. Compare nella pagina di ringraziamento."
+      />
       {state.saved && (
         <p role="status" data-testid="settings-saved" className="text-sm font-semibold text-brand-700">
           {state.saved === "enabled"
@@ -32,6 +49,36 @@ export function SettingsForm({ notificationEmail }: { notificationEmail: string 
           Salva
         </Button>
       </div>
+    </form>
+  );
+}
+
+export function TestEmailButton() {
+  const [state, formAction, pending] = useActionState(sendTestEmailAction, INITIAL_TEST_EMAIL_STATE);
+  return (
+    <form action={formAction} data-testid="test-email-form" data-test-attempt={state.attempt} className="flex flex-col gap-3">
+      <p className="text-sm text-ink-muted">
+        Invia un&apos;email di prova all&apos;indirizzo salvato qui sopra (salva prima le modifiche).
+      </p>
+      <div>
+        <Button type="submit" variant="secondary" loading={pending}>
+          Invia email di prova
+        </Button>
+      </div>
+      {state.result === "sent" && (
+        <p role="status" data-testid="test-email-result" className="text-sm font-semibold text-brand-700 break-words">
+          {state.message}
+        </p>
+      )}
+      {state.result === "error" && (
+        <p
+          role="alert"
+          data-testid="test-email-result"
+          className="rounded-control border border-danger bg-danger-soft px-4 py-3 text-sm font-semibold break-words"
+        >
+          {state.message}
+        </p>
+      )}
     </form>
   );
 }

@@ -1,0 +1,102 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const requireAdmin = vi.fn();
+vi.mock("@/lib/auth", () => ({ requireAdmin: () => requireAdmin() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const updateSettings = vi.fn(async () => undefined);
+vi.mock("@/lib/data/admin", () => ({
+  getAdminRepository: async () => ({
+    getSettings: async () => ({ notification_email: "aldo@example.it" }),
+    updateSettings,
+  }),
+}));
+
+import { sendTestEmailAction, updateSettingsAction } from "./actions";
+import { resetTestEmailLimiter } from "@/lib/notify/test-email";
+
+describe("sendTestEmailAction", () => {
+  beforeEach(() => {
+    resetTestEmailLimiter();
+    requireAdmin.mockReset();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("rejects non-admins before doing anything", async () => {
+    requireAdmin.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendTestEmailAction({ attempt: 0 })).rejects.toThrow("NEXT_REDIRECT");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reports missing config in Italian without sending", async () => {
+    requireAdmin.mockResolvedValue({ id: "u1", email: null });
+    vi.stubEnv("RESEND_API_KEY", "");
+    vi.stubEnv("RESEND_FROM", "");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const s = await sendTestEmailAction({ attempt: 0 });
+    expect(s.result).toBe("error");
+    expect(s.message).toContain("configurazione mancante");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("sends via mocked fetch and shows address + response", async () => {
+    requireAdmin.mockResolvedValue({ id: "u1", email: null });
+    vi.stubEnv("RESEND_API_KEY", "re_x");
+    vi.stubEnv("RESEND_FROM", "noreply@versus.it");
+    vi.stubEnv("NOTIFICATION_EMAIL", "");
+    const fetchMock = vi.fn(async () => new Response('{"id":"id-1"}', { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const s = await sendTestEmailAction({ attempt: 0 });
+    expect(s).toEqual({
+      result: "sent",
+      message: 'Email inviata a aldo@example.it. Risposta Resend: {"id":"id-1"}',
+      attempt: 1,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes Resend errors through verbatim", async () => {
+    requireAdmin.mockResolvedValue({ id: "u1", email: null });
+    vi.stubEnv("RESEND_API_KEY", "re_x");
+    vi.stubEnv("RESEND_FROM", "onboarding@resend.dev");
+    vi.stubEnv("NOTIFICATION_EMAIL", "");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response('{"message":"nope"}', { status: 403 })));
+    const s = await sendTestEmailAction({ attempt: 0 });
+    expect(s.message).toBe('Errore Resend, HTTP 403: {"message":"nope"}');
+    expect(s.message).not.toContain("re_x");
+  });
+});
+
+describe("updateSettingsAction callback_phone", () => {
+  const form = (email: string, phone: string) => {
+    const f = new FormData();
+    f.set("notification_email", email);
+    f.set("callback_phone", phone);
+    return f;
+  };
+  beforeEach(() => {
+    requireAdmin.mockResolvedValue({ id: "u1", email: null });
+    updateSettings.mockClear();
+  });
+
+  it("saves a normalized phone together with the email", async () => {
+    const s = await updateSettingsAction({ attempt: 0 }, form("a@b.it", " +39  06  7654321 "));
+    expect(s.saved).toBe("enabled");
+    expect(updateSettings).toHaveBeenCalledWith({ notification_email: "a@b.it", callback_phone: "+39 06 7654321" });
+  });
+
+  it("falls back to the default when empty", async () => {
+    await updateSettingsAction({ attempt: 0 }, form("", ""));
+    expect(updateSettings).toHaveBeenCalledWith({ notification_email: null, callback_phone: "+39 095 0000000" });
+  });
+
+  it("rejects an invalid phone with an Italian error and saves nothing", async () => {
+    const s = await updateSettingsAction({ attempt: 0 }, form("a@b.it", "abc"));
+    expect(s.phoneError).toBe("Usa solo cifre e spazi, con + iniziale facoltativo (6–20 caratteri). Es. +39 095 1234567");
+    expect(s.phone).toBe("abc");
+    expect(updateSettings).not.toHaveBeenCalled();
+  });
+});

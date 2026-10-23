@@ -37,7 +37,8 @@ export function parseLeadDetail(html: string): Omit<LeadView, "id"> {
   const fields: Record<string, string | null> = {};
   const re = /<dt[^>]*>([^<]*)<\/dt><dd[^>]*>([\s\S]*?)<\/dd>/g;
   for (let m = re.exec(html); m; m = re.exec(html)) {
-    const value = decode(m[2]);
+    // The admin renders "Distributore luce: …" next to the POD: drop it so the field holds the code only.
+    const value = decode(m[2]).replace(/\s*Distributore luce:.*$/, "").trim();
     fields[decode(m[1])] = value === "" || value === "—" ? null : value;
   }
   const step = /data-testid="step-badge"[^>]*data-step="([a-z_0-9]+)"/.exec(html)?.[1] ?? /data-step="([a-z_0-9]+)"[^>]*data-testid="step-badge"/.exec(html)?.[1] ?? "";

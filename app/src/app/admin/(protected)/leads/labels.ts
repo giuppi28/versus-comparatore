@@ -68,5 +68,41 @@ export function formatDateTime(iso: string): string {
   return Number.isNaN(d.getTime()) ? "—" : dateTime.format(d);
 }
 
-const euro = new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" });
+const euro = new Intl.NumberFormat("it-IT", {
+  style: "currency",
+  currency: "EUR",
+});
 export const formatEuro = (n: number | null): string => (n === null ? "—" : euro.format(n));
+
+export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  carta_identita: "Carta d'identità",
+  patente: "Patente",
+  passaporto: "Passaporto",
+};
+
+/** IBAN grouped by 4 characters ("IT60 X054 2811 ..."). */
+export const formatIban = (iban: string): string => iban.replace(/\s+/g, "").replace(/(.{4})(?=.)/g, "$1 ");
+
+const dateOnly = new Intl.DateTimeFormat("it-IT", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
+/** ISO `YYYY-MM-DD` (or full ISO) as it-IT date; "—" when unparseable. */
+export function formatDate(iso: string): string {
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00:00Z` : iso);
+  return Number.isNaN(d.getTime()) ? "—" : dateOnly.format(d);
+}
+
+const sizeFmt = new Intl.NumberFormat("it-IT", { maximumFractionDigits: 1 });
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${sizeFmt.format(bytes / 1024)} KB`;
+  return `${sizeFmt.format(bytes / (1024 * 1024))} MB`;
+}
+
+export const DOCUMENT_MIME_LABELS: Record<string, string> = {
+  "image/jpeg": "Immagine JPEG",
+  "application/pdf": "PDF",
+};

@@ -11,6 +11,7 @@
 | `migrations/20261015140000_lead_secret_notification_placeholders.sql` | T8.2 (Q6/Q7/Q8) | `private.app_secrets` (SHA-256 of `LEAD_API_SECRET`, no grants), `private.check_lead_secret()`, lead functions recreated with `p_secret` first (old signatures dropped), `complete_lead` returns `notification_email`, `suppliers.is_placeholder` |
 | `migrations/20261015150000_disable_old_lead_functions.sql` | T8.2 follow-up | **Documentation only, no APPLY needed** (reviewer note 2026-10-15 14:05). On the real DB the old `create_lead(jsonb)` / `update_lead(text,jsonb)` / `complete_lead(text,jsonb)` and the temporary `bootstrap_load_comuni(text)` were not dropped but revoked (all privileges) and moved to `private` as `old_create_lead_disabled` / `old_update_lead_disabled` / `old_complete_lead_disabled` / `bootstrap_load_comuni_disabled` (same argument types). Guarded by `to_regprocedure(...)`: no-op on a fresh DB, idempotent, never drops |
 | `migrations/20261015170000_lead_snapshots_on_delete.sql` | T11.1 (Phase 11 D1) | Additive. `leads.chosen_offer_{luce,gas}_snapshot` (jsonb) + `leads.current_supplier_{luce,gas}_name` (text), filled by BEFORE DELETE triggers on `offers` (compact offer copy) and `suppliers` (name); deleting a placeholder supplier raises `placeholder_supplier` (P0001). Trigger functions in `private`, SECURITY DEFINER, not executable by API roles. `offers.supplier_id` stays ON DELETE RESTRICT (delete a supplier's offers first) |
+| `migrations/20261023100000_activation_documents_callback.sql` | T12.1 (Phase 12 E2–E4) | Additive. `leads`: `iban`, `iban_holder_different`, `iban_holder_{first_name,last_name,tax_code}`, `document_{type,number,expiry,issuer}` (format checks, normalized and writable through the lead RPCs). `settings.callback_phone` (default `+39 095 0000000`) + public `get_callback_phone()`; `complete_lead` also returns `callback_phone`. Private bucket `lead-documents` (5 MiB, JPEG/PDF), table `lead_documents`, RPCs `register_lead_document` / `confirm_lead_document` (secret + token), anon Storage INSERT policy only for a pending 5-minute slot (`private.lead_document_upload_allowed`), admin SELECT/DELETE on the objects, SELECT on the table. No DROP; idempotent |
 | `bootstrap/comuni_01..09.json`, `bootstrap/load_comuni.mjs` | T8.1 | One-shot comuni load through the reviewer's temporary RPC `bootstrap_load_comuni` (done 2026-10-15; the RPC is now disabled as `private.bootstrap_load_comuni_disabled`, so this script no longer works) |
 | `bootstrap/verify_comuni.mjs` | T8.1 | Read-only check of the comuni in the REAL project with the publishable key (counts, zones, provinces, CAPs, spot checks, accent-insensitive search). Run from `app/`: `node supabase/bootstrap/verify_comuni.mjs` → `ALL COMUNI CHECKS PASSED` |
 | `seed.sql` | T1.4 | 14 suppliers (Block E list + 3 special options), the 8 test offers of TASKS.md T1.4, settings row. Idempotent |
@@ -53,6 +54,18 @@ Apply order: migrations in filename order, then `seed.sql`. Then (optional) run
     only ids from `config/consumption.ts`, `power_kw` ∈ {1.5, 3, 3.5, 4, 4.5, 5, 6, 10, 15} or
     NULL ("Altro"), `voltage` 220/380. `estimated_kwh_year` / `estimated_smc_year` store the
     annual figure actually used (estimated or manual, flag `manual_consumption`).
+- **Phase 12** (migration `20261023100000`): `get_callback_phone() -> text` is executable by anon
+  without the secret (only `settings.callback_phone`; the rest of `settings` stays admin-only).
+  Identity documents: `register_lead_document(p_secret, p_token, p_mime_type, p_size_bytes) ->
+  {id, lead_id, path, bucket, expires_at}` (in-progress lead, JPEG/PDF, 1 B..5 MiB, max 2
+  documents and 20 slots per lead; errors `invalid_document`, `document_limit_reached`) and
+  `confirm_lead_document(p_secret, p_token, p_document_id) -> {id, lead_id, mime_type,
+  size_bytes, created_at}` (`document_not_found`). Bucket `lead-documents` is private; the only
+  anon policy on `storage.objects` is INSERT of a name whose slot is pending, unexpired and
+  belongs to an in-progress lead (helper `private.lead_document_upload_allowed`, the reason anon
+  has USAGE on schema `private`; no other private function/table is accessible to anon, checked
+  by `data_checks.sql`). Admin: SELECT on `lead_documents`; SELECT + DELETE on the bucket objects
+  (signed URLs, cleanup). Lead delete cascades to `lead_documents`; the app removes the files.
 - `suppliers.is_placeholder`: true for the special "Fornitore attuale" options (`tutela`,
   `altro-fornitore`, `non-lo-so`); they have no offers and must be hidden from the admin
   offer-supplier selects and the loading orbit.
@@ -119,5 +132,6 @@ mkdir -p /tmp/pgl && (cd /tmp/pgl && npm i @electric-sql/pglite@0.5)
 PGLITE_DIR=/tmp/pgl node app/supabase/tests/run_local.mjs
 ```
 
-It applies all migrations, runs `seed.sql` twice (idempotency), `tests/data_checks.sql`
+It applies all migrations (the additive ones from `20261015170000` twice, idempotency), runs
+`seed.sql` twice (idempotency), `tests/data_checks.sql`
 and `tests/rls_test.sql`. Features used are available on Postgres 15 (Supabase).

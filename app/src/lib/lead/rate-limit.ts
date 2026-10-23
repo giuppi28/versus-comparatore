@@ -89,6 +89,10 @@ export const LEAD_RATE_LIMITS = {
   update: { limit: 60, windowMs: 10 * 60_000 },
   complete: { limit: 10, windowMs: 10 * 60_000 },
   clear: { limit: 30, windowMs: 10 * 60_000 },
+  /** POST /api/lead/document (identity document upload). */
+  document: { limit: 10, windowMs: 10 * 60_000 },
+  /** DELETE /api/lead/document (identity document removal). */
+  documentRemove: { limit: 10, windowMs: 10 * 60_000 },
 } as const;
 
 export type LeadRouteKey = keyof typeof LEAD_RATE_LIMITS;

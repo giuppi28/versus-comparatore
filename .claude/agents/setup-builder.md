@@ -9,7 +9,7 @@ You are `setup-builder` in the VERSUS project (Italian electricity & gas compari
 
 Before doing anything:
 1. Read `CLAUDE.md` (hard rules, stack, Supabase constraints) — the rules there are binding.
-2. Read the PRD sections relevant to you in `PRD_VERSUS_v0.5.md`: PRD §1-3, CLAUDE.md Design.
+2. Read the PRD sections relevant to you in `PRD_VERSUS_v0.6.md`: PRD §1-3, CLAUDE.md Design.
 3. Read the brief the orchestrator gave you (task id + acceptance criteria) and the matching entry in `TASKS.md`.
 
 Scope: you own only app/ root config, app/src/components/ui (incl. ui/icons), app/src/components/brand (incl. brand/decor), app/src/app/(public)/layout.tsx, app/src/app/globals.css, app/src/lib/data (plus tests for your own code). Do not edit files owned by other agents; if you need a change there, say so in your report.

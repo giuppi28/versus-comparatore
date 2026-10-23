@@ -39,3 +39,34 @@ export async function sendViaResend(
     return { ok: false, error: err instanceof Error ? err.name : "unknown" };
   }
 }
+
+/** Raw outcome of a Resend call (used by the admin test email): HTTP status and body verbatim. */
+export type ResendRawOutcome =
+  | { kind: "response"; status: number; ok: boolean; body: string }
+  | { kind: "network"; error: string };
+
+/** Like sendViaResend but returns the status and body text as received instead of swallowing them. */
+export async function sendViaResendRaw(
+  apiKey: string,
+  email: ResendEmail,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ResendRawOutcome> {
+  try {
+    const res = await fetchImpl(RESEND_ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: email.from,
+        to: [email.to],
+        subject: email.subject,
+        text: email.text,
+        html: email.html,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const body = await res.text().catch(() => "");
+    return { kind: "response", status: res.status, ok: res.ok, body };
+  } catch (err) {
+    return { kind: "network", error: err instanceof Error ? err.name : "unknown" };
+  }
+}

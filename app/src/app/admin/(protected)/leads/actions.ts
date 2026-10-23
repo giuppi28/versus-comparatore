@@ -4,13 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
-import { LeadNotFoundError } from "@/lib/data/repository";
+import { LeadDocumentNotFoundError, LeadNotFoundError } from "@/lib/data/repository";
 import {
   INITIAL_LEAD_ADMIN_STATE,
   deleteLeadsSchema,
+  leadDocumentUrlSchema,
   leadAdminFormSchema,
   type DeleteLeadsResult,
   type LeadAdminFormState,
+  type LeadDocumentUrlResult,
 } from "./schema";
 
 const text = (v: FormDataEntryValue | null) => (typeof v === "string" ? v : "");
@@ -74,10 +76,10 @@ async function deleteValidated(ids: unknown): Promise<DeleteLeadsResult> {
   const unique = [...new Set(parsed.data)];
   try {
     const repo = await getAdminRepository();
-    const deleted = await repo.deleteLeads(unique);
+    const { deleted, documentCleanupFailed } = await repo.deleteLeadsAndDocuments(unique);
     revalidatePath("/admin/leads");
     for (const id of unique) revalidatePath(`/admin/leads/${id}`);
-    return { ok: true, deleted };
+    return { ok: true, deleted, documentCleanupFailed };
   } catch {
     return { ok: false, message: "Impossibile eliminare i lead. Riprova." };
   }
@@ -94,5 +96,33 @@ export async function deleteLeadAndRedirectAction(id: string): Promise<DeleteLea
   await requireAdmin();
   const result = await deleteValidated([id]);
   if (!result.ok) return result;
-  redirect(`/admin/leads?deleted=${result.deleted}`);
+  redirect(`/admin/leads?deleted=${result.deleted}${result.documentCleanupFailed ? "&cleanup=failed" : ""}`);
+}
+
+/**
+ * Fresh short-lived (<= 300 s) signed URL of an identity document, generated on demand when the
+ * admin clicks "Anteprima" / "Scarica". Never embedded in the page. Admin only.
+ */
+export async function createLeadDocumentUrlAction(id: string, mode: string): Promise<LeadDocumentUrlResult> {
+  await requireAdmin();
+  const parsed = leadDocumentUrlSchema.safeParse({ id, mode });
+  if (!parsed.success)
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Richiesta non valida.",
+    };
+  try {
+    const repo = await getAdminRepository();
+    const url = await repo.createLeadDocumentUrl(parsed.data.id, {
+      download: parsed.data.mode === "download",
+      expiresIn: 300,
+    });
+    return { ok: true, url };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        e instanceof LeadDocumentNotFoundError ? "Documento non trovato." : "Impossibile aprire il documento. Riprova.",
+    };
+  }
 }

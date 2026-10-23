@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { confirmTitle, deletedMessage, parseDeletedParam, selectedMessage } from "./delete-notice";
+import { confirmTitle, deletedMessage, parseCleanupParam, parseDeletedParam, selectedMessage } from "./delete-notice";
 
 describe("deletedMessage", () => {
   it("uses singular and plural Italian forms", () => {
@@ -7,6 +7,18 @@ describe("deletedMessage", () => {
     expect(deletedMessage(2)).toBe("2 lead eliminati");
     expect(deletedMessage(37)).toBe("37 lead eliminati");
     expect(deletedMessage(0)).toBe("Nessun lead eliminato");
+  });
+});
+
+describe("deletedMessage with document cleanup failure", () => {
+  it("warns that some documents were not removed", () => {
+    expect(deletedMessage(2, true)).toBe("Lead eliminati, ma alcuni documenti non sono stati rimossi dall'archivio.");
+    expect(deletedMessage(1, true)).toBe("Lead eliminato, ma alcuni documenti non sono stati rimossi dall'archivio.");
+    expect(deletedMessage(0, true)).toBe("Nessun lead eliminato");
+    expect(parseCleanupParam("failed")).toBe(true);
+    expect(parseCleanupParam(["failed"])).toBe(true);
+    expect(parseCleanupParam("x")).toBe(false);
+    expect(parseCleanupParam(undefined)).toBe(false);
   });
 });
 

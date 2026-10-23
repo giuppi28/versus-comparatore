@@ -85,6 +85,29 @@ export default function PrivacyPage() {
                 Non raccogliamo dati appartenenti a categorie particolari (come i dati relativi alla
                 salute).
               </p>
+              <div className="flex flex-col gap-3">
+                <h3 className="text-lg font-semibold tracking-tight text-ink">
+                  IBAN e documento d&apos;identità (facoltativi)
+                </h3>
+                <p>
+                  Il conferimento di IBAN e documento d&apos;identità è facoltativo: puoi non fornirli.
+                  Se li indichi, li trattiamo per le seguenti finalità:
+                </p>
+                <ul className="list-disc space-y-1 pl-6">
+                  <li>
+                    identificazione del cliente per l&apos;attivazione del contratto (documento
+                    d&apos;identità);
+                  </li>
+                  <li>addebito diretto in conto (IBAN / domiciliazione bancaria).</li>
+                </ul>
+                <p>
+                  L&apos;accesso a questi dati è consentito solo al personale autorizzato. Per
+                  completare l&apos;attivazione dell&apos;offerta scelta, i dati necessari possono essere
+                  comunicati al fornitore che hai selezionato. Il documento caricato è cancellato
+                  insieme alla tua richiesta.
+                </p>
+                <p>Periodo di conservazione: [DA COMPLETARE].</p>
+              </div>
             </Section>
 
             <Section title="3. Finalità del trattamento">

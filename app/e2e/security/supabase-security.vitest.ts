@@ -6,8 +6,10 @@
  *   in app/.env.local. The key and the secret are NEVER printed, logged or put in an assertion
  *   message (all failure output goes through `redact`).
  * - Writes: exactly 2 test leads per run (first_name "TEST-SECURITY"), created through the
- *   official `create_lead` RPC. The admin can delete them from the leads list. Nothing else is
- *   created or modified (every other write attempt is expected to be rejected).
+ *   official `create_lead` RPC. The admin can delete them from the leads list. Section 8 adds
+ *   1 lead_documents row + 1 tiny object in bucket lead-documents for lead B and removes both
+ *   again through the official removal flow. Nothing else is created or modified (every other
+ *   write attempt is expected to be rejected).
  *
  * File is named *.vitest.ts (not *.test.ts) so Playwright's default testMatch ignores it.
  * Run: npm run test:security
@@ -609,5 +611,173 @@ describe("storage supplier-logos (anon)", () => {
     }
     const r = await fetch(`${BASE}/storage/v1/object/public/supplier-logos/${objectName}`);
     must(r.status === 200, `public logo read failed with HTTP ${r.status}`);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// 8. Phase 12 / 12b: callback number, identity documents (T12c.2)
+//    Reuses lead B (in progress). Writes: 1 lead_documents row + 1 tiny JPEG object in
+//    bucket lead-documents, both removed again at the end through the official removal
+//    flow (request -> Storage remove inside the window -> finish).
+// ---------------------------------------------------------------------------------------
+
+describe("settings: only the callback number is public (anon)", () => {
+  it("get_callback_phone() works without a secret and returns a phone-like string", async () => {
+    const r = await rpc("get_callback_phone", {});
+    must(r.status === 200 && typeof r.body === "string", "get_callback_phone must return a string", r);
+    must(/^\+?[0-9][0-9 ]{5,19}$/.test(r.body), "get_callback_phone returned an unexpected value", r);
+  });
+
+  it("settings columns are not readable via REST (callback_phone, notification_email, *)", async () => {
+    for (const q of ["settings?select=callback_phone", "settings?select=notification_email", "settings?select=*&id=eq.true"]) {
+      const r = await rest("GET", q);
+      must(isDenied(r) || (r.status === 200 && hasNoRows(r)), `settings readable via ${q}`, r);
+      must(!JSON.stringify(r.body).includes("@"), `settings content exposed via ${q}`, r);
+    }
+  });
+});
+
+describe("lead_documents table (anon)", () => {
+  it("select / insert / update / delete are rejected", async () => {
+    const sel = await rest("GET", "lead_documents?select=*");
+    must(isDenied(sel) || (sel.status === 200 && hasNoRows(sel)), "lead_documents readable by anon", sel);
+    const sel2 = await rest("GET", `lead_documents?lead_id=eq.${leadB.id || "00000000-0000-0000-0000-000000000000"}&select=id,object_path`);
+    must(isDenied(sel2) || (sel2.status === 200 && hasNoRows(sel2)), "lead_documents readable by lead_id filter", sel2);
+    const ins = await rest("POST", "lead_documents", {
+      body: { lead_id: leadB.id, object_path: `${leadB.id}/${"0".repeat(32)}.jpg`, mime_type: "image/jpeg", size_bytes: 1, expires_at: "2100-01-01T00:00:00Z" },
+    });
+    must(isDenied(ins), "lead_documents insert not rejected", ins);
+    const upd = await rest("PATCH", "lead_documents?id=neq.00000000-0000-0000-0000-000000000000", { body: { status: "uploaded" }, headers: { Prefer: "return=representation" } });
+    must(isDenied(upd) || (upd.status < 300 && hasNoRows(upd)), "lead_documents update not rejected", upd);
+    const del = await rest("DELETE", "lead_documents?id=neq.00000000-0000-0000-0000-000000000000", { headers: { Prefer: "return=representation" } });
+    must(isDenied(del) || (del.status < 300 && hasNoRows(del)), "lead_documents delete not rejected", del);
+  });
+
+  it("the storage policy helpers in schema private are not callable through the API", async () => {
+    for (const fn of ["lead_document_upload_allowed", "lead_document_removal_allowed"]) {
+      const r = await rpc(fn, { p_name: "x" }, { "Content-Profile": "private" });
+      must(isErrorStatus(r), `private.${fn} callable by anon`, r);
+      const r2 = await rpc(fn, { p_name: "x" });
+      must(isErrorStatus(r2), `${fn} resolvable in public`, r2);
+    }
+  });
+});
+
+describe("document RPCs require the server secret and a real token", () => {
+  const randomUuid = "6f1c7a52-3f0e-4b8e-9a51-2d7c4f0b9e11";
+  const calls = (secret: string | null, token: string | null): Array<[string, Record<string, unknown>]> => [
+    ["register_lead_document", { p_secret: secret, p_token: token, p_mime_type: "image/jpeg", p_size_bytes: 100 }],
+    ["confirm_lead_document", { p_secret: secret, p_token: token, p_document_id: randomUuid }],
+    ["request_lead_document_removal", { p_secret: secret, p_token: token, p_document_id: randomUuid }],
+    ["finish_lead_document_removal", { p_secret: secret, p_token: token, p_document_id: randomUuid }],
+  ];
+
+  it("bad / missing secret -> invalid_secret (403, 28000), even with a real token", async () => {
+    for (const secret of ["definitely-not-the-secret", "", null, createHash("sha256").update(SECRET).digest("hex")]) {
+      for (const [fn, args] of calls(secret, leadB.token || "0".repeat(64))) {
+        const r = await rpc(fn, args);
+        must(r.status === 403 && r.body?.code === "28000" && msg(r) === "invalid_secret", `${fn} accepted a bad secret`, r);
+      }
+    }
+  });
+
+  it("forged / random / completed-lead tokens -> lead_not_found", async () => {
+    const tokens: Array<[string, string | null]> = [
+      ["all-zero token", "0".repeat(64)],
+      ["random hex token", createHash("sha256").update(`forged-${Date.now()}`).digest("hex")],
+      ["B's token with the last digit changed", leadB.token.slice(0, -1) + (leadB.token.endsWith("0") ? "1" : "0")],
+      ["completed lead A's token", leadA.token],
+      ["null token", null],
+    ];
+    for (const [label, token] of tokens) {
+      for (const [fn, args] of calls(SECRET, token)) {
+        const r = await rpc(fn, args);
+        must(isRejected(r) && msg(r) === "lead_not_found", `${fn} with ${label} should be lead_not_found`, r);
+      }
+    }
+  });
+
+  it("real token + a document id that is not this lead's -> document_not_found", async () => {
+    for (const [fn, args] of calls(SECRET, leadB.token).slice(1)) {
+      const r = await rpc(fn, args);
+      must(isRejected(r) && msg(r) === "document_not_found", `${fn} with a random document id should be document_not_found`, r);
+    }
+  });
+});
+
+describe("storage lead-documents (anon)", () => {
+  // Minimal JPEG (SOI + APP0/JFIF + EOI): the bucket only checks the declared content type.
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9]);
+  const doc = { id: "", path: "" };
+  const fakePath = `00000000-0000-0000-0000-000000000000/${"ab".repeat(16)}.jpg`;
+  const ok = (r: Res) => r.status >= 200 && r.status < 300;
+
+  /** Every read / list / delete route of the Storage API must refuse `objectPath` to anon. */
+  async function expectNoAnonAccess(objectPath: string, label: string) {
+    const folder = objectPath.split("/")[0];
+    for (const prefix of ["", folder, `${folder}/`]) {
+      const l = await call("POST", "/storage/v1/object/list/lead-documents", { body: { prefix, limit: 100 } });
+      must(isErrorStatus(l) || hasNoRows(l), `${label}: bucket listing (prefix "${prefix}") exposed`, l);
+    }
+    for (const route of ["", "authenticated/", "public/"]) {
+      const g = await call("GET", `/storage/v1/object/${route}lead-documents/${objectPath}`);
+      must(!ok(g), `${label}: download via /object/${route} succeeded`, g);
+    }
+    const info = await call("GET", `/storage/v1/object/info/lead-documents/${objectPath}`);
+    must(!ok(info), `${label}: object info exposed`, info);
+    const sign = await call("POST", `/storage/v1/object/sign/lead-documents/${objectPath}`, { body: { expiresIn: 60 } });
+    must(!ok(sign) || !sign.body?.signedURL, `${label}: signed URL issued`, sign);
+    const del1 = await call("DELETE", `/storage/v1/object/lead-documents/${objectPath}`);
+    must(!(ok(del1) && JSON.stringify(del1.body ?? "").includes(objectPath)), `${label}: single delete accepted`, del1);
+    const del2 = await call("DELETE", "/storage/v1/object/lead-documents", { body: { prefixes: [objectPath] } });
+    must(!(ok(del2) && Array.isArray(del2.body) && del2.body.length > 0), `${label}: bulk delete removed something`, del2);
+    const up = await call("PUT", `/storage/v1/object/lead-documents/${objectPath}`, { raw: jpeg, headers: { "Content-Type": "image/jpeg", "x-upsert": "true" } });
+    must(!ok(up), `${label}: overwrite accepted`, up);
+  }
+
+  it("a random / non-existent path: no list, download, sign, delete or upload", async () => {
+    await expectNoAnonAccess(fakePath, "random path");
+    const up = await call("POST", `/storage/v1/object/lead-documents/${fakePath}`, { raw: jpeg, headers: { "Content-Type": "image/jpeg" } });
+    must(!ok(up), "anon upload to a path without a slot accepted", up);
+  });
+
+  it("setup: register + upload + confirm one tiny JPEG for lead B (official flow)", async () => {
+    must(TOKEN_RE.test(leadB.token), "lead B missing (token isolation suite must run first)");
+    const reg = await rpc("register_lead_document", { p_secret: SECRET, p_token: leadB.token, p_mime_type: "image/jpeg", p_size_bytes: jpeg.length });
+    must(reg.status === 200 && typeof reg.body?.path === "string" && reg.body.bucket === "lead-documents", "register_lead_document failed", reg);
+    doc.id = reg.body.id;
+    doc.path = reg.body.path;
+    must(doc.path.startsWith(`${leadB.id}/`), "slot path not in the lead folder", reg);
+    const up = await call("POST", `/storage/v1/object/lead-documents/${doc.path}`, { raw: jpeg, headers: { "Content-Type": "image/jpeg", "x-upsert": "false" } });
+    must(ok(up), "anon upload into the issued slot failed", up);
+    const conf = await rpc("confirm_lead_document", { p_secret: SECRET, p_token: leadB.token, p_document_id: doc.id });
+    must(conf.status === 200 && conf.body?.id === doc.id, "confirm_lead_document failed", conf);
+    // The slot is single use: a second upload to the same name is refused.
+    const again = await call("POST", `/storage/v1/object/lead-documents/${doc.path}`, { raw: jpeg, headers: { "Content-Type": "image/jpeg" } });
+    must(!ok(again), "second upload to a confirmed slot accepted", again);
+  });
+
+  it("a real uploaded object, no removal window: no list, download, sign, delete or overwrite", async () => {
+    must(!!doc.path, "setup did not run");
+    await expectNoAnonAccess(doc.path, "real path");
+    // The object must still exist: finish_lead_document_removal reports removed=false while it does.
+    const fin = await rpc("finish_lead_document_removal", { p_secret: SECRET, p_token: leadB.token, p_document_id: doc.id });
+    must(fin.status === 200 && fin.body?.removed === false, "the object disappeared after anon delete attempts", fin);
+  });
+
+  it("cleanup: official removal flow (request -> Storage remove in the window -> finish removes the row)", async () => {
+    must(!!doc.path, "setup did not run");
+    const req = await rpc("request_lead_document_removal", { p_secret: SECRET, p_token: leadB.token, p_document_id: doc.id });
+    must(req.status === 200 && req.body?.path === doc.path, "request_lead_document_removal failed", req);
+    // Inside the window another (non-existent) name is still not deletable / readable.
+    const other = await call("DELETE", "/storage/v1/object/lead-documents", { body: { prefixes: [fakePath] } });
+    must(!(ok(other) && Array.isArray(other.body) && other.body.length > 0), "window opened access to another name", other);
+    const rm = await call("DELETE", "/storage/v1/object/lead-documents", { body: { prefixes: [doc.path] } });
+    must(ok(rm) && Array.isArray(rm.body) && rm.body.length === 1, "removal inside the window failed", rm);
+    const fin = await rpc("finish_lead_document_removal", { p_secret: SECRET, p_token: leadB.token, p_document_id: doc.id });
+    must(fin.status === 200 && fin.body?.removed === true, "finish_lead_document_removal did not remove the row", fin);
+    const gone = await rpc("finish_lead_document_removal", { p_secret: SECRET, p_token: leadB.token, p_document_id: doc.id });
+    must(isRejected(gone) && msg(gone) === "document_not_found", "document row still present after removal", gone);
+    console.log("[security] lead-documents: 1 test object uploaded and removed again (row deleted)");
   });
 });

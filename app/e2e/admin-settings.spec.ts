@@ -77,7 +77,20 @@ test.describe("admin settings and go-live checklist", () => {
     await expect(page.getByLabel("Email per le notifiche dei nuovi lead")).toHaveValue("aldo@azienda.it");
     await shot("saved");
 
-    // Restore: empty again.
+    // Callback phone: invalid rejected, valid saved and persisted.
+    const phone = page.getByLabel("Numero da cui chiamiamo");
+    await expect(phone).toHaveValue("+39 095 0000000");
+    await phone.fill("abc");
+    await save(page, "aldo@azienda.it");
+    await expect(page.getByRole("alert").filter({ hasText: "Usa solo cifre e spazi, con + iniziale facoltativo (6–20 caratteri). Es. +39 095 1234567" })).toBeVisible();
+    await phone.fill("+39  06 7654321");
+    await save(page, "aldo@azienda.it");
+    await expect(page.getByTestId("settings-saved")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Numero da cui chiamiamo")).toHaveValue("+39 06 7654321");
+
+    // Restore defaults.
+    await page.getByLabel("Numero da cui chiamiamo").fill("+39 095 0000000");
     await save(page, "");
     await expect(page.getByTestId("notifications-disabled")).toBeVisible();
   });
@@ -131,5 +144,19 @@ test.describe("admin settings and go-live checklist", () => {
       path: `${SHOTS}/admin-settings-golive-${testInfo.project.name}.png`,
       fullPage: true,
     });
+  });
+});
+
+test.describe("admin settings: test email", () => {
+  test("button shows a clear result message (mock mode, no real send)", async ({ page }) => {
+    await login(page);
+    await page.goto("/admin/impostazioni");
+    const button = page.getByRole("button", { name: "Invia email di prova" });
+    await expect(button).toBeVisible();
+    const form = page.getByTestId("test-email-form");
+    await expect(form).toHaveAttribute("data-test-attempt", "0", { timeout: 20_000 });
+    await button.click();
+    await expect(form).toHaveAttribute("data-test-attempt", "1");
+    await expect(page.getByTestId("test-email-result")).toContainText(/configurazione mancante|Email inviata|Errore Resend|Troppi invii/);
   });
 });

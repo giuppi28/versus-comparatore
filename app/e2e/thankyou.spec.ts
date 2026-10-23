@@ -77,9 +77,10 @@ test.describe("thank-you page /grazie", () => {
     await expect(page.getByTestId("thankyou-heading")).toHaveText("Grazie, Mario!");
     await expect(
       page.getByText(
-        "Sarai ricontattato a breve da un nostro consulente per confermare l'attivazione della tua offerta.",
+        "Riceverai a breve una chiamata dal numero +39 095 0000000 da un nostro consulente per confermare l'attivazione.",
       ),
     ).toBeVisible();
+    await expect(page.getByRole("link", { name: "+39 095 0000000" })).toHaveAttribute("href", "tel:+390950000000");
 
     const summary = page.getByTestId("thankyou-summary");
     await expect(summary).toContainText("Luce");

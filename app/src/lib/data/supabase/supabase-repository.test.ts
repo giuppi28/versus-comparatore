@@ -29,7 +29,10 @@ describe("supabase repository lead RPCs", () => {
     const rpc = vi
       .fn()
       .mockResolvedValueOnce({ data: null, error: null })
-      .mockResolvedValueOnce({ data: { id: "i", token: "t", notification_email: " aldo@azienda.it " }, error: null })
+      .mockResolvedValueOnce({
+        data: { id: "i", token: "t", notification_email: " aldo@azienda.it ", callback_phone: " +39 02 1234567 " },
+        error: null,
+      })
       .mockResolvedValueOnce({ data: null, error: { message: "lead_not_found" } });
     const repo = createSupabaseRepository(fakeClient(rpc), withSecret);
     await repo.updateLead("t", { first_name: "A" });
@@ -42,20 +45,26 @@ describe("supabase repository lead RPCs", () => {
       id: "i",
       token: "t",
       notification_email: "aldo@azienda.it",
+      callback_phone: "+39 02 1234567",
     });
     expect(rpc).toHaveBeenNthCalledWith(2, "complete_lead", { p_secret: SECRET, p_token: "t", p_data: { pod: "x" } });
     await expect(repo.updateLead("bad", {})).rejects.toBeInstanceOf(LeadNotFoundError);
   });
 
-  it("complete_lead: notification_email null / missing / blank → null; one-row array accepted", async () => {
+  it("complete_lead: notification_email null / missing / blank → null, callback_phone → default; one-row array accepted", async () => {
     const rpc = vi
       .fn()
       .mockResolvedValueOnce({ data: { id: "i", token: "t", notification_email: null }, error: null })
       .mockResolvedValueOnce({ data: [{ id: "i", token: "t" }], error: null })
-      .mockResolvedValueOnce({ data: { id: "i", token: "t", notification_email: "  " }, error: null });
+      .mockResolvedValueOnce({ data: { id: "i", token: "t", notification_email: "  ", callback_phone: " " }, error: null });
     const repo = createSupabaseRepository(fakeClient(rpc), withSecret);
     for (let i = 0; i < 3; i++) {
-      expect(await repo.completeLead("t", {})).toEqual({ id: "i", token: "t", notification_email: null });
+      expect(await repo.completeLead("t", {})).toEqual({
+        id: "i",
+        token: "t",
+        notification_email: null,
+        callback_phone: "+39 095 0000000",
+      });
     }
   });
 

@@ -10,24 +10,60 @@
  *                    "surname_mismatch", "name_mismatch", "prefix", "length")
  * - "not_available"  chosen offer not active / not visible for the customer type
  * - "not_found"      comune ISTAT code unknown
+ * - "looksLikePdr"   a gas PDR typed in the POD field (pod)
+ * - "looksLikePod"   a luce POD typed in the PDR field (pdr)
+ * - IBAN codes       "empty" | "format" | "country" | "length" | "checksum" (iban)
+ * - "past"           document_expiry before today (Europe/Rome), see completion.ts
  */
 import { z } from "zod";
 import { APPLIANCES, GAS_USES, type ApplianceId, type GasUseId } from "@/config/consumption";
 import {
   validateCodiceFiscale,
+  validateIban,
   validatePartitaIva,
   validatePdr,
   validatePhone,
   validatePod,
   type ValidationResult,
 } from "@/lib/logic/validators";
-import type { LeadData } from "@/lib/data/types";
+import { DOCUMENT_TYPES, type DocumentType, type LeadData } from "@/lib/data/types";
 import { POWER_KW_OPTIONS } from "./rules";
 
 export type FieldErrors = Record<string, string>;
 
 const APPLIANCE_IDS = APPLIANCES.map((a) => a.id) as [ApplianceId, ...ApplianceId[]];
 const GAS_USE_IDS = GAS_USES.map((g) => g.id) as [GasUseId, ...GasUseId[]];
+
+/** Uppercases and removes spaces, dots and hyphens (document number). */
+export function normalizeDocumentNumber(value: string): string {
+  return value.replace(/[\s.-]+/g, "").toUpperCase();
+}
+
+/** Identity document number: 5–20 letters/digits after normalisation. */
+export function validateDocumentNumber(value: string): ValidationResult<"empty" | "format"> {
+  const v = normalizeDocumentNumber(value);
+  if (v === "") return { ok: false, error: "empty" };
+  if (!/^[A-Z0-9]{5,20}$/.test(v)) return { ok: false, error: "format" };
+  return { ok: true, value: v };
+}
+
+/** Latest accepted document expiry (DB check range ends here). */
+export const DOCUMENT_EXPIRY_MAX = "2100-12-31";
+
+/** A real calendar date "YYYY-MM-DD", not after DOCUMENT_EXPIRY_MAX. */
+export function validateIsoDate(value: string): ValidationResult<"empty" | "invalid"> {
+  const v = value.trim();
+  if (v === "") return { ok: false, error: "empty" };
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return { ok: false, error: "invalid" };
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const date = new Date(Date.UTC(y, mo - 1, d));
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== d) {
+    return { ok: false, error: "invalid" };
+  }
+  if (v > DOCUMENT_EXPIRY_MAX) return { ok: false, error: "invalid" };
+  return { ok: true, value: v };
+}
 
 /** Turns a shared validator into a zod string schema that outputs the normalised value. */
 function validated<E extends string>(validator: (v: string) => ValidationResult<E>) {
@@ -41,7 +77,31 @@ function validated<E extends string>(validator: (v: string) => ValidationResult<
   });
 }
 
+/**
+ * Like `validated`, for optional activation fields: a blank string (after trim) is
+ * stored as null instead of failing with "empty".
+ */
+function optionalValidated<E extends string>(validator: (v: string) => ValidationResult<E>) {
+  return z.string().transform((value, ctx) => {
+    if (value.trim() === "") return null;
+    const r = validator(value);
+    if (!r.ok) {
+      ctx.issues.push({ code: "custom", message: r.error, input: value });
+      return z.NEVER;
+    }
+    return r.value;
+  });
+}
+
 const text = (max: number) => z.string().trim().min(1).max(max);
+/** Optional free text: trimmed, blank → null, otherwise `min`..`max` characters. */
+const optionalText = (min: number, max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .refine((v) => v === "" || v.length >= min)
+    .transform((v) => (v === "" ? null : v));
 /** Row ids (uuid in Supabase, slugs in the mock data). */
 const rowId = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const amount = (max: number) => z.number().finite().min(0).max(max);
@@ -96,6 +156,24 @@ const activationFields = {
     .nullable(),
   voltage: z.union([z.literal(220), z.literal(380)]).nullable(),
   pdr: validated(validatePdr).nullable(),
+
+  // Step B, optional (Phase 12, PRD §10 / PHASE12_BRIEF E3–E4). Formats here; the
+  // cross-field rules (holder required + CF ↔ holder name, document all-or-nothing,
+  // expiry not in the past) are in completion.ts.
+  /** Normalised (upper case, no spaces/dots/hyphens), country length + mod-97. */
+  iban: optionalValidated(validateIban).nullable(),
+  iban_holder_different: z.boolean().nullable(),
+  iban_holder_first_name: optionalText(1, 80).nullable(),
+  iban_holder_last_name: optionalText(1, 80).nullable(),
+  /** Format + check character; name consistency in completion.ts. */
+  iban_holder_tax_code: optionalValidated((v) => validateCodiceFiscale(v)).nullable(),
+  document_type: z.enum(DOCUMENT_TYPES as [DocumentType, ...DocumentType[]]).nullable(),
+  /** Normalised (upper case, no spaces/dots/hyphens), 5–20 letters/digits. */
+  document_number: optionalValidated(validateDocumentNumber).nullable(),
+  /** ISO calendar date "YYYY-MM-DD" up to 2100-12-31 ("past" checked in completion.ts). */
+  document_expiry: optionalValidated(validateIsoDate).nullable(),
+  /** Ente di rilascio, 2–80 characters. */
+  document_issuer: optionalText(2, 80).nullable(),
 };
 
 const leadFields = { ...page1Fields, ...activationFields };
@@ -152,7 +230,7 @@ export function zodFieldErrors(error: z.ZodError, input?: unknown): FieldErrors 
     const path = issue.path[0] === "data" && issue.path.length > 1 ? issue.path.slice(1) : issue.path;
     const key = path.length ? String(path[0]) : "_body";
     let code = "invalid";
-    if (issue.code === "custom" && issue.message && /^[a-z_]+$/.test(issue.message)) {
+    if (issue.code === "custom" && issue.message && /^[a-zA-Z_]+$/.test(issue.message)) {
       code = issue.message;
     } else if (issue.code === "invalid_type" && valueAt(input, issue.path) === undefined) {
       code = "required";

@@ -42,7 +42,10 @@ describe("getAdminRepository", () => {
     createSupabaseServerClient.mockResolvedValue(client);
 
     const repo = await getAdminRepository();
-    expect(await repo.updateSettings({ notification_email: "a@b.it" })).toEqual({ notification_email: "a@b.it" });
+    expect(await repo.updateSettings({ notification_email: "a@b.it" })).toEqual({
+      notification_email: "a@b.it",
+      callback_phone: "+39 095 0000000",
+    });
     expect(client.from).toHaveBeenCalledWith("settings");
     expect(upsert).toHaveBeenCalledWith({ id: true, notification_email: "a@b.it" });
     // A new repository per call (cookies are per request).

@@ -1,7 +1,10 @@
 import { normalizeSearch } from "../normalize";
 import {
+  assertLeadDocument,
   assertSafeSvg,
   DEFAULT_COMUNI_LIMIT,
+  LeadDocumentLimitError,
+  LeadDocumentNotFoundError,
   LeadNotFoundError,
   OfferNotFoundError,
   PlaceholderSupplierError,
@@ -15,6 +18,7 @@ import type {
   Lead,
   LeadData,
   LeadCompletion,
+  LeadDocument,
   LeadOfferSnapshot,
   Offer,
   OfferInput,
@@ -24,14 +28,27 @@ import type {
   Supplier,
   SupplierInput,
 } from "../types";
-import { LEAD_HISTORY_FIELDS, LEAD_PAGE_SIZE_DEFAULT, LEAD_PAGE_SIZE_MAX } from "../types";
+import {
+  DEFAULT_CALLBACK_PHONE,
+  LEAD_HISTORY_FIELDS,
+  LEAD_PAGE_SIZE_DEFAULT,
+  LEAD_PAGE_SIZE_MAX,
+  MAX_LEAD_DOCUMENT_SLOTS,
+  MAX_LEAD_DOCUMENTS,
+} from "../types";
 import { MOCK_COMUNI, MOCK_OFFERS, MOCK_SUPPLIERS } from "./data";
 
 export interface MockSeed {
   suppliers?: Supplier[];
   offers?: Offer[];
   comuni?: Comune[];
+  /** callback_phone defaults to DEFAULT_CALLBACK_PHONE. */
   settings?: Settings;
+}
+
+/** In-memory stand-in for the private "lead-documents" bucket + lead_documents table. */
+interface MockDocument extends LeadDocument {
+  bytes: Uint8Array;
 }
 
 function emptyLead(id: string, token: string, now: string): Lead {
@@ -79,6 +96,15 @@ function emptyLead(id: string, token: string, now: string): Lead {
     pdr: null,
     privacy_consent: false,
     marketing_consent: null,
+    iban: null,
+    iban_holder_different: null,
+    iban_holder_first_name: null,
+    iban_holder_last_name: null,
+    iban_holder_tax_code: null,
+    document_type: null,
+    document_number: null,
+    document_expiry: null,
+    document_issuer: null,
     chosen_offer_luce_snapshot: null,
     chosen_offer_gas_snapshot: null,
     current_supplier_luce_name: null,
@@ -92,6 +118,15 @@ function sanitize(data: LeadData): LeadData {
   for (const k of ["id", "token", "created_at", "updated_at", "status", "notes", ...LEAD_HISTORY_FIELDS]) {
     delete copy[k];
   }
+  // Same normalization as private.apply_lead_patch (migration 20261023100000).
+  const compactUpper = (v: unknown) =>
+    typeof v === "string" ? v.replace(/\s+/g, "").toUpperCase() || null : v;
+  if ("iban" in copy) copy.iban = compactUpper(copy.iban);
+  if ("document_number" in copy) copy.document_number = compactUpper(copy.document_number);
+  if (typeof copy.iban_holder_tax_code === "string") {
+    copy.iban_holder_tax_code = copy.iban_holder_tax_code.trim().toUpperCase() || null;
+  }
+  if (copy.document_expiry === "") copy.document_expiry = null;
   return copy as LeadData;
 }
 
@@ -121,8 +156,20 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
   const suppliers = structuredClone(seed.suppliers ?? MOCK_SUPPLIERS);
   const offers = structuredClone(seed.offers ?? MOCK_OFFERS);
   const comuni = structuredClone(seed.comuni ?? MOCK_COMUNI);
-  let settings: Settings = seed.settings ?? { notification_email: null };
+  let settings: Settings = { notification_email: null, callback_phone: DEFAULT_CALLBACK_PHONE, ...seed.settings };
   const leads: Lead[] = [];
+  const documents: MockDocument[] = [];
+  /** Upload slots issued per lead id (removed documents included), like the DB 20-slot cap. */
+  const issuedSlots = new Map<string, number>();
+
+  const publicDocument = ({ bytes: _b, ...doc }: MockDocument): LeadDocument => {
+    void _b;
+    return { ...doc };
+  };
+  const currentSettings = (): Settings => ({
+    ...settings,
+    callback_phone: settings.callback_phone || DEFAULT_CALLBACK_PHONE,
+  });
 
   const supplierById = (id: string) => suppliers.find((s) => s.id === id);
 
@@ -266,8 +313,48 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       apply(lead, data);
       lead.step_reached = "completed";
       lead.status = "new";
-      // Mirrors complete_lead: the settings recipient is returned with the ref.
-      return { id: lead.id, token: lead.token, notification_email: settings.notification_email };
+      // Mirrors complete_lead: the settings recipient + callback number are returned with the ref.
+      return {
+        id: lead.id,
+        token: lead.token,
+        notification_email: settings.notification_email,
+        callback_phone: currentSettings().callback_phone!,
+      };
+    },
+
+    async getCallbackPhone() {
+      return currentSettings().callback_phone!;
+    },
+
+    async uploadLeadDocument(token, file) {
+      assertLeadDocument(file);
+      const lead = leadByToken(token);
+      // Like lock_lead_by_token: completed leads are read-only.
+      if (lead.step_reached === "completed") throw new LeadNotFoundError();
+      const issued = issuedSlots.get(lead.id) ?? 0;
+      if (documents.filter((d) => d.lead_id === lead.id).length >= MAX_LEAD_DOCUMENTS || issued >= MAX_LEAD_DOCUMENT_SLOTS) {
+        throw new LeadDocumentLimitError();
+      }
+      issuedSlots.set(lead.id, issued + 1);
+      const doc: MockDocument = {
+        id: crypto.randomUUID(),
+        lead_id: lead.id,
+        mime_type: file.mime,
+        size_bytes: file.bytes.length,
+        created_at: new Date().toISOString(),
+        bytes: new Uint8Array(file.bytes),
+      };
+      documents.push(doc);
+      return publicDocument(doc);
+    },
+
+    async removeLeadDocument(token, documentId) {
+      const lead = leadByToken(token);
+      // Like lock_lead_by_token: completed leads are read-only.
+      if (lead.step_reached === "completed") throw new LeadNotFoundError();
+      const i = documents.findIndex((d) => d.id === documentId && d.lead_id === lead.id);
+      if (i < 0) throw new LeadDocumentNotFoundError();
+      documents.splice(i, 1);
     },
 
     async listLeads() {
@@ -318,8 +405,12 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
     },
 
     async deleteLeads(ids) {
+      return (await repo.deleteLeadsAndDocuments(ids)).deleted;
+    },
+
+    async deleteLeadsAndDocuments(ids) {
       const wanted = new Set(ids);
-      if (wanted.size === 0) return 0;
+      if (wanted.size === 0) return { deleted: 0, documentCleanupFailed: false };
       let deleted = 0;
       for (let i = leads.length - 1; i >= 0; i--) {
         if (wanted.has(leads[i].id)) {
@@ -327,7 +418,25 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
           deleted++;
         }
       }
-      return deleted;
+      // Rows cascade + files removed from the in-memory "bucket".
+      for (let i = documents.length - 1; i >= 0; i--) {
+        if (wanted.has(documents[i].lead_id)) documents.splice(i, 1);
+      }
+      return { deleted, documentCleanupFailed: false };
+    },
+
+    async listLeadDocuments(leadId) {
+      return documents
+        .filter((d) => d.lead_id === leadId)
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .map(publicDocument);
+    },
+
+    async createLeadDocumentUrl(documentId) {
+      const doc = documents.find((d) => d.id === documentId);
+      if (!doc) throw new LeadDocumentNotFoundError();
+      // No signed URLs in memory: the file itself as a data: URL (preview and download).
+      return `data:${doc.mime_type};base64,${Buffer.from(doc.bytes).toString("base64")}`;
     },
 
     async listAllSuppliers() {
@@ -461,12 +570,12 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
     },
 
     async getSettings() {
-      return { ...settings };
+      return currentSettings();
     },
 
     async updateSettings(patch) {
-      settings = { ...settings, ...patch };
-      return { ...settings };
+      settings = { ...settings, ...definedOnly(patch) };
+      return currentSettings();
     },
   };
   return repo;

@@ -1,7 +1,10 @@
 import { DELETE_LEADS_MAX } from "./schema";
 
 /** "1 lead eliminato" / "N lead eliminati" (live-region feedback after a deletion). */
-export function deletedMessage(count: number): string {
+export function deletedMessage(count: number, documentCleanupFailed = false): string {
+  if (documentCleanupFailed && count > 0) {
+    return `${count === 1 ? "Lead eliminato" : "Lead eliminati"}, ma alcuni documenti non sono stati rimossi dall'archivio.`;
+  }
   if (count <= 0) return "Nessun lead eliminato";
   return count === 1 ? "1 lead eliminato" : `${count} lead eliminati`;
 }
@@ -19,3 +22,7 @@ export function parseDeletedParam(raw: string | string[] | undefined): number | 
   const n = Number.parseInt(v, 10);
   return n >= 0 && n <= DELETE_LEADS_MAX ? n : null;
 }
+
+/** Reads the `cleanup` search param set when document files could not be removed. */
+export const parseCleanupParam = (raw: string | string[] | undefined): boolean =>
+  (Array.isArray(raw) ? raw[0] : raw) === "failed";

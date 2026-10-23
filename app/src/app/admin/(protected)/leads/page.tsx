@@ -4,7 +4,7 @@ import { getAdminRepository } from "@/lib/data/admin";
 import { LeadFilters } from "./LeadFilters";
 import { LeadList } from "./LeadList";
 import { LEAD_ROW_FIELDS, type LeadRowData } from "./row-data";
-import { deletedMessage, parseDeletedParam } from "./delete-notice";
+import { deletedMessage, parseCleanupParam, parseDeletedParam } from "./delete-notice";
 import { fetchLeadList, listHref, parseListParams } from "./list-params";
 
 export const metadata: Metadata = { title: "Lead — Area riservata VERSUS" };
@@ -18,6 +18,7 @@ export default async function AdminLeadsPage({
   const rawParams = await searchParams;
   const params = parseListParams(rawParams);
   const deleted = parseDeletedParam(rawParams.deleted);
+  const cleanupFailed = deleted !== null && deleted > 0 && parseCleanupParam(rawParams.cleanup);
   const repo = await getAdminRepository();
   const result = await fetchLeadList(repo, params);
 
@@ -40,7 +41,12 @@ export default async function AdminLeadsPage({
         {result.total === 1 ? "1 lead" : `${result.total} lead`}
       </p>
       {/* Keyed by filters + page: changing them clears the selection and any notice. */}
-      <LeadList key={listHref(params)} rows={rows} initialNotice={deleted === null ? null : deletedMessage(deleted)} />
+      <LeadList
+        key={listHref(params)}
+        rows={rows}
+        initialNotice={deleted === null ? null : deletedMessage(deleted, cleanupFailed)}
+        initialNoticeWarning={cleanupFailed}
+      />
       {result.pageCount > 1 && (
         <nav aria-label="Pagine" className="flex items-center justify-between gap-3">
           {result.page > 1 ? (

@@ -82,6 +82,9 @@ export type ServiceType = "cambio_fornitore" | "subentro" | "voltura" | "primo_a
 export type HousingTitle = "proprietario" | "inquilino" | "usufruttuario" | "altro";
 export type SqmRange = "lt60" | "60_90" | "90_120" | "gt120";
 export type Voltage = 220 | 380;
+/** Identity document type (activation step B, optional). */
+export type DocumentType = "carta_identita" | "patente" | "passaporto";
+export const DOCUMENT_TYPES: readonly DocumentType[] = ["carta_identita", "patente", "passaporto"];
 
 /**
  * Compact copy of a chosen offer, written into the lead by the DB trigger
@@ -168,6 +171,25 @@ export interface Lead {
   privacy_consent: boolean;
   marketing_consent: boolean | null;
 
+  // Activation step B, optional (Phase 12, migration 20261023100000). Written through the
+  // lead functions; the DB normalizes (IBAN / document number: no spaces, upper case; tax
+  // code upper case) and checks formats only. Mod-97, CF check char and name consistency,
+  // expiry not in the past are validated by the app.
+  /** IBAN for direct debit, e.g. "IT60X0542811101000000123456". */
+  iban: string | null;
+  /** The bank account holder is not the lead holder (then iban_holder_* are set). */
+  iban_holder_different: boolean | null;
+  iban_holder_first_name: string | null;
+  iban_holder_last_name: string | null;
+  /** Codice fiscale of the bank account holder. */
+  iban_holder_tax_code: string | null;
+  document_type: DocumentType | null;
+  document_number: string | null;
+  /** ISO date "YYYY-MM-DD". */
+  document_expiry: string | null;
+  /** Issuing authority (Ente di rilascio). */
+  document_issuer: string | null;
+
   // History kept when the referenced offer / supplier is deleted (DB triggers, Phase 11).
   // Show them when the live chosen_offer_* / current_supplier_* is null.
   /** Copy of the chosen luce offer, written when that offer was deleted. */
@@ -197,11 +219,72 @@ export interface LeadRef {
  */
 export interface LeadCompletion extends LeadRef {
   notification_email: string | null;
+  /** settings.callback_phone (DEFAULT_CALLBACK_PHONE when the DB returns none). */
+  callback_phone: string;
 }
+
+/** Default "Numero da cui chiamiamo" (settings.callback_phone default in the DB). */
+export const DEFAULT_CALLBACK_PHONE = "+39 095 0000000";
 
 /** Global settings (single row). */
 export interface Settings {
   notification_email: string | null;
+  /**
+   * Number the consultant calls from (thank-you page). Always present in the result of
+   * getSettings / updateSettings (DEFAULT_CALLBACK_PHONE when unset); optional only so that
+   * partial Settings objects stay assignable. DB check: digits, spaces, leading "+", 6–20 chars.
+   */
+  callback_phone?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Lead documents (identity document uploads, Phase 12)
+// ---------------------------------------------------------------------------
+
+export type LeadDocumentMime = "image/jpeg" | "application/pdf";
+export const LEAD_DOCUMENT_MIME_TYPES: readonly LeadDocumentMime[] = ["image/jpeg", "application/pdf"];
+/** Max size per file (bucket limit, 5 MiB). */
+export const MAX_LEAD_DOCUMENT_BYTES = 5 * 1024 * 1024;
+/** Max documents per lead (removed documents free their slot). */
+export const MAX_LEAD_DOCUMENTS = 2;
+/** Abuse cap: upload slots issued per lead, removed documents included (DB: register_lead_document). */
+export const MAX_LEAD_DOCUMENT_SLOTS = 20;
+/** Max lifetime of an admin signed URL, in seconds. */
+export const LEAD_DOCUMENT_URL_MAX_SECONDS = 300;
+/** Private Supabase Storage bucket holding the documents. */
+export const LEAD_DOCUMENT_BUCKET = "lead-documents";
+
+/** File handed to Repository.uploadLeadDocument (bytes already read by the server route). */
+export interface LeadDocumentFile {
+  mime: LeadDocumentMime;
+  bytes: Uint8Array;
+}
+
+/** An uploaded identity document (metadata only; the bytes stay in private storage). */
+export interface LeadDocument {
+  id: string;
+  lead_id: string;
+  mime_type: LeadDocumentMime;
+  size_bytes: number;
+  created_at: string;
+}
+
+export interface LeadDocumentUrlOptions {
+  /** Signed URL that downloads the file (Content-Disposition: attachment). Default false (inline preview). */
+  download?: boolean;
+  /** Lifetime in seconds, clamped to 1..300. Default 300. */
+  expiresIn?: number;
+}
+
+/** Result of Repository.deleteLeadsAndDocuments. */
+export interface LeadDeletion {
+  /** Lead rows deleted. */
+  deleted: number;
+  /**
+   * True when the lead rows were deleted but removing their files from Storage failed
+   * (orphan files are left in the private bucket under "<lead_id>/"; remove them later).
+   */
+  documentCleanupFailed: boolean;
 }
 
 export type SupplierInput = Omit<Supplier, "id" | "is_placeholder"> & { id?: string; is_placeholder?: boolean };

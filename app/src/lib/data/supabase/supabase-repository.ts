@@ -2,9 +2,16 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { isStorageLogoPath } from "../logo";
 import { normalizeSearch } from "../normalize";
 import {
+  assertLeadDocument,
+  isUuid,
   assertSafeSvg,
   DEFAULT_COMUNI_LIMIT,
+  InvalidLeadDocumentError,
   LeadApiSecretError,
+  LeadDocumentLimitError,
+  LeadDocumentNotFoundError,
+  leadDocumentFileName,
+  leadDocumentUrlSeconds,
   LeadNotFoundError,
   OfferNotFoundError,
   PlaceholderSupplierError,
@@ -19,14 +26,22 @@ import type {
   Comune,
   Lead,
   LeadCompletion,
+  LeadDocument,
+  LeadDocumentMime,
   LeadOfferSnapshot,
   LeadQuery,
   LeadRef,
   Offer,
   OfferWithSupplier,
+  Settings,
   Supplier,
 } from "../types";
-import { LEAD_PAGE_SIZE_DEFAULT, LEAD_PAGE_SIZE_MAX } from "../types";
+import {
+  DEFAULT_CALLBACK_PHONE,
+  LEAD_DOCUMENT_BUCKET,
+  LEAD_PAGE_SIZE_DEFAULT,
+  LEAD_PAGE_SIZE_MAX,
+} from "../types";
 
 /**
  * DB CONTRACT this implementation codes against (db-builder must match):
@@ -49,6 +64,26 @@ import { LEAD_PAGE_SIZE_DEFAULT, LEAD_PAGE_SIZE_MAX } from "../types";
  *   leads.chosen_offer_*_snapshot and a deleted supplier's name into
  *   leads.current_supplier_*_name; deleting a placeholder supplier raises
  *   "placeholder_supplier: ..." (P0001); offers.supplier_id is ON DELETE RESTRICT (23001)
+ * - Phase 12 (migration 20261023100000):
+ *   - leads: iban, iban_holder_*, document_* columns (writable through the lead RPCs)
+ *   - settings.callback_phone; rpc get_callback_phone() -> text (anon); complete_lead also
+ *     returns callback_phone
+ *   - rpc register_lead_document(p_secret, p_token, p_mime_type, p_size_bytes)
+ *       -> { id, lead_id, path, bucket, expires_at }   (errors invalid_document /
+ *          document_limit_reached / lead_not_found / invalid_secret)
+ *   - private bucket "lead-documents": anon may INSERT only the issued path while its
+ *     slot is pending (5 min); admin SELECT (signed URLs) + DELETE
+ *   - rpc confirm_lead_document(p_secret, p_token, p_document_id)
+ *       -> { id, lead_id, mime_type, size_bytes, created_at }   (error document_not_found)
+ *   - table lead_documents (admin SELECT only; cascades with the lead)
+ * - Phase 12b (migration 20261023110000), customer removal:
+ *   - rpc request_lead_document_removal(p_secret, p_token, p_document_id)
+ *       -> { id, path, bucket }   (opens a 1-minute removal window on an uploaded document)
+ *   - Storage remove([path]) with the anon key: anon SELECT + DELETE allowed only on the
+ *     object of an open window of an in-progress lead
+ *   - rpc finish_lead_document_removal(p_secret, p_token, p_document_id)
+ *       -> { id, removed }   (removed = false: the object still exists, row kept)
+ *   - errors document_not_found / lead_not_found / invalid_secret
  */
 
 export interface SupabaseConfig {
@@ -93,7 +128,39 @@ function fail(error: { message: string; code?: string }, ctx?: "supplier" | "off
   if (ctx === "lead" && (error.code === "28000" || /invalid_secret/i.test(error.message))) throw new LeadApiSecretError("invalid");
   if (/lead_not_found/i.test(error.message)) throw new LeadNotFoundError();
   if (/privacy_consent_required/i.test(error.message)) throw new PrivacyConsentRequiredError();
+  if (/document_limit_reached/i.test(error.message)) throw new LeadDocumentLimitError();
+  if (/invalid_document/i.test(error.message)) throw new InvalidLeadDocumentError("type");
+  if (/document_not_found/i.test(error.message)) throw new LeadDocumentNotFoundError();
   throw new Error(error.message);
+}
+
+/** PostgREST / Postgres "relation does not exist" (migration not applied yet). */
+function isMissingRelation(error: { code?: string }): boolean {
+  return error.code === "PGRST205" || error.code === "42P01";
+}
+
+function toSettings(row: Record<string, unknown> | null | undefined): Settings {
+  const phone = row?.callback_phone;
+  return {
+    notification_email: (row?.notification_email as string | null | undefined) ?? null,
+    callback_phone: typeof phone === "string" && phone.trim() !== "" ? phone.trim() : DEFAULT_CALLBACK_PHONE,
+  };
+}
+
+const LEAD_DOCUMENT_COLUMNS = "id, lead_id, mime_type, size_bytes, created_at";
+
+function toLeadDocument(row: unknown): LeadDocument {
+  const r = firstRow(row) as Record<string, unknown> | null | undefined;
+  if (!r || typeof r.id !== "string" || typeof r.lead_id !== "string") {
+    throw new Error("Unexpected response from lead document function");
+  }
+  return {
+    id: r.id,
+    lead_id: r.lead_id,
+    mime_type: r.mime_type as LeadDocumentMime,
+    size_bytes: Number(r.size_bytes),
+    created_at: String(r.created_at),
+  };
 }
 
 /** Errors of a supplier DELETE (trigger / RESTRICT) mapped to typed errors. */
@@ -123,10 +190,13 @@ function toRef(data: unknown): LeadRef {
 
 function toCompletion(data: unknown): LeadCompletion {
   const ref = toRef(data);
-  const email = (firstRow(data) as { notification_email?: unknown }).notification_email;
+  const row = firstRow(data) as { notification_email?: unknown; callback_phone?: unknown };
+  const email = row.notification_email;
+  const phone = row.callback_phone;
   return {
     ...ref,
     notification_email: typeof email === "string" && email.trim() !== "" ? email.trim() : null,
+    callback_phone: typeof phone === "string" && phone.trim() !== "" ? phone.trim() : DEFAULT_CALLBACK_PHONE,
   };
 }
 
@@ -135,15 +205,26 @@ function isObject(v: unknown): v is Record<string, unknown> {
 }
 
 /**
- * Lead row -> Lead. The history columns (migration 20261015170000) default to null, so
- * the app also works against a DB where that migration is not applied yet.
+ * Lead row -> Lead. The history columns (migration 20261015170000) and the Phase 12
+ * columns (migration 20261023100000) default to null, so the app also works against a DB
+ * where those migrations are not applied yet.
  */
 function toLead(row: unknown): Lead {
   const r = row as Record<string, unknown>;
   const snapshot = (v: unknown) => (isObject(v) ? (v as unknown as LeadOfferSnapshot) : null);
   const text = (v: unknown) => (typeof v === "string" && v !== "" ? v : null);
+  const bool = (v: unknown) => (typeof v === "boolean" ? v : null);
   return {
     ...(r as unknown as Lead),
+    iban: text(r.iban),
+    iban_holder_different: bool(r.iban_holder_different),
+    iban_holder_first_name: text(r.iban_holder_first_name),
+    iban_holder_last_name: text(r.iban_holder_last_name),
+    iban_holder_tax_code: text(r.iban_holder_tax_code),
+    document_type: text(r.document_type) as Lead["document_type"],
+    document_number: text(r.document_number),
+    document_expiry: text(r.document_expiry),
+    document_issuer: text(r.document_issuer),
     chosen_offer_luce_snapshot: snapshot(r.chosen_offer_luce_snapshot),
     chosen_offer_gas_snapshot: snapshot(r.chosen_offer_gas_snapshot),
     current_supplier_luce_name: text(r.current_supplier_luce_name),
@@ -248,6 +329,21 @@ export function createSupabaseRepository(
     return !removed.error && !listed.error;
   }
 
+  /** Removes document objects (chunks of 1000 = Storage API limit). False on any failure. */
+  async function removeDocumentObjects(paths: string[]): Promise<boolean> {
+    const bucket = client.storage.from(LEAD_DOCUMENT_BUCKET);
+    let ok = true;
+    for (let i = 0; i < paths.length; i += 1000) {
+      try {
+        const res = await bucket.remove(paths.slice(i, i + 1000));
+        if (res.error) ok = false;
+      } catch {
+        ok = false;
+      }
+    }
+    return ok;
+  }
+
   const repo: Repository = {
     async listActiveSuppliers() {
       const { data, error } = await client
@@ -335,6 +431,77 @@ export function createSupabaseRepository(
       return toCompletion(res);
     },
 
+    async getCallbackPhone() {
+      try {
+        const { data, error } = await client.rpc("get_callback_phone");
+        if (error) return DEFAULT_CALLBACK_PHONE;
+        const value = firstRow(data);
+        return typeof value === "string" && value.trim() !== "" ? value.trim() : DEFAULT_CALLBACK_PHONE;
+      } catch {
+        return DEFAULT_CALLBACK_PHONE;
+      }
+    },
+
+    async uploadLeadDocument(token, file) {
+      assertLeadDocument(file);
+      const secret = leadSecret();
+      // 1. One-time upload slot (checks secret, in-progress lead, type, size, max 2).
+      const reg = await client.rpc("register_lead_document", {
+        p_secret: secret,
+        p_token: token,
+        p_mime_type: file.mime,
+        p_size_bytes: file.bytes.length,
+      });
+      if (reg.error) fail(reg.error, "lead");
+      const slot = firstRow(reg.data) as { id?: unknown; path?: unknown } | null;
+      if (!slot || typeof slot.id !== "string" || typeof slot.path !== "string") {
+        throw new Error("Unexpected response from register_lead_document");
+      }
+      // 2. Bytes to exactly that path (anon INSERT policy; never overwrites).
+      const up = await client.storage
+        .from(LEAD_DOCUMENT_BUCKET)
+        .upload(slot.path, file.bytes, { contentType: file.mime, upsert: false });
+      if (up.error) throw new Error(`Document upload failed: ${up.error.message}`);
+      // 3. Close the slot.
+      const conf = await client.rpc("confirm_lead_document", {
+        p_secret: secret,
+        p_token: token,
+        p_document_id: slot.id,
+      });
+      if (conf.error) fail(conf.error, "lead");
+      return toLeadDocument(conf.data);
+    },
+
+    async removeLeadDocument(token, documentId) {
+      // A malformed id would fail the uuid cast (22P02): same as an unknown document.
+      if (!isUuid(documentId)) throw new LeadDocumentNotFoundError();
+      const secret = leadSecret();
+      const args = { p_secret: secret, p_token: token, p_document_id: documentId };
+      // 1. Removal window on exactly this document (secret, in-progress lead, own document).
+      const req = await client.rpc("request_lead_document_removal", args);
+      if (req.error) fail(req.error, "lead");
+      const target = firstRow(req.data) as { path?: unknown } | null;
+      if (!target || typeof target.path !== "string") {
+        throw new Error("Unexpected response from request_lead_document_removal");
+      }
+      // 2. The object (Storage API: Supabase forbids SQL deletes on storage.objects).
+      let storageError: string | null = null;
+      try {
+        const rm = await client.storage.from(LEAD_DOCUMENT_BUCKET).remove([target.path]);
+        if (rm.error) storageError = rm.error.message;
+      } catch (err) {
+        storageError = err instanceof Error ? err.message : "unknown error";
+      }
+      // 3. Always finish: deletes the row only if the object is really gone, otherwise keeps
+      //    it and closes the window (retry-safe in both cases).
+      const fin = await client.rpc("finish_lead_document_removal", args);
+      if (fin.error) fail(fin.error, "lead");
+      const done = firstRow(fin.data) as { removed?: unknown } | null;
+      if (!done || done.removed !== true) {
+        throw new Error(`Document removal failed: ${storageError ?? "object still present"}`);
+      }
+    },
+
     // ---- Admin: require an authenticated admin session on `client` (RLS) ----
     async listLeads() {
       const { data, error } = await client
@@ -410,11 +577,71 @@ export function createSupabaseRepository(
     },
 
     async deleteLeads(ids) {
+      return (await repo.deleteLeadsAndDocuments(ids)).deleted;
+    },
+
+    async deleteLeadsAndDocuments(ids) {
       const unique = [...new Set(ids)];
-      if (unique.length === 0) return 0;
+      if (unique.length === 0) return { deleted: 0, documentCleanupFailed: false };
+      // 1. Every object path ever issued for these leads (pending slots too: an upload may
+      //    have succeeded without confirmation). Read BEFORE the rows cascade away; a read
+      //    failure aborts so no file is ever orphaned silently.
+      let docs: Array<{ lead_id: string; object_path: string }> = [];
+      const docRes = await client.from("lead_documents").select("lead_id, object_path").in("lead_id", unique);
+      if (docRes.error) {
+        if (!isMissingRelation(docRes.error)) fail(docRes.error);
+      } else {
+        docs = (docRes.data ?? []) as typeof docs;
+      }
+      // 2. The rows (lead_documents cascade).
       const { data, error } = await client.from("leads").delete().in("id", unique).select("id");
       if (error) fail(error);
-      return (data ?? []).length;
+      const deletedIds = new Set(((data ?? []) as Array<{ id: string }>).map((r) => r.id));
+      // 3. The files of the deleted leads (Supabase forbids SQL deletes on storage.objects).
+      const paths = docs.filter((d) => deletedIds.has(d.lead_id)).map((d) => d.object_path);
+      const documentCleanupFailed = paths.length > 0 && !(await removeDocumentObjects(paths));
+      return { deleted: deletedIds.size, documentCleanupFailed };
+    },
+
+    async listLeadDocuments(leadId) {
+      const { data, error } = await client
+        .from("lead_documents")
+        .select(LEAD_DOCUMENT_COLUMNS)
+        .eq("lead_id", leadId)
+        .eq("status", "uploaded")
+        .order("created_at");
+      if (error) {
+        if (isMissingRelation(error)) return [];
+        fail(error);
+      }
+      return ((data ?? []) as unknown[]).map(toLeadDocument);
+    },
+
+    async createLeadDocumentUrl(documentId, options) {
+      const { data, error } = await client
+        .from("lead_documents")
+        .select("id, object_path, mime_type")
+        .eq("id", documentId)
+        .eq("status", "uploaded")
+        .maybeSingle();
+      if (error) {
+        // Malformed uuid (22P02) or missing table: same as not found.
+        if (isMissingRelation(error) || error.code === "22P02") throw new LeadDocumentNotFoundError();
+        fail(error);
+      }
+      if (!data) throw new LeadDocumentNotFoundError();
+      const row = data as { id: string; object_path: string; mime_type: LeadDocumentMime };
+      const signed = await client.storage
+        .from(LEAD_DOCUMENT_BUCKET)
+        .createSignedUrl(
+          row.object_path,
+          leadDocumentUrlSeconds(options),
+          options?.download ? { download: leadDocumentFileName(row) } : undefined,
+        );
+      if (signed.error || !signed.data?.signedUrl) {
+        throw new Error(`Signed URL failed: ${signed.error?.message ?? "no URL"}`);
+      }
+      return signed.data.signedUrl;
     },
 
     async listAllSuppliers() {
@@ -601,7 +828,7 @@ export function createSupabaseRepository(
     async getSettings() {
       const { data, error } = await client.from("settings").select("*").limit(1).maybeSingle();
       if (error) fail(error);
-      return { notification_email: (data?.notification_email as string | null) ?? null };
+      return toSettings(data);
     },
 
     async updateSettings(patch) {
@@ -612,7 +839,7 @@ export function createSupabaseRepository(
         .select("*")
         .single();
       if (error) fail(error);
-      return { notification_email: (data.notification_email as string | null) ?? null };
+      return toSettings(data);
     },
   };
   return repo;

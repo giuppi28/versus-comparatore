@@ -1,6 +1,6 @@
 # PHASE 10 BRIEF — Visual upgrade (approved by Giuseppe, 2026-10-15)
 
-This brief is approved by Giuseppe. Where it conflicts with `PRD_VERSUS_v0.5.md` on **visual/layout matters only** (§6 Page 1 layout, §7 loading screen, §8 title, §10 option cards, §11 thank-you visuals, header/brand), this brief wins. Business logic, data, security, copy rules and flows of the PRD are unchanged. At the end the orchestrator records the visual changes in the PRD as v0.5.2 (Giuseppe asked for it).
+This brief is approved by Giuseppe. Where it conflicts with `PRD_VERSUS_v0.6.md` on **visual/layout matters only** (§6 Page 1 layout, §7 loading screen, §8 title, §10 option cards, §11 thank-you visuals, header/brand), this brief wins. Business logic, data, security, copy rules and flows of the PRD are unchanged. At the end the orchestrator records the visual changes in the PRD as v0.5.2 (Giuseppe asked for it).
 
 Current screenshots (before): `app/e2e/screenshots/*-1440.png` and `*-390.png`.
 Brand sources: `app/public/brand/versus_icona.svg`, `versus_logo_nero.svg` (originals in the read-only source folder `versus elementi/versus-logo-svg/`). Supplier logos: `logopack/black/*.svg` (black, already normalized) and `logopack/color/`.

@@ -64,10 +64,19 @@ function RowCheck({
  * Selection = rows of the visible page; the parent re-mounts this component (key) when the
  * filters or the page change, which clears the selection and the notice.
  */
-export function LeadList({ rows, initialNotice = null }: { rows: LeadListRow[]; initialNotice?: string | null }) {
+export function LeadList({
+  rows,
+  initialNotice = null,
+  initialNoticeWarning = false,
+}: {
+  rows: LeadListRow[];
+  initialNotice?: string | null;
+  initialNoticeWarning?: boolean;
+}) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [confirmIds, setConfirmIds] = useState<string[] | null>(null);
   const [notice, setNotice] = useState<string | null>(initialNotice);
+  const [noticeWarning, setNoticeWarning] = useState(initialNoticeWarning);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -117,7 +126,8 @@ export function LeadList({ rows, initialNotice = null }: { rows: LeadListRow[]; 
     startTransition(async () => {
       const result = await deleteLeadsAction(confirmIds);
       if (result.ok) {
-        setNotice(deletedMessage(result.deleted));
+        setNotice(deletedMessage(result.deleted, result.documentCleanupFailed));
+        setNoticeWarning(result.documentCleanupFailed);
         setSelected(new Set());
         setConfirmIds(null);
       } else {
@@ -148,7 +158,14 @@ export function LeadList({ rows, initialNotice = null }: { rows: LeadListRow[]; 
         role="status"
         aria-live="polite"
         data-testid="lead-delete-notice"
-        className={notice ? "rounded-control bg-success-soft px-4 py-3 font-semibold text-success" : "sr-only"}
+        data-warning={noticeWarning ? "true" : undefined}
+        className={
+          notice
+            ? noticeWarning
+              ? "rounded-control bg-warning-soft px-4 py-3 font-semibold text-warning"
+              : "rounded-control bg-success-soft px-4 py-3 font-semibold text-success"
+            : "sr-only"
+        }
       >
         {notice}
       </p>

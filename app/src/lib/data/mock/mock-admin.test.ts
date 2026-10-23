@@ -219,11 +219,23 @@ describe("offers admin", () => {
 
 describe("settings", () => {
   it("reads and updates notification_email", async () => {
-    expect(await repo.getSettings()).toEqual({ notification_email: null });
+    const phone = "+39 095 0000000";
+    expect(await repo.getSettings()).toEqual({ notification_email: null, callback_phone: phone });
     expect(await repo.updateSettings({ notification_email: "aldo@example.it" })).toEqual({
       notification_email: "aldo@example.it",
+      callback_phone: phone,
     });
     expect((await repo.getSettings()).notification_email).toBe("aldo@example.it");
-    expect(await repo.updateSettings({ notification_email: null })).toEqual({ notification_email: null });
+    expect(await repo.updateSettings({ notification_email: null })).toEqual({ notification_email: null, callback_phone: phone });
+  });
+
+  it("reads and updates callback_phone (public getter, completion result)", async () => {
+    expect(await repo.getCallbackPhone()).toBe("+39 095 0000000");
+    expect(await repo.updateSettings({ callback_phone: "+39 02 1234567" })).toMatchObject({ callback_phone: "+39 02 1234567" });
+    // undefined in a patch changes nothing
+    expect(await repo.updateSettings({ callback_phone: undefined })).toMatchObject({ callback_phone: "+39 02 1234567" });
+    expect(await repo.getCallbackPhone()).toBe("+39 02 1234567");
+    const ref = await repo.createLead({ privacy_consent: true });
+    expect((await repo.completeLead(ref.token, {})).callback_phone).toBe("+39 02 1234567");
   });
 });
