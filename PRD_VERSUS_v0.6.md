@@ -1,7 +1,7 @@
-# VERSUS — Comparatore luce e gas — PRD v0.5
+# VERSUS — Comparatore luce e gas — PRD v0.6
 
 Status: brainstorming complete — ready to build.
-Last update: 2026-10-15 — v0.5.2: visual upgrade (Phase 10, `PHASE10_BRIEF.md`) — visual/layout notes only; v0.5.1: hosting Vercel, Cloudflare removed (no Turnstile; rate limiting kept)
+Last update: 2026-10-23 — v0.6: Phase 12 (activation data, callback number, Resend test email); 2026-10-15 — v0.5.2: visual upgrade (Phase 10, `PHASE10_BRIEF.md`) — visual/layout notes only; v0.5.1: hosting Vercel, Cloudflare removed (no Turnstile; rate limiting kept)
 Owner: Giuseppe Pappalardo (SiteXP) — Client: Aldo (energy broker)
 
 The previous demo is discarded. Reference material lives in the read-only folder `/Users/pippo/Desktop/versus elementi/`; the project lives in `/Users/pippo/Desktop/versus-comparatore/`. Everything is rebuilt from scratch.
@@ -41,7 +41,7 @@ Out of scope v1: bill upload, offer PDF documents, customer emails, variable/ind
 | Hosting | Vercel Hobby + custom domain | Hobby is for non-commercial use; Pro (paid) may be needed for commercial use |
 | Database | Supabase Postgres (Free) | |
 | Auth | Supabase Auth, email + password | single admin user (Aldo) |
-| File storage | Supabase Storage | supplier SVG logos only |
+| File storage | Supabase Storage | supplier SVG logos (public) + customers' ID documents (private bucket `lead-documents`) |
 | Email | Resend (free tier) | new-lead notification to Aldo only |
 | Anti-spam | None for now | server-side rate limiting; add anti-spam later only if spam appears |
 | Domain | ~10–15 €/year | only unavoidable cost |
@@ -73,6 +73,8 @@ Supabase free projects pause after 7 days of inactivity → daily Vercel Cron Jo
 - Status: new / contacted / in progress / closed. Internal notes.
 - Completed leads clearly distinguished from abandoned/partial ones.
 - Email notification to Aldo on each completed lead (address = Aldo's, configurable in settings).
+- Lead detail shows IBAN (+ different account holder), ID document data and uploaded files (preview/download via short-lived signed URL, ≤5 min), and the distributor recognized from POD/PDR ("non riconosciuto" otherwise). Deleting a lead deletes its files.
+- Admin can delete leads (single/bulk), offers and suppliers (with their offers); leads keep a snapshot of the deleted offer/supplier (Phase 11).
 
 ### 5.2 Suppliers
 - Create / edit suppliers, upload SVG logo (sanitized). Flags: sells luce, sells gas, active.
@@ -95,6 +97,11 @@ Supabase free projects pause after 7 days of inactivity → daily Vercel Cron Jo
   - details / conditions text
   - featured (In evidenza), active, price_verified
 - **VAT excluded** from the estimate.
+
+### 5.4 Settings
+- Notification email (address for new completed leads).
+- "Invia email di prova": sends a test email via Resend to the saved notification email and shows Resend's response verbatim (id or error). Warning banner when the sender is `@resend.dev` ("Il mittente di prova consegna solo al proprietario dell'account Resend."). Rate limited (1 send / 30 s, 10 / hour per admin).
+- "Numero da cui chiamiamo" (default `+39 095 0000000`): shown on the thank-you page (§11). Validated: digits, spaces and `+` only, 6–20 characters.
 
 ---
 
@@ -202,7 +209,7 @@ Luce + Gas: modal for each choice; activation form follows the gas choice.
 
 ## 10. Activation form
 
-Two columns: form left, **"La tua offerta" sticky summary right** (logo, Spesa mensile large, Prodotto, Attivazione 0,00 €, Cambio contatore NO, Bloccato N mesi, Prezzo/kWh and/or /Smc, Quota fissa; dual: both offers + total). No documents, no payment method, no Club/points.
+Two columns: form left, **"La tua offerta" sticky summary right** (logo, Spesa mensile large, Prodotto, Attivazione 0,00 €, Cambio contatore NO, Bloccato N mesi, Prezzo/kWh and/or /Smc, Quota fissa; dual: both offers + total). Payment (IBAN) and identity document are optional in step B (see below). No Club/points.
 
 *v0.5.2:* every option card in steps A and B has a decorative icon (same set as Page 1).
 
@@ -218,6 +225,9 @@ Two columns: form left, **"La tua offerta" sticky summary right** (logo, Spesa m
 - Comune di fornitura (prefilled) + CAP; Indirizzo + civico; "Sei residente a questo indirizzo?" Sì / No
 - **Luce**: Attuale fornitore (prefilled; hidden for Subentro / Primo allaccio), **POD** (starts with IT, 14 chars, accept 15 → keep 14; not required for Primo allaccio), Potenza impegnata (1,5 / 3 / 3,5 / 4 / 4,5 / 5 / 6 / 10 / 15 kW / Altro; default 3), Livello di tensione **220 V (monofase) / 380 V (trifase)**. No spesa annua.
 - **Gas**: Attuale fornitore (prefilled; hidden for Subentro / Primo allaccio), **PDR** (14 digits; not required for Primo allaccio), usi del gas (prefilled, editable). No spesa annua.
+- **POD / PDR**: input normalized (uppercase, no spaces/dots); a PDR typed in the POD field (or vice versa) gets a specific message; non-blocking warning when the POD distributor clearly does not serve the comune (mapped cases only: Roma/areti, Milano/unareti). No SII integration.
+- **Pagamento (facoltativo)**: IBAN (format + mod-97; no bank lookup); checkbox "L'intestatario del conto è diverso dal titolare" → required Nome, Cognome, Codice fiscale of the holder (CF consistent with the holder's names).
+- **Documento d'identità (facoltativo)**: tipo (Carta d'identità / Patente / Passaporto), numero, data di scadenza (not past), ente di rilascio — the four data fields are all-or-nothing — and/or upload JPG/PDF, magic-byte checked, max 4 MB (Vercel request-body limit ≈4.5 MB; spec asked 5 MB), max 2 files, via a server route bound to the lead token into a private bucket.
 - Prosegui (submit) / Indietro
 
 **On submit:** lead overwritten/completed (`step_reached = completed`, status = new) → email notification to Aldo → thank-you page.
@@ -226,7 +236,7 @@ Two columns: form left, **"La tua offerta" sticky summary right** (logo, Spesa m
 
 ## 11. Thank-you page
 
-"Grazie, [Nome]!" — "Sarai ricontattato a breve da un nostro consulente per confermare l'attivazione della tua offerta." + summary of chosen offer(s). No email/quote promise. Only place where the callback is mentioned.
+"Grazie, [Nome]!" — "Riceverai a breve una chiamata dal numero <numero> da un nostro consulente per confermare l'attivazione." (`<numero>` = admin setting "Numero da cui chiamiamo", §5.4.) + summary of chosen offer(s). No email/quote promise. Only place where the callback is mentioned.
 *v0.5.2:* card unchanged; subtle background decoration (gas flame left, light bulb right) in the side margins, ≥1024px only.
 
 ---
@@ -243,8 +253,11 @@ Two columns: form left, **"La tua offerta" sticky summary right** (logo, Spesa m
   people, appliances[], gas_uses[], sqm_range, estimated_kwh_year, estimated_smc_year, manual_consumption, final_kwh_month, final_smc_month,
   chosen_offer_luce, chosen_offer_gas, monthly_cost_shown,
   pod, power_kw, voltage, pdr,
-  privacy_consent, marketing_consent
-- `settings`: notification_email, other global values
+  privacy_consent, marketing_consent,
+  iban, iban_holder_different, iban_holder_first_name, iban_holder_last_name, iban_holder_tax_code,
+  document_type, document_number, document_expiry, document_issuer
+- `lead_documents`: metadata of the lead's uploaded files (id, lead_id, object_path in private bucket `lead-documents`, mime, size, status pending/uploaded, expires_at, uploaded_at)
+- `settings`: notification_email, callback_phone, other global values
 
 ---
 

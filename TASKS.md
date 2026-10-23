@@ -110,12 +110,12 @@ Decisions: hosting = Vercel (Hobby, custom domain); Cloudflare removed entirely 
 - [x] T11.7 (5a7dc88, 9893313, 84c9485 + this summary) Tests + full regression + PROGRESS summary + push `preview/phase11` (D6) → `qa-tester` + orchestrator
 
 ## Phase 12 — Activation data, callback number, Resend test (Giuseppe, 2026-10-23) — spec: `PHASE12_BRIEF.md`
-- [ ] T12.1 Migration (lead IBAN/holder/document fields, `callback_phone` setting + safe exposure, private `lead-documents` bucket + upload mechanism) + data layer + mock parity + delete files with lead → `db-builder` (opus)
-- [ ] T12.2 Logic: IBAN mod-97, POD/PDR normalize + cross-detection, distributor config + comune check, magic-byte sniff (E3, E5) → `logic-builder` (sonnet)
-- [ ] T12.3 Admin settings: "Invia email di prova" + resend.dev banner (E1), then `callback_phone` field (E2) → `admin-settings-builder` (sonnet)
-- [ ] T12.4 Lead API: document upload route bound to lead token, new fields in update/complete validation, POD/PDR normalization server-side → `lead-api-builder` (opus)
-- [ ] T12.5 Admin lead detail: IBAN/holder, document data + signed-URL preview/download, distributor → `admin-leads-builder` (sonnet)
-- [ ] T12.6 Thank-you callback number text + privacy placeholder sentence (E2, E4) → `thankyou-builder` (haiku)
-- [ ] T12.7 Activation step B UI: IBAN + holder, document data/upload, POD/PDR messages + distributor warning → `activation-form-builder` (sonnet)
-- [ ] T12.8 Final check: typecheck, lint, Vitest, affected Playwright + one full regression, quick design pass → `qa-tester` (sonnet) + `design-reviewer` (sonnet)
-- [ ] T12.9 PRD v0.6 (§5, §10, §11), TASKS, PROGRESS, HANDOFF, push `preview/phase12` → orchestrator + haiku
+- [x] T12.1 (4d9526e) Migration (lead IBAN/holder/document fields, `callback_phone` setting + safe exposure, private `lead-documents` bucket + upload mechanism) + data layer + mock parity + delete files with lead → `db-builder` (opus)
+- [x] T12.2 (669d4c3) Logic: IBAN mod-97, POD/PDR normalize + cross-detection, distributor config + comune check, magic-byte sniff (E3, E5) → `logic-builder` (sonnet)
+- [x] T12.3 (60ab068, f563e89) Admin settings: "Invia email di prova" + resend.dev banner (E1), then `callback_phone` field (E2) → `admin-settings-builder` (sonnet)
+- [x] T12.4 (1be18ef) Lead API: document upload route bound to lead token, new fields in update/complete validation, POD/PDR normalization server-side → `lead-api-builder` (opus)
+- [x] T12.5 (dd2e9a8, e83ffd6) Admin lead detail: IBAN/holder, document data + signed-URL preview/download, distributor → `admin-leads-builder` (sonnet)
+- [x] T12.6 (08167e7) Thank-you callback number text + privacy placeholder sentence (E2, E4) → `thankyou-builder` (haiku)
+- [x] T12.7 (519c1f0) Activation step B UI: IBAN + holder, document data/upload, POD/PDR messages + distributor warning → `activation-form-builder` (sonnet)
+- [x] T12.8 (fb4efc8, design fixes see PROGRESS) Final check: typecheck, lint, Vitest, affected Playwright + one full regression, quick design pass → `qa-tester` (sonnet) + `design-reviewer` (sonnet)
+- [x] T12.9 (this commit) PRD v0.6 (§5, §10, §11), TASKS, PROGRESS, HANDOFF, push `preview/phase12` → orchestrator + haiku
