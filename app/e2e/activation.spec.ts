@@ -317,7 +317,7 @@ test.describe("activation form", () => {
 
     await expect(field(page, "current_supplier_luce")).toHaveCount(0);
     await expect(field(page, "current_supplier_gas")).toHaveCount(0);
-    await expect(page.getByText("(facoltativo)")).toHaveCount(2);
+    await expect(page.getByText(/^Codice (POD|PDR) \(facoltativo\)/)).toHaveCount(2);
     await fillAddress(page);
     await radio(page, "voltage-220").click();
     await page.getByTestId("activation-submit").click();

@@ -12,6 +12,11 @@ import {
   buildSubmitPayload,
   effectiveCap,
   firstStepWithErrors,
+  formatUploadSize,
+  groupIban,
+  podWarning,
+  uploadErrorMessage,
+  validatePaymentAndDocument,
   messageForFieldCode,
   normalizeActivation,
   powerFromSelectValue,
@@ -317,5 +322,92 @@ describe("helpers", () => {
     expect(activationRedirect(flow({ commodity: "dual" }))).toBe("/offerte");
     expect(activationRedirect(flow())).toBeNull();
     expect(activationRedirect(flow({ leadCompleted: true }))).toBe("/grazie");
+  });
+});
+
+describe("IBAN, holder and document validation (step B extras)", () => {
+  const TODAY = "2026-10-23";
+  const withAct = (activation: Partial<FlowState["activation"]>) => flow({ activation });
+  const GOOD_IBAN = "IT60X0542811101000000123456";
+
+  it("accepts an empty optional section", () => {
+    expect(validatePaymentAndDocument(flow(), TODAY)).toEqual({});
+  });
+  it("IBAN: checksum error only when filled, valid grouped IBAN accepted", () => {
+    expect(validatePaymentAndDocument(withAct({ iban: "IT60X0542811101000000123457" }), TODAY).iban).toMatch(/controlla/);
+    expect(validatePaymentAndDocument(withAct({ iban: groupIban(GOOD_IBAN) }), TODAY)).toEqual({});
+    expect(groupIban("it60 x054")).toBe("IT60 X054");
+  });
+  it("holder: required fields and CF/name consistency", () => {
+    const e = validatePaymentAndDocument(withAct({ iban: GOOD_IBAN, ibanHolderDifferent: true }), TODAY);
+    expect(Object.keys(e).sort()).toEqual(["iban_holder_first_name", "iban_holder_last_name", "iban_holder_tax_code"]);
+    const m = validatePaymentAndDocument(
+      withAct({
+        iban: GOOD_IBAN,
+        ibanHolderDifferent: true,
+        ibanHolderFirstName: "Mario",
+        ibanHolderLastName: "Bianchi",
+        ibanHolderTaxCode: VALID_CF,
+      }),
+      TODAY,
+    );
+    expect(m.iban_holder_tax_code).toMatch(/cognome/i);
+  });
+  it("holder fields are ignored without IBAN or without the checkbox", () => {
+    expect(validatePaymentAndDocument(withAct({ ibanHolderDifferent: true }), TODAY)).toEqual({});
+    expect(validatePaymentAndDocument(withAct({ iban: GOOD_IBAN }), TODAY)).toEqual({});
+  });
+  it("document: all-or-nothing, expiry not in the past", () => {
+    const partial = validatePaymentAndDocument(withAct({ documentNumber: "AB12345" }), TODAY);
+    expect(partial.document_type).toBe("Completa i dati del documento.");
+    expect(partial.document_expiry).toBe("Completa i dati del documento.");
+    expect(partial.document_issuer).toBe("Completa i dati del documento.");
+    const full = {
+      documentType: "patente" as const,
+      documentNumber: "U1A234567B",
+      documentExpiry: "2031-01-05",
+      documentIssuer: "MIT-UCO",
+    };
+    expect(validatePaymentAndDocument(withAct(full), TODAY)).toEqual({});
+    expect(validatePaymentAndDocument(withAct({ ...full, documentExpiry: "2020-01-01" }), TODAY).document_expiry).toMatch(/scaduto/);
+    expect(validatePaymentAndDocument(withAct({ ...full, documentNumber: "12" }), TODAY).document_number).toBeDefined();
+  });
+  it("validateStepB includes the extras and server codes map to messages", () => {
+    const st = flow({ ...filledB, activation: { ...filledB.activation, iban: "IT00" } });
+    expect(validateStepB(st).iban).toBeDefined();
+    expect(messageForFieldCode("iban", "checksum")).toMatch(/controlla/);
+    expect(messageForFieldCode("iban_holder_tax_code", "surname_mismatch")).toMatch(/cognome/i);
+    expect(messageForFieldCode("document_expiry", "past")).toMatch(/scaduto/);
+    expect(messageForFieldCode("document_type", "required")).toBe("Completa i dati del documento.");
+    expect(splitFormErrors({ iban: "x", document_number: "y" }).general).toEqual([]);
+    expect(stepOfField("iban")).toBe("B");
+  });
+  it("normalizeActivation normalises IBAN and holder CF", () => {
+    const n = normalizeActivation(
+      withAct({ iban: "it60 x054 2811 1010 0000 0123 456", ibanHolderTaxCode: "rssmra85t10a562s" }),
+    );
+    expect(n.iban).toBe(GOOD_IBAN);
+    expect(n.ibanHolderTaxCode).toBe("RSSMRA85T10A562S");
+  });
+});
+
+describe("upload helpers and POD warning", () => {
+  it("maps upload error codes to Italian messages", () => {
+    expect(uploadErrorMessage("file_type")).toBe("Formato non supportato: carica un file JPG o PDF.");
+    expect(uploadErrorMessage("file_size")).toBe("Il file supera 4 MB.");
+    expect(uploadErrorMessage("file_content")).toBe("Il file non sembra un JPG o PDF valido.");
+    expect(uploadErrorMessage("too_many_files")).toBe("Puoi caricare al massimo 2 file.");
+    expect(uploadErrorMessage("rate_limited")).toBe("Caricamento non riuscito, riprova.");
+  });
+  it("formats sizes", () => {
+    expect(formatUploadSize(512)).toBe("512 B");
+    expect(formatUploadSize(2048)).toBe("2 KB");
+    expect(formatUploadSize(1.5 * 1024 * 1024)).toBe("1,5 MB");
+  });
+  it("warns only for a mapped POD/comune mismatch", () => {
+    const roma = { istat: "058091", name: "Roma", province: "RM", caps: ["00100"], climate_zone: "D" as const };
+    expect(podWarning(flow({ comune: roma, activation: { pod: "IT001E12345678" } }))).toMatch(/Controlla il POD/);
+    expect(podWarning(flow({ comune: roma, activation: { pod: "IT002E12345678" } }))).toBeNull();
+    expect(podWarning(flow({ activation: { pod: "" } }))).toBeNull();
   });
 });

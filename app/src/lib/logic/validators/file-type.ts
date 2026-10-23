@@ -1,4 +1,4 @@
-export const DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
+export const DOCUMENT_MAX_BYTES = 4 * 1024 * 1024;
 export const DOCUMENT_MAX_FILES = 2;
 export const DOCUMENT_ALLOWED_MIMES = ["image/jpeg", "application/pdf"] as const;
 export type DocumentMime = (typeof DOCUMENT_ALLOWED_MIMES)[number];

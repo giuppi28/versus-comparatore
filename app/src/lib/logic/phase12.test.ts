@@ -81,7 +81,7 @@ describe("sniffDocumentType", () => {
     expect(sniffDocumentType(new Uint8Array([]))).toBeNull();
   });
   it("constants", () => {
-    expect(DOCUMENT_MAX_BYTES).toBe(5242880);
+    expect(DOCUMENT_MAX_BYTES).toBe(4194304);
     expect(DOCUMENT_MAX_FILES).toBe(2);
   });
 });

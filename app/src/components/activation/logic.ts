@@ -14,13 +14,19 @@ import {
   needsMeterCode,
   POWER_KW_OPTIONS,
 } from "@/lib/lead/rules";
+import { italianToday } from "@/lib/lead/completion";
+import { validateDocumentNumber, validateIsoDate } from "@/lib/lead/schemas";
+import { podDistributorComuneWarning } from "@/lib/logic/distributors";
 import {
   CODICE_FISCALE_MESSAGES,
+  IBAN_MESSAGES,
   PARTITA_IVA_MESSAGES,
   PDR_MESSAGES,
   PHONE_MESSAGES,
   POD_MESSAGES,
+  normalizeIban,
   validateCodiceFiscale,
+  validateIban,
   validatePartitaIva,
   validatePdr,
   validatePhone,
@@ -74,7 +80,12 @@ const VALIDATOR_MESSAGES: Record<string, Record<string, string>> = {
   vat_number: PARTITA_IVA_MESSAGES,
   pod: POD_MESSAGES,
   pdr: PDR_MESSAGES,
+  iban: IBAN_MESSAGES,
+  iban_holder_tax_code: CODICE_FISCALE_MESSAGES,
 };
+
+const DOCUMENT_REQUIRED_MESSAGE = "Completa i dati del documento.";
+export const DOCUMENT_PAST_MESSAGE = "Il documento è scaduto: controlla la data di scadenza.";
 
 const FIELD_REQUIRED_MESSAGES: Record<string, string> = {
   first_name: "Inserisci il nome.",
@@ -94,6 +105,18 @@ const FIELD_REQUIRED_MESSAGES: Record<string, string> = {
   gas_uses: "Seleziona almeno un uso del gas.",
   current_supplier_luce: "Seleziona il fornitore attuale.",
   current_supplier_gas: "Seleziona il fornitore attuale.",
+  iban_holder_first_name: "Inserisci il nome dell'intestatario.",
+  iban_holder_last_name: "Inserisci il cognome dell'intestatario.",
+  iban_holder_tax_code: CODICE_FISCALE_MESSAGES.empty,
+  document_type: DOCUMENT_REQUIRED_MESSAGE,
+  document_number: DOCUMENT_REQUIRED_MESSAGE,
+  document_expiry: DOCUMENT_REQUIRED_MESSAGE,
+  document_issuer: DOCUMENT_REQUIRED_MESSAGE,
+};
+
+const DOCUMENT_FIELD_MESSAGES: Record<string, Record<string, string>> = {
+  document_number: { format: "Il numero del documento deve avere da 5 a 20 lettere o cifre." },
+  document_expiry: { invalid: "Inserisci una data di scadenza valida.", past: DOCUMENT_PAST_MESSAGE },
 };
 
 /** Italian message for one server (or client) field error code. */
@@ -102,7 +125,7 @@ export function messageForFieldCode(field: string, code: string): string {
     return PAGE1_DATA_MESSAGE;
   }
   if (code === "required" && FIELD_REQUIRED_MESSAGES[field]) return FIELD_REQUIRED_MESSAGES[field];
-  const specific = VALIDATOR_MESSAGES[field]?.[code];
+  const specific = VALIDATOR_MESSAGES[field]?.[code] ?? DOCUMENT_FIELD_MESSAGES[field]?.[code];
   if (specific) return specific;
   if (field === "cap" && code !== "required") return "Inserisci un CAP di 5 cifre.";
   return GENERIC_MESSAGES[code] ?? "Valore non valido.";
@@ -132,6 +155,14 @@ const FORM_FIELDS = new Set([
   "gas_uses",
   "current_supplier_luce",
   "current_supplier_gas",
+  "iban",
+  "iban_holder_first_name",
+  "iban_holder_last_name",
+  "iban_holder_tax_code",
+  "document_type",
+  "document_number",
+  "document_expiry",
+  "document_issuer",
 ]);
 
 /**
@@ -288,7 +319,79 @@ export function validateStepB(state: FlowState): FieldErrors {
     }
     if (effectiveGasUses(state).length === 0) errors.gas_uses = FIELD_REQUIRED_MESSAGES.gas_uses;
   }
+  Object.assign(errors, validatePaymentAndDocument(state));
   return errors;
+}
+
+/** Optional IBAN (+ different holder) and identity document data of Step B. */
+export function validatePaymentAndDocument(state: FlowState, today: string = italianToday()): FieldErrors {
+  const errors: FieldErrors = {};
+  const a = state.activation;
+
+  if (filled(a.iban)) {
+    const m = codeMessage("iban", validateIban(a.iban));
+    if (m) errors.iban = m;
+    if (a.ibanHolderDifferent) {
+      if (!filled(a.ibanHolderFirstName)) errors.iban_holder_first_name = FIELD_REQUIRED_MESSAGES.iban_holder_first_name;
+      if (!filled(a.ibanHolderLastName)) errors.iban_holder_last_name = FIELD_REQUIRED_MESSAGES.iban_holder_last_name;
+      const cf = codeMessage(
+        "iban_holder_tax_code",
+        validateCodiceFiscale(a.ibanHolderTaxCode, {
+          firstName: a.ibanHolderFirstName.trim(),
+          lastName: a.ibanHolderLastName.trim(),
+        }),
+      );
+      if (cf) errors.iban_holder_tax_code = cf;
+    }
+  }
+
+  const anyDocument =
+    a.documentType !== null || filled(a.documentNumber) || filled(a.documentExpiry) || filled(a.documentIssuer);
+  if (anyDocument) {
+    if (a.documentType === null) errors.document_type = DOCUMENT_REQUIRED_MESSAGE;
+    if (!filled(a.documentNumber)) errors.document_number = DOCUMENT_REQUIRED_MESSAGE;
+    else if (!validateDocumentNumber(a.documentNumber).ok) {
+      errors.document_number = DOCUMENT_FIELD_MESSAGES.document_number.format;
+    }
+    if (!filled(a.documentExpiry)) errors.document_expiry = DOCUMENT_REQUIRED_MESSAGE;
+    else if (!validateIsoDate(a.documentExpiry).ok) errors.document_expiry = DOCUMENT_FIELD_MESSAGES.document_expiry.invalid;
+    else if (a.documentExpiry.trim() < today) errors.document_expiry = DOCUMENT_PAST_MESSAGE;
+    if (!filled(a.documentIssuer)) errors.document_issuer = DOCUMENT_REQUIRED_MESSAGE;
+    else if (a.documentIssuer.trim().length < 2) errors.document_issuer = "Inserisci l'ente di rilascio.";
+  }
+  return errors;
+}
+
+/** IBAN in groups of four for display ("IT60 X054 ..."). */
+export function groupIban(value: string): string {
+  return normalizeIban(value).replace(/(.{4})(?=.)/g, "$1 ");
+}
+
+/** Non-blocking POD/comune hint of Step B (null when nothing to say). */
+export function podWarning(state: FlowState): string | null {
+  const pod = validatePod(state.activation.pod);
+  if (!pod.ok || !state.comune) return null;
+  return podDistributorComuneWarning(pod.value, state.comune.istat);
+}
+
+export const UPLOAD_ERROR_MESSAGES: Record<string, string> = {
+  file_type: "Formato non supportato: carica un file JPG o PDF.",
+  file_size: "Il file supera 4 MB.",
+  file_content: "Il file non sembra un JPG o PDF valido.",
+  file_missing: "Il file è vuoto: scegline un altro.",
+  too_many_files: "Puoi caricare al massimo 2 file.",
+};
+
+/** Italian message for a failed document upload (never blocks the submit). */
+export function uploadErrorMessage(code: string): string {
+  return UPLOAD_ERROR_MESSAGES[code] ?? "Caricamento non riuscito, riprova.";
+}
+
+/** "1,2 MB" / "340 KB" / "512 B". */
+export function formatUploadSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
 }
 
 // ---------------------------------------------------------------------------
@@ -304,8 +407,16 @@ export function normalizeActivation(state: FlowState): FlowState["activation"] {
   const piva = validatePartitaIva(a.vatNumber);
   const pod = validatePod(a.pod);
   const pdr = validatePdr(a.pdr);
+  const iban = validateIban(a.iban);
+  const holderCf = validateCodiceFiscale(a.ibanHolderTaxCode);
   return {
     ...a,
+    iban: iban.ok ? iban.value : normalizeIban(a.iban),
+    ibanHolderTaxCode: holderCf.ok ? holderCf.value : a.ibanHolderTaxCode.trim(),
+    ibanHolderFirstName: a.ibanHolderFirstName.trim(),
+    ibanHolderLastName: a.ibanHolderLastName.trim(),
+    documentNumber: a.documentNumber.trim(),
+    documentIssuer: a.documentIssuer.trim(),
     taxCode: cf.ok ? cf.value : a.taxCode.trim(),
     vatNumber: piva.ok ? piva.value : a.vatNumber.trim(),
     pod: pod.ok ? pod.value : a.pod.trim(),

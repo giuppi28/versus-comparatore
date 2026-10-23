@@ -19,13 +19,15 @@ import {
 import type { Voltage } from "@/lib/data/types";
 import { serviceTypeFor } from "@/lib/lead/flow-state";
 import { includesGas, includesLuce, needsCurrentSupplier, needsMeterCode } from "@/lib/lead/rules";
-import { validatePdr, validatePod } from "@/lib/logic/validators";
+import { normalizePdr, normalizePod, validatePdr, validatePod } from "@/lib/logic/validators";
 import { GroupError, GroupLabel } from "./FieldError";
+import { DocumentFields, PaymentFields } from "./PaymentDocumentSections";
 import {
   effectiveCap,
   effectiveGasUses,
   powerFromSelectValue,
   powerOptions,
+  podWarning,
   powerToSelectValue,
   supplierOptions,
 } from "./logic";
@@ -74,6 +76,8 @@ export function StepB({
   const podRequired = needsMeterCode(luceService);
   const pdrRequired = needsMeterCode(gasService);
   const gasUses = effectiveGasUses(state);
+  const podMismatch = podWarning(state);
+  const extraProps = { state, update, errorFor, touch, edited };
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -224,7 +228,7 @@ export function StepB({
               error={errorFor("pod")}
               onChange={(e) => {
                 edited("pod");
-                update({ activation: { pod: e.target.value.toUpperCase() } });
+                update({ activation: { pod: normalizePod(e.target.value) } });
               }}
               onBlur={() => {
                 touch("pod");
@@ -244,6 +248,11 @@ export function StepB({
               }}
             />
           </div>
+          {podMismatch && !errorFor("pod") && (
+            <p data-testid="pod-warning" role="status" className="-mt-2 text-sm font-medium text-warning">
+              {podMismatch}
+            </p>
+          )}
           <div>
             <GroupLabel id="voltage-label" required>
               Livello di tensione
@@ -306,7 +315,7 @@ export function StepB({
             error={errorFor("pdr")}
             onChange={(e) => {
               edited("pdr");
-              update({ activation: { pdr: e.target.value } });
+              update({ activation: { pdr: normalizePdr(e.target.value) } });
             }}
             onBlur={() => {
               touch("pdr");
@@ -339,6 +348,14 @@ export function StepB({
           </div>
         </Section>
       )}
+
+      <Section title="Pagamento (facoltativo)" testId="activation-payment">
+        <PaymentFields {...extraProps} />
+      </Section>
+
+      <Section title="Documento d'identità (facoltativo)" testId="activation-document">
+        <DocumentFields {...extraProps} />
+      </Section>
 
       {beforeActions}
 
