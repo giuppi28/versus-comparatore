@@ -59,6 +59,8 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       NEXT_PUBLIC_DATA_SOURCE: "mock",
+      // Never send real emails from e2e runs, even if .env.local has a Resend key.
+      RESEND_API_KEY: "",
       // Short loading screen for the matrix (the default 4 s is covered by results.spec.ts).
       NEXT_PUBLIC_LOADING_MS: "300",
       // Mock admin credentials (test-only values; mock auth is refused in production).

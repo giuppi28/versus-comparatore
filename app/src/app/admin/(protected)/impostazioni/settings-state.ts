@@ -15,3 +15,13 @@ export const SETTINGS_MESSAGES = {
   invalidEmail: "Inserisci un indirizzo email valido (es. nome@azienda.it).",
   saveFailed: "Impossibile salvare le impostazioni. Riprova tra poco.",
 } as const;
+
+export interface TestEmailState {
+  result?: "sent" | "error";
+  /** Full Italian message (errors include Resend's body verbatim). */
+  message?: string;
+  /** Incremented on every submit. */
+  attempt: number;
+}
+
+export const INITIAL_TEST_EMAIL_STATE: TestEmailState = { attempt: 0 };

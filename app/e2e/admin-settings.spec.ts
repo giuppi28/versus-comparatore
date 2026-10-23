@@ -133,3 +133,17 @@ test.describe("admin settings and go-live checklist", () => {
     });
   });
 });
+
+test.describe("admin settings: test email", () => {
+  test("button shows a clear result message (mock mode, no real send)", async ({ page }) => {
+    await login(page);
+    await page.goto("/admin/impostazioni");
+    const button = page.getByRole("button", { name: "Invia email di prova" });
+    await expect(button).toBeVisible();
+    const form = page.getByTestId("test-email-form");
+    await expect(form).toHaveAttribute("data-test-attempt", "0", { timeout: 20_000 });
+    await button.click();
+    await expect(form).toHaveAttribute("data-test-attempt", "1");
+    await expect(page.getByTestId("test-email-result")).toContainText(/configurazione mancante|Email inviata|Errore Resend|Troppi invii/);
+  });
+});

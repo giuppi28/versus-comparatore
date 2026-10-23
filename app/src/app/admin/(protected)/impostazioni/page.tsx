@@ -5,7 +5,8 @@ import { getAdminRepository } from "@/lib/data/admin";
 import { getDataSource } from "@/lib/data";
 import { normalizeEmail } from "@/lib/notify/email-address";
 import { MANUAL_CHECKS, computeGoLiveChecks, isReadyForGoLive } from "./checks";
-import { SettingsForm } from "./SettingsForm";
+import { isResendDevSender, RESEND_DEV_WARNING } from "@/lib/notify/test-email";
+import { SettingsForm, TestEmailButton } from "./SettingsForm";
 
 export const metadata = { title: "Impostazioni — Area riservata VERSUS" };
 
@@ -50,7 +51,17 @@ export default async function SettingsPage() {
               Notifiche disattivate: nessun indirizzo email impostato. I nuovi lead non vengono segnalati via email.
             </p>
           )}
+          {isResendDevSender(process.env.RESEND_FROM) && (
+            <p
+              role="alert"
+              data-testid="resend-dev-warning"
+              className="rounded-control border border-warning bg-warning-soft px-4 py-3 font-semibold"
+            >
+              {RESEND_DEV_WARNING}
+            </p>
+          )}
           <SettingsForm notificationEmail={notificationEmail} />
+          <TestEmailButton />
         </Card>
       </section>
 
