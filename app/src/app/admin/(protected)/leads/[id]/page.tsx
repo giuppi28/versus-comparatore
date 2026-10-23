@@ -6,24 +6,31 @@ import { Card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import type { Lead } from "@/lib/data/types";
+import { podDistributor, pdrDistributor } from "@/lib/logic";
 import { DeleteLeadButton } from "../DeleteLeadButton";
+import { LeadDocuments } from "../LeadDocuments";
 import { LeadEditForm } from "../LeadEditForm";
 import { StatusBadge, StepBadge } from "../LeadBadges";
 import {
   COMMODITY_LABELS,
   CUSTOMER_TYPE_LABELS,
+  DOCUMENT_TYPE_LABELS,
   HOUSING_TITLE_LABELS,
   SERVICE_TYPE_LABELS,
   applianceLabel,
+  formatDate,
   formatDateTime,
   formatEuro,
+  formatIban,
   gasUseLabel,
   sqmLabel,
 } from "../labels";
 import { leadDisplayName } from "../list-params";
 import { chosenOfferView, currentSupplierLabel, type ChosenOfferView } from "../snapshot";
 
-export const metadata: Metadata = { title: "Dettaglio lead — Area riservata VERSUS" };
+export const metadata: Metadata = {
+  title: "Dettaglio lead — Area riservata VERSUS",
+};
 
 const num = new Intl.NumberFormat("it-IT", { maximumFractionDigits: 2 });
 const yesNo = (v: boolean | null) => (v === null ? null : v ? "Sì" : "No");
@@ -61,6 +68,7 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
     const o = await repo.getOffer(oid);
     return o ? `${o.supplier.name} — ${o.name}` : null;
   };
+  const documents = await repo.listLeadDocuments(lead.id);
   const [comune, supLuce, supGas, offLuce, offGas] = await Promise.all([
     lead.comune_istat ? repo.getComune(lead.comune_istat) : null,
     supplierName(lead.current_supplier_luce).then((n) => currentSupplierLabel(n, lead.current_supplier_luce_name)),
@@ -161,10 +169,76 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
           </Group>
 
           <Group title="Dati tecnici" testId="group-tecnici">
-            <Field label="POD" value={lead.pod} />
+            <Field
+              label="POD"
+              value={
+                <WithDistributor
+                  value={lead.pod}
+                  distributor={lead.pod ? podDistributor(lead.pod) : null}
+                  testId="pod-distributor"
+                />
+              }
+            />
             <Field label="Potenza (kW)" value={lead.power_kw === null ? null : num.format(lead.power_kw)} />
             <Field label="Tensione" value={lead.voltage === null ? null : `${lead.voltage} V`} />
-            <Field label="PDR" value={lead.pdr} />
+            <Field
+              label="PDR"
+              value={
+                <WithDistributor
+                  value={lead.pdr}
+                  distributor={lead.pdr ? pdrDistributor(lead.pdr) : null}
+                  testId="pdr-distributor"
+                />
+              }
+            />
+          </Group>
+
+          <Group title="Pagamento" testId="group-pagamento">
+            <Field
+              label="IBAN"
+              value={
+                lead.iban ? (
+                  <span data-testid="lead-iban" className="font-mono">
+                    {formatIban(lead.iban)}
+                  </span>
+                ) : (
+                  <span className="text-ink-subtle">Non indicato</span>
+                )
+              }
+            />
+            {lead.iban && lead.iban_holder_different && (
+              <Field
+                label="Intestatario del conto"
+                value={
+                  <span data-testid="lead-iban-holder">
+                    {[lead.iban_holder_first_name, lead.iban_holder_last_name].filter(Boolean).join(" ")}
+                    {lead.iban_holder_tax_code ? ` — ${lead.iban_holder_tax_code}` : ""}
+                  </span>
+                }
+              />
+            )}
+          </Group>
+
+          <Group title="Documento d'identità" testId="group-documento">
+            {lead.document_type || lead.document_number || lead.document_expiry || lead.document_issuer ? (
+              <>
+                <Field
+                  label="Tipo"
+                  value={lead.document_type ? (DOCUMENT_TYPE_LABELS[lead.document_type] ?? lead.document_type) : null}
+                />
+                <Field label="Numero" value={lead.document_number} />
+                <Field label="Scadenza" value={lead.document_expiry ? formatDate(lead.document_expiry) : null} />
+                <Field label="Ente di rilascio" value={lead.document_issuer} />
+              </>
+            ) : (
+              <Field label="Dati del documento" value={<span className="text-ink-subtle">Non indicato</span>} />
+            )}
+            <div className="min-w-0 sm:col-span-2">
+              <dt className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">File caricati</dt>
+              <dd>
+                <LeadDocuments documents={documents} />
+              </dd>
+            </div>
           </Group>
 
           <Group title="Consensi" testId="group-consensi">
@@ -203,4 +277,24 @@ function OfferValue({ view, testId }: { view: ChosenOfferView; testId: string })
 function consent(lead: Lead, key: "privacy_consent" | "marketing_consent"): string {
   const v = lead[key];
   return v === null ? "Non indicato" : v ? "Sì" : "No";
+}
+
+function WithDistributor({
+  value,
+  distributor,
+  testId,
+}: {
+  value: string | null;
+  distributor: { name: string } | null;
+  testId: string;
+}) {
+  if (!value) return null;
+  return (
+    <span className="flex flex-col">
+      <span>{value}</span>
+      <span className="text-sm font-normal text-ink-muted" data-testid={testId}>
+        Distributore: {distributor ? distributor.name : "non riconosciuto"}
+      </span>
+    </span>
+  );
 }

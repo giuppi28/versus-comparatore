@@ -33,4 +33,12 @@ export const deleteLeadsSchema = z
   .min(1, "Seleziona almeno un lead.")
   .max(DELETE_LEADS_MAX, `Puoi eliminare al massimo ${DELETE_LEADS_MAX} lead per volta.`);
 
-export type DeleteLeadsResult = { ok: true; deleted: number } | { ok: false; message: string };
+export type DeleteLeadsResult =
+  { ok: true; deleted: number; documentCleanupFailed: boolean } | { ok: false; message: string };
+
+export const leadDocumentUrlSchema = z.object({
+  id: z.string().uuid("Documento non valido."),
+  mode: z.enum(["preview", "download"], { error: "Richiesta non valida." }),
+});
+
+export type LeadDocumentUrlResult = { ok: true; url: string } | { ok: false; message: string };
