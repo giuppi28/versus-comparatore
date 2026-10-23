@@ -127,3 +127,10 @@ Decisions: hosting = Vercel (Hobby, custom domain); Cloudflare removed entirely 
 - [x] T12b.4 (567aaa5) `PRD_VERSUS_v0.5.md` → `PRD_VERSUS_v0.6.md` references in CLAUDE.md, `.claude/agents/*.md`, PHASE10_BRIEF.md → `general-purpose` (haiku)
 - [x] T12b.5 (3ec2eaf) Activation step B: "Rimuovi" per uploaded file, client-side photo compression to JPEG (max 2000 px, 4 MB check), PNG/WebP/HEIC accepted → `activation-form-builder` (sonnet)
 - [x] T12b.6 (this commit) PRD v0.6.1 (§4, §5.1, §10, §12), app/README.md lead documents + PDR wording, TASKS/PROGRESS/HANDOFF/QUESTIONS → docs (haiku)
+
+## Phase 12c — final fixes and acceptance (Giuseppe, 2026-10-23)
+- [x] T12c.0 (10bd09e) QUESTIONS.md: both Phase 12 APPLY migrations recorded as applied; Resend preview note → general-purpose (haiku)
+- [x] T12c.1 (074d78f) Callback phone explanatory error + format hint → admin-settings-builder (sonnet)
+- [x] T12c.2 (68a4475) Security suite: 13 Phase 12/12b cases → db-builder (opus)
+- [x] T12c.3 (next commit) Acceptance spec `e2e/acceptance-phase12.spec.ts`; admin label "Distributore luce:"; `RESEND_FROM=onboarding@resend.dev` in Playwright webServer env → qa-tester (sonnet) + admin-leads-builder (sonnet)
+- [x] T12c.4 (this commit) docs → general-purpose (haiku)

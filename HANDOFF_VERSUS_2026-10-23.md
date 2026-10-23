@@ -5,8 +5,9 @@ VERSUS — "comparatore luce e gas": Italian electricity & gas comparison websit
 
 ## Status
 - `main` (Vercel production branch, https://versus-comparatore.vercel.app) is at d56489d and untouched by Phase 12 and 12b. Offers are still realistic PLACEHOLDERS (price_verified = false) until Aldo provides real prices.
-- Phase 12 and Phase 12b are complete on branch `preview/phase12`. **Not merged; `main` untouched.** Preview URL (Vercel branch alias, build state not verifiable from this session — Vercel API 403, no gh CLI): https://versus-comparatore-git-preview-phase12-giuseppes-projects-a9ce686f.vercel.app
-- Phase 12 and 12b need the two APPLY migrations below (in order) before the preview can store the new data on the real database.
+- Phase 12, Phase 12b and Phase 12c are complete on branch `preview/phase12`. **Not merged; `main` untouched.** Preview URL (Vercel branch alias): https://versus-comparatore-git-preview-phase12-giuseppes-projects-a9ce686f.vercel.app
+- Both APPLY migrations are applied on the real database and verified by the reviewer. The preview can store the new data.
+- Phase 12c is done. `preview/phase12` is ready for Giuseppe to review and merge.
 
 ## Where things are
 - Project folder: /Users/pippo/Desktop/versus-comparatore/ — Next.js app in app/. Coordination files at root: CLAUDE.md (rules, model policy), PRD_VERSUS_v0.6.md (v0.6.1 from Phase 12b; renamed from v0.5 in Phase 12), TASKS.md, PROGRESS.md, QUESTIONS.md, REVIEW.md, DESIGN_REVIEW.md, PHASE12_BRIEF.md, app/DEPLOY.md, app/README.md. Subagents in .claude/agents/.
@@ -35,21 +36,19 @@ Brief and decisions: PROGRESS.md "PHASE 12b". Commits: 6ee93e3 removal · d15292
 - **PRD v0.6.1** (§4, §5.1, §10, §12); CLAUDE.md and `.claude/agents/*.md` and PHASE10_BRIEF.md point to `PRD_VERSUS_v0.6.md`.
 - Final check: typecheck ✓, lint ✓, Vitest 1147/1147 ✓, e2e 287 passed / 1 skipped / 2 fixture flakes (green on re-run), matrix 381 + 8 passed with 1 flake (green on re-run).
 
-## APPLY (reviewer) — in this order
-1. `app/supabase/migrations/20261023100000_activation_documents_callback.sql` — see QUESTIONS.md "APPLY: 20261023100000". Additive and idempotent.
-2. `app/supabase/migrations/20261023110000_lead_document_removal.sql` — see QUESTIONS.md "APPLY: 20261023110000". Requires 1. Additive and idempotent.
-- After both: run `data_checks.sql`, `rls_test.sql`, then `npm run test:security`. Storage delete assertions in the SQL tests may need the Storage API on the real DB (see QUESTIONS.md).
-- Reviewer must confirm that `postgres` (owner of `finish_lead_document_removal`) can read `storage.objects` on the real DB (`select count(*) from storage.objects;`).
-- Until both are applied, the preview (same real DB) cannot store the new fields or documents, and cannot remove a document. Mock mode works fully.
+## APPLY (reviewer) — applied
+1. `app/supabase/migrations/20261023100000_activation_documents_callback.sql` — applied and verified (QUESTIONS.md "APPLY: 20261023100000"). Additive and idempotent.
+2. `app/supabase/migrations/20261023110000_lead_document_removal.sql` — applied and verified (QUESTIONS.md "APPLY: 20261023110000"). Requires 1.
+- Phase 12c security suite on the real DB: `npm run test:security` 85 passed / 1 skipped, no security finding.
 
 ## Before merging `preview/phase12` to `main`
 - The Phase 12b final check (PROGRESS.md) ran typecheck, lint, Vitest, the e2e suite and the matrix on this branch, with screenshots regenerated. The two fixture flakes were green on re-run. Re-run once more if the branch changes.
 - `DESIGN_REVIEW.md` is committed (01e1df6). The `.claude/scheduled_tasks.lock` change was discarded.
-- The two APPLY migrations are a prerequisite: the lead RPC and document changes must reach production together with the app code.
+- The two APPLY migrations are already on the real database. They must be on production before or with the app code that uses them.
 
 ## Open items
-1. APPLY `20261023100000_activation_documents_callback.sql`, then `20261023110000_lead_document_removal.sql` (reviewer).
-2. `npm run test:security` not yet run after Phase 12 or 12b. No Phase 12 or 12b SQL security tests in `e2e/security/supabase-security.vitest.ts` yet.
+1. Giuseppe: run the TEST-SECURITY cleanup SQL: `delete from public.leads where first_name like 'TEST-SECURITY%';`. Each `npm run test:security` run creates 2 such leads. Check `storage.objects` for leftover files under the lead-id folders first, and delete them from Dashboard > Storage if any (PROGRESS.md "Phase 12c").
+2. Giuseppe: test the Resend email on production after merge ("Invia email di prova" in Impostazioni).
 3. Accepted residual exposure from the removal path: while a 1-minute removal window is open, anon could see or delete that single object (unguessable name; only the server opens a window). Documented in QUESTIONS.md APPLY 20261023110000.
 4. Flakes, all green on re-run: `page1.spec.ts:108` (desktop + mobile, a concurrent admin-suppliers test left a logo supplier that disturbed the page1 fixture), `validation.spec.ts:246` (desktop in the 12b run, mobile in earlier runs), `admin-leads.spec.ts:213` (desktop, Phase 12).
 5. POD distributor codes IT002 areti, IT011 inrete, IT012 unareti, IT020 ireti still to confirm (QUESTIONS.md, T12.2). IT001 e-distribuzione is certain.
@@ -68,7 +67,7 @@ Brief and decisions: PROGRESS.md "PHASE 12b". Commits: 6ee93e3 removal · d15292
 - **Thank-you page**: the callback number from Impostazioni appears in the text.
 - **Privacy page** (/privacy): section "IBAN e documento d'identità (facoltativi)"; retention shows the [DA COMPLETARE] placeholder.
 - **Admin lead detail**: Pagamento and Documento sections; preview/download of uploaded files; the distributor line for luce only (**a gas lead shows no gas distributor line**); delete the lead and check its files are gone.
-- Note: until both APPLY migrations are run, the new fields, uploads and removals are not stored on the real DB; use mock mode for a full run.
+- Note: both APPLY migrations are on the real DB, so the new fields, uploads and removals are stored there.
 
 ## Working preferences (Giuseppe)
 - Talk to him in Italian; anything given to Claude Code (prompts, docs) in English; always state model + effort for prompts to paste elsewhere.

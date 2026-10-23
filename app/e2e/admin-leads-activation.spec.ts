@@ -86,7 +86,7 @@ test.describe("admin lead detail: payment, document, distributor", () => {
     await expect(doc).toContainText("U1A234567B");
     await expect(doc).toContainText("05/01/2031");
     await expect(doc).toContainText("MIT-UCO");
-    await expect(page.getByTestId("pod-distributor")).toContainText("Distributore:");
+    await expect(page.getByTestId("pod-distributor")).toContainText("Distributore luce:");
     await expect(page.getByTestId("pdr-distributor")).toHaveCount(0);
 
     await expect(page.getByTestId("lead-document")).toHaveCount(1);

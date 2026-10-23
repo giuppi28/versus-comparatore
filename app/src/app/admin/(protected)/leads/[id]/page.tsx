@@ -291,7 +291,7 @@ function WithDistributor({
     <span className="flex flex-col">
       <span>{value}</span>
       <span className="text-sm font-normal text-ink-muted" data-testid={testId}>
-        Distributore: {distributor ? distributor.name : "non riconosciuto"}
+        Distributore luce: {distributor ? distributor.name : "non riconosciuto"}
       </span>
     </span>
   );

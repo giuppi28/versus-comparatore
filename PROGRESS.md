@@ -331,3 +331,20 @@ Orchestrator: Claude Opus (session model). Decisions by Giuseppe: hosting Vercel
 - Final numbers: Vitest 1147/1147 · e2e 287 passed / 1 skipped (2 fixture flakes green on re-run) · matrix 381 + 8 passed (1 flake green on re-run) · PGlite DB tests passed.
 - `main` untouched. Preview: https://versus-comparatore-git-preview-phase12-giuseppes-projects-a9ce686f.vercel.app (build state not verifiable from this session).
 - Next for Giuseppe and the reviewer: APPLY both migrations in order, then run the security checks (see open items above).
+
+## Phase 12c (2026-10-23)
+- Orchestrator: Opus 5.5 (per Giuseppe's brief for this session). Builders on their agent-file models. **No escalations.**
+- T12c.0 general-purpose (haiku), 10bd09e: QUESTIONS.md records both Phase 12 APPLY migrations as applied; Resend preview note moved to general-purpose.
+- T12c.1 admin-settings-builder (sonnet), 074d78f: callback phone field shows an explanatory error and a format hint.
+- T12c.2 db-builder (opus), 68a4475: security suite extended with 13 Phase 12/12b cases (callback, lead documents RPC, Storage).
+- T12c.3 qa-tester (sonnet) + admin-leads-builder (sonnet), next commit: acceptance spec `e2e/acceptance-phase12.spec.ts`; admin label "Distributore luce:"; `RESEND_FROM=onboarding@resend.dev` in the Playwright webServer env.
+- T12c.4 general-purpose (haiku), this commit: docs (TASKS, PROGRESS, HANDOFF). Not committed or pushed by the agent.
+- Security suite on the real DB: `npm run test:security` 85 passed / 1 skipped (pre-existing logo-read skip, no logo in bucket). **No security finding.** The run creates 2 TEST-SECURITY leads; its test document row and file are removed by the run itself.
+  - Cleanup SQL for Giuseppe: `delete from public.leads where first_name like 'TEST-SECURITY%';` (lead_documents rows cascade). Check `storage.objects` for leftover files under the lead-id folders first, and delete them from Dashboard > Storage if any.
+- Acceptance checklist A–F: all pass on desktop and mobile (`e2e/acceptance-phase12.spec.ts`, 9 tests × 2).
+- Final numbers: typecheck ✓, lint ✓, Vitest 1147/1147 ✓, e2e 307 passed / 1 skipped (pre-existing mobile skip `page1.spec.ts:177`), matrix 382 + 8 passed. After the label fix (T12c.3): affected specs and the matrix re-run by the orchestrator.
+- Note: the admin hint for "Numero da cui chiamiamo" no longer quotes the thank-you sentence.
+
+### Phase 12c — result
+- `preview/phase12` is ready for Giuseppe to review and merge. `main` untouched. Both APPLY migrations are on the real DB and verified by the reviewer.
+- Open after this phase: run the TEST-SECURITY cleanup SQL; test the Resend email on production after merge; privacy [DA COMPLETARE]; POD codes IT002/IT011/IT012/IT020 to confirm; HEIC on iPhone Safari; 5 MiB vs 4 MB.
