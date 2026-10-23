@@ -59,7 +59,11 @@ test.describe("admin lead detail: payment, document, distributor", () => {
     expect(patched.status(), await patched.text()).toBeLessThan(300);
 
     // Upload through the token-bound route (cookie kept by the context).
-    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0, 1, 2, 3]);
+    // A real 1x1 JPEG: the inline preview hides undecodable images (onError).
+    const jpeg = Buffer.from(
+      "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
+      "base64",
+    );
     const upload = await ctx.post("/api/lead/document", {
       multipart: { file: { name: "doc.jpg", mimeType: "image/jpeg", buffer: jpeg } },
     });

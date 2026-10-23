@@ -198,8 +198,15 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
               label="IBAN"
               value={
                 lead.iban ? (
-                  <span data-testid="lead-iban" className="font-mono">
-                    {formatIban(lead.iban)}
+                  <span data-testid="lead-iban" className="font-mono tabular-nums">
+                    {formatIban(lead.iban)
+                      .split(" ")
+                      .map((group, i) => (
+                        <span key={i}>
+                          {i > 0 ? " " : ""}
+                          <span className="whitespace-nowrap">{group}</span>
+                        </span>
+                      ))}
                   </span>
                 ) : (
                   <span className="text-ink-subtle">Non indicato</span>

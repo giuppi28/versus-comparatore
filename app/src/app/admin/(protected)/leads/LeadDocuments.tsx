@@ -87,7 +87,11 @@ export function LeadDocuments({ documents }: { documents: LeadDocument[] }) {
               <img
                 src={inline[doc.id]}
                 alt="Anteprima del documento"
-                className="max-h-48 w-auto self-start rounded-control border border-line"
+                onError={() => {
+                  setInline((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== doc.id)));
+                  setError("Impossibile mostrare l'anteprima del documento. Riprova.");
+                }}
+                className="max-h-48 max-w-full w-auto self-start rounded-control border border-line"
                 data-testid="lead-document-inline"
               />
             )}
