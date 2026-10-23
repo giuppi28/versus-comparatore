@@ -10,6 +10,7 @@ import type { ApplianceId, GasUseId } from "@/config/consumption";
 import type {
   ClimateZone,
   Commodity,
+  DocumentType,
   HousingTitle,
   LeadCommodity,
   LeadCustomerType,
@@ -19,6 +20,7 @@ import type {
   Voltage,
 } from "@/lib/data/types";
 import { validatePhone } from "@/lib/logic/validators";
+import type { UploadedLeadDocument } from "./api-types";
 import { monthlyCost } from "@/lib/logic/pricing";
 import {
   effectiveServiceType,
@@ -79,6 +81,28 @@ export interface ActivationData {
   pdr: string;
   /** "Usi del gas" edited in Step B; null = not edited, use Page 1 `gasUses`. */
   gasUses: GasUseId[] | null;
+  // Step B, optional (Phase 12)
+  /** IBAN for direct debit ("" = not given). */
+  iban: string;
+  /** "L'intestatario del conto è diverso dal titolare" (only sent with an IBAN). */
+  ibanHolderDifferent: boolean;
+  ibanHolderFirstName: string;
+  ibanHolderLastName: string;
+  ibanHolderTaxCode: string;
+  /** Identity document data: all four or none. */
+  documentType: DocumentType | null;
+  documentNumber: string;
+  /** ISO date "YYYY-MM-DD" (value of an <input type="date">), "" = empty. */
+  documentExpiry: string;
+  documentIssuer: string;
+  /** Documents already uploaded for this lead (POST /api/lead/document), max 2. */
+  documents: FlowUploadedDocument[];
+}
+
+/** An uploaded identity document as remembered by the flow (server metadata + file name). */
+export interface FlowUploadedDocument extends UploadedLeadDocument {
+  /** Original file name, for display only (never sent to the server again). */
+  name: string;
 }
 
 export interface FlowState {
@@ -147,6 +171,16 @@ export const INITIAL_ACTIVATION: ActivationData = Object.freeze({
   voltage: null,
   pdr: "",
   gasUses: null,
+  iban: "",
+  ibanHolderDifferent: false,
+  ibanHolderFirstName: "",
+  ibanHolderLastName: "",
+  ibanHolderTaxCode: "",
+  documentType: null,
+  documentNumber: "",
+  documentExpiry: "",
+  documentIssuer: "",
+  documents: Object.freeze([]) as unknown as FlowUploadedDocument[],
 }) as ActivationData;
 
 export const INITIAL_FLOW_STATE: FlowState = Object.freeze({
@@ -227,12 +261,19 @@ export function loadFlowState(storage: Storage | null): FlowState {
     return {
       ...INITIAL_FLOW_STATE,
       ...parsed,
-      activation: { ...INITIAL_ACTIVATION, ...(parsed.activation ?? {}) },
+      activation: loadActivation(parsed.activation),
       chosenOffers: { ...INITIAL_FLOW_STATE.chosenOffers, ...(parsed.chosenOffers ?? {}) },
     };
   } catch {
     return INITIAL_FLOW_STATE;
   }
+}
+
+/** Saved activation data merged over the defaults (older saves lack the Phase 12 fields). */
+function loadActivation(saved: Partial<ActivationData> | undefined): ActivationData {
+  const activation = { ...INITIAL_ACTIVATION, ...(saved && typeof saved === "object" ? saved : {}) };
+  if (!Array.isArray(activation.documents)) activation.documents = INITIAL_ACTIVATION.documents;
+  return activation;
 }
 
 export function saveFlowState(storage: Storage | null, state: FlowState): void {
@@ -437,7 +478,29 @@ export function toLeadCompleteData(state: FlowState): LeadCompleteData {
     voltage: luce ? (a.voltage ?? undefined) : undefined,
     pdr: gas ? trimmed(a.pdr) : undefined,
     gas_uses: gas ? (a.gasUses ?? state.gasUses) : undefined,
+    ...activationExtras(a),
   });
+}
+
+/**
+ * Optional IBAN + identity document fields of the complete payload. Blank values are
+ * omitted (the server stores them as null); holder fields only with an IBAN and the box
+ * ticked. Formats and requirements are checked by the server (field error codes).
+ */
+function activationExtras(a: ActivationData): Partial<LeadCompleteData> {
+  const iban = trimmed(a.iban);
+  const holder = iban !== undefined && a.ibanHolderDifferent;
+  return {
+    iban,
+    iban_holder_different: iban !== undefined ? a.ibanHolderDifferent : undefined,
+    iban_holder_first_name: holder ? trimmed(a.ibanHolderFirstName) : undefined,
+    iban_holder_last_name: holder ? trimmed(a.ibanHolderLastName) : undefined,
+    iban_holder_tax_code: holder ? trimmed(a.ibanHolderTaxCode) : undefined,
+    document_type: a.documentType ?? undefined,
+    document_number: trimmed(a.documentNumber),
+    document_expiry: trimmed(a.documentExpiry),
+    document_issuer: trimmed(a.documentIssuer),
+  };
 }
 
 /** Client-side pre-check mirroring the server rules for POD/PDR requirement (UI helper). */

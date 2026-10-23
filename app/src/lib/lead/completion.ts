@@ -4,7 +4,7 @@
  */
 import type { Commodity, LeadData, Repository } from "@/lib/data";
 import { validateCodiceFiscale } from "@/lib/logic/validators";
-import type { FieldErrors, ParsedCompleteData } from "./schemas";
+import type { FieldErrors, ParsedCompleteData, ParsedPatchData } from "./schemas";
 import {
   effectiveServiceType,
   includesGas,
@@ -21,8 +21,96 @@ export interface CompletionCheck {
 
 const isBlank = (v: unknown) => v === undefined || v === null || v === "";
 
-/** Synchronous rules: required fields per flow, CF ↔ name consistency, hidden fields cleared. */
-export function checkCompletion(input: ParsedCompleteData): CompletionCheck {
+/** Today's date ("YYYY-MM-DD") in Italy, used for the document expiry check. */
+export function italianToday(now: Date = new Date()): string {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+const IBAN_HOLDER_FIELDS = [
+  "iban_holder_first_name",
+  "iban_holder_last_name",
+  "iban_holder_tax_code",
+] as const;
+
+const DOCUMENT_FIELDS = ["document_type", "document_number", "document_expiry", "document_issuer"] as const;
+
+/**
+ * PATCH /api/lead: light consistency on a partial update (formats already checked by the
+ * schema). Clearing the IBAN or unticking "intestatario diverso" also clears the holder
+ * fields; a document expiry in the past is rejected. Requirements are enforced on complete.
+ */
+export function checkPatchActivation(
+  input: ParsedPatchData,
+  today: string,
+): { fields: FieldErrors; data: LeadData } {
+  const fields: FieldErrors = {};
+  const data: LeadData = { ...input };
+  if (input.iban === null) {
+    data.iban_holder_different = null;
+    for (const k of IBAN_HOLDER_FIELDS) data[k] = null;
+  } else if (input.iban_holder_different === false) {
+    for (const k of IBAN_HOLDER_FIELDS) data[k] = null;
+  }
+  if (input.document_expiry && input.document_expiry < today) fields.document_expiry = "past";
+  return { fields, data };
+}
+
+/**
+ * Complete: optional IBAN (+ different account holder) and identity document data.
+ * Writes the normalised values into `data` (absent → null, so the final submit is
+ * authoritative) and the errors into `fields`.
+ */
+function checkActivationExtras(
+  input: ParsedCompleteData,
+  data: LeadData,
+  fields: FieldErrors,
+  today: string,
+) {
+  // IBAN: optional. The holder fields only mean something with an IBAN and the box ticked.
+  if (isBlank(input.iban)) {
+    data.iban = null;
+    data.iban_holder_different = null;
+    for (const k of IBAN_HOLDER_FIELDS) data[k] = null;
+  } else if (input.iban_holder_different === true) {
+    data.iban_holder_different = true;
+    for (const k of IBAN_HOLDER_FIELDS) {
+      if (isBlank(input[k])) fields[k] ??= "required";
+    }
+    if (input.iban_holder_tax_code && input.iban_holder_first_name && input.iban_holder_last_name) {
+      const cf = validateCodiceFiscale(input.iban_holder_tax_code, {
+        firstName: input.iban_holder_first_name,
+        lastName: input.iban_holder_last_name,
+      });
+      if (!cf.ok) fields.iban_holder_tax_code = cf.error;
+    }
+  } else {
+    data.iban_holder_different = false;
+    for (const k of IBAN_HOLDER_FIELDS) data[k] = null;
+  }
+
+  // Identity document data: optional, but all four fields once any is given.
+  const given = DOCUMENT_FIELDS.filter((k) => !isBlank(input[k]));
+  if (given.length === 0) {
+    for (const k of DOCUMENT_FIELDS) data[k] = null;
+  } else {
+    for (const k of DOCUMENT_FIELDS) {
+      if (isBlank(input[k])) fields[k] ??= "required";
+    }
+  }
+  if (input.document_expiry && input.document_expiry < today) fields.document_expiry ??= "past";
+}
+
+/**
+ * Synchronous rules: required fields per flow, CF ↔ name consistency, hidden fields
+ * cleared, optional IBAN / document rules. `today` = italianToday() by default.
+ */
+export function checkCompletion(input: ParsedCompleteData, today: string = italianToday()): CompletionCheck {
   const fields: FieldErrors = {};
   const data: LeadData = { ...input };
   const require = (key: keyof ParsedCompleteData) => {
@@ -94,6 +182,8 @@ export function checkCompletion(input: ParsedCompleteData): CompletionCheck {
   } else {
     Object.assign(data, { chosen_offer_gas: null, current_supplier_gas: null, pdr: null });
   }
+
+  checkActivationExtras(input, data, fields, today);
 
   return { fields, data };
 }

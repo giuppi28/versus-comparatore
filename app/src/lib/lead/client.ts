@@ -4,14 +4,23 @@
  * Every failure throws a typed `LeadApiError`.
  */
 import {
+  DOCUMENT_ALLOWED_MIMES,
+  DOCUMENT_MAX_BYTES,
+} from "@/lib/logic/validators/file-type";
+import {
   LEAD_API_PATH,
   LEAD_COMPLETE_API_PATH,
+  LEAD_DOCUMENT_API_PATH,
+  LEAD_DOCUMENT_FIELD,
   type LeadApiErrorCode,
+  type LeadApiFailure,
   type LeadApiResponse,
+  type UploadedLeadDocument,
 } from "./api-types";
 import type { LeadCompleteData, LeadCreateData, LeadPatchData } from "./schemas";
 
 export type { LeadCompleteData, LeadCreateData, LeadPatchData } from "./schemas";
+export type { UploadedLeadDocument } from "./api-types";
 
 export class LeadApiError extends Error {
   constructor(
@@ -82,6 +91,67 @@ export function updateLead(patch: LeadPatchData): Promise<void> {
  */
 export function completeLead(data: LeadCompleteData): Promise<void> {
   return call(LEAD_COMPLETE_API_PATH, "POST", { data });
+}
+
+/** Error code for a response without a JSON error body (e.g. a proxy 413). */
+function uploadFallbackCode(status: number): LeadApiErrorCode {
+  if (status === 413) return "file_size";
+  if (status === 415) return "file_type";
+  if (status === 429) return "rate_limited";
+  if (status === 401) return "no_lead";
+  if (status >= 500) return "upload_failed";
+  return "invalid_body";
+}
+
+/**
+ * Uploads an identity document (JPEG or PDF, max 5 MiB, max 2 per lead) for the current
+ * lead. Obvious problems are rejected before sending (same codes as the server):
+ * "file_missing" (empty), "file_type", "file_size". Server codes: "no_lead",
+ * "lead_not_found", "file_content" (bytes are not a real JPEG/PDF), "too_many_files",
+ * "rate_limited", "upload_failed", "forbidden_origin", "server_error"; "network_error"
+ * when the request fails. Returns the stored document's metadata (keep `id` in the flow
+ * state to show the uploaded file).
+ */
+export async function uploadLeadDocument(file: File): Promise<UploadedLeadDocument> {
+  if (!file || file.size === 0) throw new LeadApiError(422, "file_missing");
+  if (!(DOCUMENT_ALLOWED_MIMES as readonly string[]).includes(file.type.toLowerCase())) {
+    throw new LeadApiError(415, "file_type");
+  }
+  if (file.size > DOCUMENT_MAX_BYTES) throw new LeadApiError(413, "file_size");
+
+  const form = new FormData();
+  form.append(LEAD_DOCUMENT_FIELD, file, file.name || "documento");
+  let res: Response;
+  try {
+    // No Content-Type header: the browser sets the multipart boundary.
+    res = await fetch(LEAD_DOCUMENT_API_PATH, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      body: form,
+    });
+  } catch {
+    throw new LeadApiError(0, "network_error");
+  }
+
+  let payload: LeadApiResponse | null = null;
+  try {
+    payload = (await res.json()) as LeadApiResponse;
+  } catch {
+    payload = null;
+  }
+  if (res.ok && payload?.ok && "document" in payload) {
+    const { id, mime_type, size_bytes } = payload.document;
+    return { id, mime_type, size_bytes };
+  }
+  const failure = payload && payload.ok === false ? (payload as LeadApiFailure) : null;
+  const retry = Number(res.headers.get("Retry-After"));
+  throw new LeadApiError(
+    res.status,
+    failure ? failure.error : uploadFallbackCode(res.status),
+    {},
+    Number.isFinite(retry) && retry > 0 ? retry : null,
+  );
 }
 
 /** Forgets the lead in this browser (expires the cookie). Use with `reset()` of the flow state. */

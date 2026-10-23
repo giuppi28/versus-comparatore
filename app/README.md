@@ -77,6 +77,7 @@ All bodies are JSON (`Content-Type: application/json`, max 32 KB), every object 
 | `PATCH /api/lead` | `{ data: { ...any lead field, step_reached?: "results" \| "offer_chosen" } }` | 200 | Needs the cookie; `step_reached` only moves forward (backward value silently dropped) |
 | `POST /api/lead/complete` | `{ data: <full lead> }` | 200 | Server-side validation of all PRD §10 rules, then `step_reached = completed`, `status = new`, `notifyNewLead()`; **expires the cookies** |
 | `DELETE /api/lead` | — | 200 | Expires the cookies ("new comparison") |
+| `POST /api/lead/document` | `multipart/form-data`, one part `file` (JPEG or PDF, 1 B–5 MiB) | 201 `{ ok: true, document: { id, mime_type, size_bytes } }` | Needs the cookie; max 2 per lead, in-progress leads only; never returns `lead_id` / storage paths (see "Identity document upload" below) |
 
 Never writable by the customer: `id`, `token`, `created_at`, `updated_at`, `status`, `notes`,
 `step_reached = completed/page1`; `privacy_consent` only on create.
@@ -86,8 +87,10 @@ Errors: 400 `invalid_body` / `privacy_consent_required` · 401 `no_lead` (no coo
 413 `payload_too_large` · 422 `validation` + `fields` · 429 `rate_limited` (+ `Retry-After`) · 500 `server_error`.
 
 Field codes: `required`, `invalid`, `unknown_field`, the shared validator codes
-(`format`, `length`, `checksum`, `prefix`, `empty`, `surname_mismatch`, `name_mismatch`),
-`not_available` (chosen offer not active for the customer type), `not_found` (comune).
+(`format`, `length`, `checksum`, `prefix`, `empty`, `surname_mismatch`, `name_mismatch`,
+`country` (IBAN), `looksLikePdr` (a PDR in `pod`), `looksLikePod` (a POD in `pdr`)), `past`
+(`document_expiry` before today, Europe/Rome), `not_available` (chosen offer not active for
+the customer type), `not_found` (comune).
 Map them to Italian messages with the `*_MESSAGES` tables in `src/lib/logic/validators`.
 
 Complete rules: names, phone, CF (format + check char + consistency with name/surname),
@@ -96,7 +99,25 @@ sociale + P.IVA (checksum); Luce → chosen offer, POD (not for Primo allaccio),
 (one of 1.5/3/3.5/4/4.5/5/6/10/15, `null` = "Altro"), voltage 220/380, current supplier for
 Cambio fornitore/Voltura; Gas → chosen offer, PDR (not for Primo allaccio; `has_gas = false`
 forces gas to Primo allaccio), ≥1 gas use, current supplier for Cambio/Voltura. Fields hidden
-in the flow are stored as `null`.
+in the flow are stored as `null`. POD / PDR are normalised server-side (upper case, spaces, dots
+and hyphens removed) before validation.
+
+Optional activation fields (Phase 12, PATCH + complete, all optional):
+
+| Field | Format (schema) | Complete rule |
+|---|---|---|
+| `iban` | normalised (upper case, no spaces/dots/hyphens), country length + mod-97 → `format` / `country` / `length` / `checksum`; `""` = null | absent/blank → `iban`, `iban_holder_*` and `iban_holder_different` stored as null |
+| `iban_holder_different` | boolean | only with an IBAN; not `true` → stored `false` and the holder fields null |
+| `iban_holder_first_name`, `iban_holder_last_name` | trimmed, 1–80, `""` = null | required when `iban_holder_different = true` |
+| `iban_holder_tax_code` | CF format + check char | required when different; must match the **holder's** name/surname (`surname_mismatch` / `name_mismatch`) |
+| `document_type` | `carta_identita` \| `patente` \| `passaporto` | document data is all-or-nothing: once any of the four is given, the missing ones are `required` |
+| `document_number` | normalised (upper case, no spaces/dots/hyphens), 5–20 letters/digits → `format` | |
+| `document_expiry` | `YYYY-MM-DD`, real date, ≤ 2100-12-31 → `invalid` | before today (Europe/Rome) → `past` (also on PATCH) |
+| `document_issuer` | trimmed, 2–80 → `invalid` | |
+
+On PATCH the format checks apply and `iban: null` / `iban_holder_different: false` also clear the
+holder fields; requirements are only enforced on complete. Complete is authoritative: optional
+fields it does not receive are stored as null.
 
 **Cookies**: `versus_lead` (secret token) and `versus_lead_step` (furthest step), both
 `HttpOnly; SameSite=Lax; Path=/; Max-Age=86400`, `Secure` in production. The token is never in a
@@ -109,11 +130,26 @@ the server-only `LEAD_API_SECRET` required by the Supabase lead functions (direc
 the publishable key are refused).
 
 **Rate limit**: in-memory sliding window per IP and route: create 10 / complete 10 / update 60 /
-delete 30 per 10 minutes (`/api/comuni`: 120 per minute; admin login and TOTP: 5 per 15 minutes per
+delete 30 / document upload 10 per 10 minutes (`/api/comuni`: 120 per minute; admin login and TOTP: 5 per 15 minutes per
 IP + account). The client IP comes from `src/lib/client-ip.ts` and uses **only the headers set by
 Vercel**: `x-real-ip`, else the first value of `x-forwarded-for` (Vercel overwrites it); any other
 client-IP header is ignored because a client could spoof it. Per instance only — optionally add a
 Vercel Firewall rate-limit rule on `/api/lead*` and `/admin/login` (see `DEPLOY.md`).
+
+### Identity document upload (`POST /api/lead/document`)
+
+Order of checks: same-origin → rate limit (10 / 10 min per IP) → cookie (401 `no_lead`) →
+`Content-Type: multipart/form-data` (else 400 `invalid_body`) → declared `Content-Length` and the
+streamed body capped at 5 MiB + 64 KiB (413 `file_size`, the body is not buffered beyond that) →
+exactly one part named `file` (other / repeated parts → 400 `invalid_body`; none, a text value or
+an empty file → 422 `file_missing`) → declared type `image/jpeg` / `application/pdf` (415
+`file_type`) → ≤ 5 MiB (413 `file_size`) → magic bytes must match the declared type (422
+`file_content`, e.g. a PNG renamed `.jpg`) → `uploadLeadDocument`.
+
+Errors: 401 `no_lead` · 403 `forbidden_origin` · 404 `lead_not_found` (unknown/completed lead,
+cookies expired) · 409 `too_many_files` (2 already) · 413 `file_size` · 415 `file_type` ·
+422 `file_missing` / `file_content` · 429 `rate_limited` · 502 `upload_failed` (storage error,
+retry) · 500 `server_error`. Bodies are `{ ok: false, error }` only (no raw error text).
 
 **Notification**: `notifyNewLead({ id, data, completedAt })` in `src/lib/lead/notify.ts` sends the new-lead email
 (see the "Notifications" section above). A failing notification never fails the submit.
@@ -125,6 +161,8 @@ createLead(data: LeadCreateData): Promise<void>
 updateLead(patch: LeadPatchData): Promise<void>
 completeLead(data: LeadCompleteData): Promise<void>
 clearLead(): Promise<void>
+uploadLeadDocument(file: File): Promise<{ id: string; mime_type: "image/jpeg" | "application/pdf"; size_bytes: number }>
+// pre-checks before sending: empty → "file_missing", not JPEG/PDF → "file_type", > 5 MiB → "file_size"
 // failures throw LeadApiError { status, code, fields, retryAfterSec } ("network_error" = status 0)
 ```
 
@@ -149,8 +187,14 @@ reset();                                             // new comparison (+ clearL
   `sqmRange`, `estimatedKwhYear/SmcYear`, `manualConsumption`, `manualKwhYear/SmcYear`,
   `finalKwhMonth/SmcMonth`, `chosenOffers {luce,gas}` (price snapshot incl. `monthly_cost`),
   `activation {taxCode, vatNumber, housingTitle, cap, address, streetNumber, isResident, pod,
-  powerKw (default 3, null = Altro), voltage, pdr, gasUses (null = use Page 1 uses)}`,
+  powerKw (default 3, null = Altro), voltage, pdr, gasUses (null = use Page 1 uses), iban,
+  ibanHolderDifferent (default false), ibanHolderFirstName/LastName/TaxCode, documentType
+  (null), documentNumber, documentExpiry ("YYYY-MM-DD" or ""), documentIssuer, documents
+  (uploaded `{ id, mime_type, size_bytes, name }[]`, default [])}`; older saved states load with
+  these defaults,
   `leadCreated`, `leadCompleted`.
+- `toLeadCompleteData` sends `iban` (+ `iban_holder_different`) only when an IBAN is typed, the
+  holder fields only with an IBAN and `ibanHolderDifferent`, the document fields when filled.
 - Persisted in `sessionStorage["versus.flow.v1"]` (failures ignored); refresh keeps the data.
 - `hydrated` is false during SSR/hydration; wait for it before redirecting on missing data.
 - Selectors: `annualKwh`, `annualSmc` (manual entry if chosen, else estimate),
