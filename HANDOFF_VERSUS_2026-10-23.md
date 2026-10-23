@@ -5,7 +5,7 @@ VERSUS — "comparatore luce e gas": Italian electricity & gas comparison websit
 
 ## Status
 - `main` (Vercel production branch, https://versus-comparatore.vercel.app) is at d56489d and untouched by Phase 12. Offers are still realistic PLACEHOLDERS (price_verified = false) until Aldo provides real prices.
-- Phase 12 is complete on branch `preview/phase12`. **Not merged; `main` untouched.** Preview URL: <PREVIEW_URL>
+- Phase 12 is complete on branch `preview/phase12`. **Not merged; `main` untouched.** Preview URL (Vercel branch alias, build state not verifiable from this session — Vercel API 403, no gh CLI): https://versus-comparatore-git-preview-phase12-giuseppes-projects-a9ce686f.vercel.app
 - Phase 12 needs the APPLY below before the preview can store its new data on the real database.
 
 ## Where things are

@@ -300,3 +300,5 @@ Orchestrator: Claude Opus (session model). Decisions by Giuseppe: hosting Vercel
 6. CLAUDE.md and `.claude/agents/*.md` still reference `PRD_VERSUS_v0.5.md`; Giuseppe or the reviewer to update.
 7. The app SQL security suite (`e2e/security/supabase-security.vitest.ts`) has no Phase 12 tests yet. Run `npm run test:security` after the APPLY.
 8. Flakes: `admin-leads.spec.ts:213` (desktop) and `validation.spec.ts:246` (mobile), both green on re-run.
+
+- Vercel Preview (branch alias, target = preview): https://versus-comparatore-git-preview-phase12-giuseppes-projects-a9ce686f.vercel.app — pushed at 01e1df6; build state not verified (Vercel MCP 403, no gh CLI). May require Vercel login.
