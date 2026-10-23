@@ -95,7 +95,7 @@ describe("updateSettingsAction callback_phone", () => {
 
   it("rejects an invalid phone with an Italian error and saves nothing", async () => {
     const s = await updateSettingsAction({ attempt: 0 }, form("a@b.it", "abc"));
-    expect(s.phoneError).toContain("numero valido");
+    expect(s.phoneError).toBe("Usa solo cifre e spazi, con + iniziale facoltativo (6–20 caratteri). Es. +39 095 1234567");
     expect(s.phone).toBe("abc");
     expect(updateSettings).not.toHaveBeenCalled();
   });

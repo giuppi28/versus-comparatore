@@ -35,7 +35,7 @@ export function SettingsForm({
         maxLength={30}
         defaultValue={state.phone ?? callbackPhone}
         error={state.phoneError}
-        hint="Compare nella pagina di ringraziamento: «Riceverai a breve una chiamata dal numero …»."
+        hint="Solo cifre e spazi, + iniziale facoltativo (6–20 caratteri). Es. +39 095 1234567. Compare nella pagina di ringraziamento."
       />
       {state.saved && (
         <p role="status" data-testid="settings-saved" className="text-sm font-semibold text-brand-700">

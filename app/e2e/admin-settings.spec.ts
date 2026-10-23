@@ -82,7 +82,7 @@ test.describe("admin settings and go-live checklist", () => {
     await expect(phone).toHaveValue("+39 095 0000000");
     await phone.fill("abc");
     await save(page, "aldo@azienda.it");
-    await expect(page.getByRole("alert").filter({ hasText: "numero valido" })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "Usa solo cifre e spazi, con + iniziale facoltativo (6–20 caratteri). Es. +39 095 1234567" })).toBeVisible();
     await phone.fill("+39  06 7654321");
     await save(page, "aldo@azienda.it");
     await expect(page.getByTestId("settings-saved")).toBeVisible();

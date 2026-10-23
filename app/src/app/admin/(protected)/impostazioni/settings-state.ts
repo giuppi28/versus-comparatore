@@ -18,7 +18,7 @@ export const INITIAL_SETTINGS_STATE: SettingsFormState = { attempt: 0 };
 export const SETTINGS_MESSAGES = {
   invalidEmail: "Inserisci un indirizzo email valido (es. nome@azienda.it).",
   invalidPhone:
-    "Inserisci un numero valido: da 6 a 20 caratteri, solo cifre e spazi, con un + iniziale facoltativo (es. +39 095 0000000).",
+    "Usa solo cifre e spazi, con + iniziale facoltativo (6–20 caratteri). Es. +39 095 1234567",
   saveFailed: "Impossibile salvare le impostazioni. Riprova tra poco.",
 } as const;
 
