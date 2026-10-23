@@ -33,6 +33,7 @@ import {
   LEAD_HISTORY_FIELDS,
   LEAD_PAGE_SIZE_DEFAULT,
   LEAD_PAGE_SIZE_MAX,
+  MAX_LEAD_DOCUMENT_SLOTS,
   MAX_LEAD_DOCUMENTS,
 } from "../types";
 import { MOCK_COMUNI, MOCK_OFFERS, MOCK_SUPPLIERS } from "./data";
@@ -158,6 +159,8 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
   let settings: Settings = { notification_email: null, callback_phone: DEFAULT_CALLBACK_PHONE, ...seed.settings };
   const leads: Lead[] = [];
   const documents: MockDocument[] = [];
+  /** Upload slots issued per lead id (removed documents included), like the DB 20-slot cap. */
+  const issuedSlots = new Map<string, number>();
 
   const publicDocument = ({ bytes: _b, ...doc }: MockDocument): LeadDocument => {
     void _b;
@@ -328,9 +331,11 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       const lead = leadByToken(token);
       // Like lock_lead_by_token: completed leads are read-only.
       if (lead.step_reached === "completed") throw new LeadNotFoundError();
-      if (documents.filter((d) => d.lead_id === lead.id).length >= MAX_LEAD_DOCUMENTS) {
+      const issued = issuedSlots.get(lead.id) ?? 0;
+      if (documents.filter((d) => d.lead_id === lead.id).length >= MAX_LEAD_DOCUMENTS || issued >= MAX_LEAD_DOCUMENT_SLOTS) {
         throw new LeadDocumentLimitError();
       }
+      issuedSlots.set(lead.id, issued + 1);
       const doc: MockDocument = {
         id: crypto.randomUUID(),
         lead_id: lead.id,
@@ -341,6 +346,15 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       };
       documents.push(doc);
       return publicDocument(doc);
+    },
+
+    async removeLeadDocument(token, documentId) {
+      const lead = leadByToken(token);
+      // Like lock_lead_by_token: completed leads are read-only.
+      if (lead.step_reached === "completed") throw new LeadNotFoundError();
+      const i = documents.findIndex((d) => d.id === documentId && d.lead_id === lead.id);
+      if (i < 0) throw new LeadDocumentNotFoundError();
+      documents.splice(i, 1);
     },
 
     async listLeads() {

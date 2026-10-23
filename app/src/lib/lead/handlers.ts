@@ -7,7 +7,9 @@
  *
  * Identity documents (POST /api/lead/document): multipart upload bound to the same cookie,
  * size-capped before the body is read, declared type + magic bytes checked, then stored by
- * Repository.uploadLeadDocument. The response never contains the lead id or storage path.
+ * Repository.uploadLeadDocument. DELETE /api/lead/document `{ id }` removes one of the
+ * lead's documents (Repository.removeLeadDocument). Responses never contain the lead id
+ * or storage path.
  *
  * Token handling: the secret lead token lives only in the httpOnly `versus_lead` cookie;
  * it is never put in a response body. On successful completion both lead cookies are
@@ -18,7 +20,9 @@ import { NextResponse } from "next/server";
 import {
   getRepository,
   InvalidLeadDocumentError,
+  isUuid,
   LeadDocumentLimitError,
+  LeadDocumentNotFoundError,
   LeadNotFoundError,
   PrivacyConsentRequiredError,
 } from "@/lib/data";
@@ -86,6 +90,8 @@ export interface LeadHandlers {
   clear(request: Request): Promise<Response>;
   /** POST /api/lead/document — identity document upload (multipart, field `file`). */
   uploadDocument(request: Request): Promise<Response>;
+  /** DELETE /api/lead/document — removes an uploaded document (JSON `{ id }`). */
+  removeDocument(request: Request): Promise<Response>;
 }
 
 export function createRateLimiters(): Record<LeadRouteKey, SlidingWindowRateLimiter> {
@@ -95,6 +101,7 @@ export function createRateLimiters(): Record<LeadRouteKey, SlidingWindowRateLimi
     complete: new SlidingWindowRateLimiter(LEAD_RATE_LIMITS.complete),
     clear: new SlidingWindowRateLimiter(LEAD_RATE_LIMITS.clear),
     document: new SlidingWindowRateLimiter(LEAD_RATE_LIMITS.document),
+    documentRemove: new SlidingWindowRateLimiter(LEAD_RATE_LIMITS.documentRemove),
   };
 }
 
@@ -431,6 +438,27 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
         { ok: true, document: { id: doc.id, mime_type: doc.mime_type, size_bytes: doc.size_bytes } },
         201,
       );
+    }),
+
+    removeDocument: handle("documentRemove", async (request) => {
+      const token = requireToken(request);
+      const body = await readJson(request);
+      const keys = Object.keys(body as object);
+      const id = (body as { id?: unknown }).id;
+      if (keys.length !== 1 || !isUuid(id)) throw new HttpError(400, "invalid_body");
+      try {
+        await deps.getRepository().removeLeadDocument(token, id.toLowerCase());
+      } catch (err) {
+        if (isRepoError(err, LeadDocumentNotFoundError, "LeadDocumentNotFoundError")) {
+          throw new HttpError(404, "document_not_found");
+        }
+        // Mapped by `handle` (404 + cookies expired / 500 misconfiguration).
+        if (isLeadNotFound(err) || isLeadApiSecretError(err)) throw err;
+        // Storage failure: the document is kept, the customer can retry.
+        console.error("[lead] document removal failed:", err instanceof Error ? `${err.name}: ${err.message}` : err);
+        throw new HttpError(500, "server_error");
+      }
+      return json({ ok: true });
     }),
   };
 }

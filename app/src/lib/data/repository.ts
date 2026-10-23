@@ -132,12 +132,20 @@ export class LeadDocumentLimitError extends Error {
   }
 }
 
-/** Admin: no document with this id (or not visible to the session). */
+/**
+ * No document with this id visible to the caller: admin (not visible to the session) or
+ * customer removal (not an uploaded document of the token's lead / already removed).
+ */
 export class LeadDocumentNotFoundError extends Error {
   constructor() {
     super("Document not found");
     this.name = "LeadDocumentNotFoundError";
   }
+}
+
+/** Canonical UUID text (any version), as accepted by Postgres `uuid` columns. */
+export function isUuid(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 /** Mime type from the magic bytes: JPEG `FF D8 FF`, PDF `%PDF-`; null otherwise. */
@@ -238,6 +246,16 @@ export interface Repository {
    * (storage failure).
    */
   uploadLeadDocument(token: string, file: LeadDocumentFile): Promise<LeadDocument>;
+  /**
+   * Removes an uploaded document of the IN-PROGRESS lead owning `token`: the Storage
+   * object first, then the row (Supabase: request removal -> Storage remove -> finish; see
+   * README "Lead documents"). The freed slot can be used again (max 2 documents; removals
+   * count toward the 20 upload slots per lead). Throws LeadDocumentNotFoundError (not a
+   * document of this lead / already removed / not a UUID), LeadNotFoundError
+   * (unknown/completed lead), LeadApiSecretError, or a generic Error (storage failure: the
+   * document is kept and the call can be retried).
+   */
+  removeLeadDocument(token: string, documentId: string): Promise<void>;
 
   // ---- Admin (authenticated admin session; get it via getAdminRepository()) ----
 

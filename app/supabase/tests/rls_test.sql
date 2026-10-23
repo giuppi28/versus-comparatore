@@ -912,6 +912,220 @@ begin
   raise notice 'ok: phase 12 lead delete cascades to lead_documents';
 end $$;
 
+-- ================================================================ PHASE 12b (T12b.1)
+-- Customer removal of an uploaded identity document (request -> Storage delete -> finish).
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  ok  boolean;
+  err text;
+  n   integer;
+  nm  text;
+  v   jsonb;
+  w   jsonb;
+  d   jsonb;
+  r   jsonb;
+  s   text := 'rls-test-secret-not-the-real-one';
+begin
+  -- lead F: 2 uploaded documents; lead G: 1 uploaded document
+  v := public.create_lead(s, '{"privacy_consent":true,"commodity":"luce","customer_type":"casa","first_name":"Franco","last_name":"Bianchi","phone":"3337778888","comune_istat":"999999","service_type":"subentro","tax_code":"NRELNE80A41H501X","housing_title":"inquilino","cap":"99999","address":"Via Po","street_number":"3","is_resident":true,"chosen_offer_luce":"00000000-0000-4000-8000-00000000c001"}');
+  perform set_config('rls.f_id', v ->> 'id', true);
+  perform set_config('rls.f_token', v ->> 'token', true);
+  d := public.register_lead_document(s, v ->> 'token', 'image/jpeg', 100);
+  insert into storage.objects (bucket_id, name) values ('lead-documents', d ->> 'path');
+  perform public.confirm_lead_document(s, v ->> 'token', (d ->> 'id')::uuid);
+  perform set_config('rls.f_doc1', d ->> 'id', true);
+  perform set_config('rls.f_path1', d ->> 'path', true);
+  d := public.register_lead_document(s, v ->> 'token', 'application/pdf', 100);
+  insert into storage.objects (bucket_id, name) values ('lead-documents', d ->> 'path');
+  perform public.confirm_lead_document(s, v ->> 'token', (d ->> 'id')::uuid);
+  perform set_config('rls.f_doc2', d ->> 'id', true);
+  perform set_config('rls.f_path2', d ->> 'path', true);
+  w := public.create_lead(s, '{"privacy_consent":true,"commodity":"gas","customer_type":"casa","first_name":"Giulia","last_name":"Gialli","phone":"3339990000","comune_istat":"999999","service_type":"cambio_fornitore"}');
+  perform set_config('rls.g_id', w ->> 'id', true);
+  perform set_config('rls.g_token', w ->> 'token', true);
+  d := public.register_lead_document(s, w ->> 'token', 'image/jpeg', 100);
+  insert into storage.objects (bucket_id, name) values ('lead-documents', d ->> 'path');
+  perform public.confirm_lead_document(s, w ->> 'token', (d ->> 'id')::uuid);
+  perform set_config('rls.g_doc1', d ->> 'id', true);
+  perform set_config('rls.g_path1', d ->> 'path', true);
+  ok := false; begin perform public.register_lead_document(s, v ->> 'token', 'image/jpeg', 10); exception when others then ok := sqlerrm = 'document_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: lead F third document accepted (got %)', err; end if;
+
+  -- wrong / missing secret
+  ok := false; begin perform public.request_lead_document_removal('wrong-secret', v ->> 'token', (current_setting('rls.f_doc1'))::uuid); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: request removal wrong secret (got %)', err; end if;
+  ok := false; begin perform public.request_lead_document_removal(null, v ->> 'token', (current_setting('rls.f_doc1'))::uuid); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: request removal null secret (got %)', err; end if;
+  ok := false; begin perform public.finish_lead_document_removal('wrong-secret', v ->> 'token', (current_setting('rls.f_doc1'))::uuid); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: finish removal wrong secret (got %)', err; end if;
+  -- forged / missing token
+  ok := false; begin perform public.request_lead_document_removal(s, repeat('0', 64), (current_setting('rls.f_doc1'))::uuid); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: request removal forged token (got %)', err; end if;
+  ok := false; begin perform public.request_lead_document_removal(s, null, (current_setting('rls.f_doc1'))::uuid); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: request removal null token (got %)', err; end if;
+  ok := false; begin perform public.finish_lead_document_removal(s, repeat('f', 64), (current_setting('rls.f_doc1'))::uuid); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: finish removal forged token (got %)', err; end if;
+  -- another lead's document / unknown id
+  ok := false; begin perform public.request_lead_document_removal(s, v ->> 'token', (current_setting('rls.g_doc1'))::uuid); exception when others then ok := sqlerrm = 'document_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: request removal of another lead''s document (got %)', err; end if;
+  ok := false; begin perform public.finish_lead_document_removal(s, v ->> 'token', (current_setting('rls.g_doc1'))::uuid); exception when others then ok := sqlerrm = 'document_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: finish removal of another lead''s document (got %)', err; end if;
+  ok := false; begin perform public.request_lead_document_removal(s, v ->> 'token', gen_random_uuid()); exception when others then ok := sqlerrm = 'document_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: request removal unknown id (got %)', err; end if;
+
+  -- no open window: anon sees / deletes nothing
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents';
+  if n <> 0 then raise exception 'FAIL: anon lists % document objects without a removal window', n; end if;
+  delete from storage.objects where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: anon deleted % document objects without a removal window', n; end if;
+
+  -- request F1: server-only result {id, path, bucket}, never the lead id
+  r := public.request_lead_document_removal(s, v ->> 'token', (current_setting('rls.f_doc1'))::uuid);
+  if r ->> 'path' is distinct from current_setting('rls.f_path1') or r ->> 'bucket' <> 'lead-documents'
+     or r ->> 'id' <> current_setting('rls.f_doc1') or r ? 'lead_id' then
+    raise exception 'FAIL: request_lead_document_removal returned %', r;
+  end if;
+  -- exactly the target object is visible, nothing else; still not updatable
+  select count(*), max(name) into n, nm from storage.objects where bucket_id = 'lead-documents';
+  if n <> 1 or nm is distinct from current_setting('rls.f_path1') then
+    raise exception 'FAIL: anon sees % objects (%) during the removal window', n, nm;
+  end if;
+  select count(*) into n from storage.objects where bucket_id = 'supplier-logos' and name = current_setting('rls.f_path1');
+  if n <> 0 then raise exception 'FAIL: removal window leaked into another bucket'; end if;
+  update storage.objects set metadata = '{"x":1}' where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: anon updated a document object during the removal window'; end if;
+
+  -- finish while the object still exists (Storage call failed): row kept, window closed
+  r := public.finish_lead_document_removal(s, v ->> 'token', (current_setting('rls.f_doc1'))::uuid);
+  if (r ->> 'removed')::boolean is distinct from false then raise exception 'FAIL: finish with the object present returned %', r; end if;
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents';
+  if n <> 0 then raise exception 'FAIL: removal window still open after a failed removal'; end if;
+
+  -- retry: request -> Storage delete (only the target) -> finish
+  perform public.request_lead_document_removal(s, v ->> 'token', (current_setting('rls.f_doc1'))::uuid);
+  delete from storage.objects where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'FAIL: anon deleted % objects (1 expected: the target)', n; end if;
+  r := public.finish_lead_document_removal(s, v ->> 'token', (current_setting('rls.f_doc1'))::uuid);
+  if (r ->> 'removed')::boolean is distinct from true or r ->> 'id' <> current_setting('rls.f_doc1') or r ? 'path' or r ? 'lead_id' then
+    raise exception 'FAIL: finish_lead_document_removal returned %', r;
+  end if;
+  -- removed: no second removal, the old name cannot be re-uploaded
+  ok := false; begin perform public.request_lead_document_removal(s, v ->> 'token', (current_setting('rls.f_doc1'))::uuid); exception when others then ok := sqlerrm = 'document_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: request removal of a removed document (got %)', err; end if;
+  ok := false; begin perform public.finish_lead_document_removal(s, v ->> 'token', (current_setting('rls.f_doc1'))::uuid); exception when others then ok := sqlerrm = 'document_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: finish removal of a removed document (got %)', err; end if;
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('lead-documents', current_setting('rls.f_path1')); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon re-uploaded to a removed document path'; end if;
+
+  -- the slot is free again: re-upload (2 of 2), then the cap applies again
+  d := public.register_lead_document(s, v ->> 'token', 'image/jpeg', 200);
+  insert into storage.objects (bucket_id, name) values ('lead-documents', d ->> 'path');
+  perform public.confirm_lead_document(s, v ->> 'token', (d ->> 'id')::uuid);
+  perform set_config('rls.f_doc3', d ->> 'id', true);
+  ok := false; begin perform public.register_lead_document(s, v ->> 'token', 'image/jpeg', 10); exception when others then ok := sqlerrm = 'document_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: third document accepted after a re-upload (got %)', err; end if;
+
+  -- open windows on F2 (to be expired) and G1 (seen by no one but anon)
+  perform public.request_lead_document_removal(s, v ->> 'token', (current_setting('rls.f_doc2'))::uuid);
+  perform public.request_lead_document_removal(s, w ->> 'token', (current_setting('rls.g_doc1'))::uuid);
+  raise notice 'ok: phase 12b anon removal (part 1)';
+end $$;
+
+-- authenticated non-admin: the anon removal policies do not apply
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a2","role":"authenticated"}';
+do $$
+declare n integer;
+begin
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents';
+  if n <> 0 then raise exception 'FAIL: non-admin sees % objects during a removal window', n; end if;
+  delete from storage.objects where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: non-admin deleted objects during a removal window'; end if;
+  raise notice 'ok: phase 12b non-admin checks';
+end $$;
+
+-- verify as postgres, then expire F2's window and close G1's
+reset role;
+do $$
+declare n integer;
+begin
+  select count(*) into n from public.lead_documents where lead_id = current_setting('rls.f_id')::uuid;
+  if n <> 2 then raise exception 'FAIL: lead F has % of 2 document rows after removal + re-upload', n; end if;
+  select count(*) into n from public.lead_documents where id = current_setting('rls.f_doc1')::uuid;
+  if n <> 0 then raise exception 'FAIL: removed document row survived'; end if;
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents' and name = current_setting('rls.f_path1');
+  if n <> 0 then raise exception 'FAIL: removed document object survived'; end if;
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents'
+   and name in (current_setting('rls.f_path2'), current_setting('rls.g_path1'));
+  if n <> 2 then raise exception 'FAIL: other document objects were removed'; end if;
+  if (select document_removed_count from public.leads where id = current_setting('rls.f_id')::uuid) <> 1
+     or (select document_removed_count from public.leads where id = current_setting('rls.g_id')::uuid) <> 0 then
+    raise exception 'FAIL: document_removed_count not updated';
+  end if;
+  raise notice 'ok: phase 12b postgres verification';
+end $$;
+update public.lead_documents set removal_expires_at = now() - interval '1 second'
+ where id in (current_setting('rls.f_doc2')::uuid, current_setting('rls.g_doc1')::uuid);
+-- abuse cap: lead G (1 row) with 19 removals has used its 20 slots
+update public.leads set document_removed_count = 19 where id = current_setting('rls.g_id')::uuid;
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  ok  boolean;
+  err text;
+  n   integer;
+  s   text := 'rls-test-secret-not-the-real-one';
+begin
+  -- expired window: nothing visible / deletable
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents';
+  if n <> 0 then raise exception 'FAIL: anon sees % objects with an expired removal window', n; end if;
+  delete from storage.objects where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: anon deleted an object with an expired removal window'; end if;
+  -- removals count toward the 20-slot cap
+  ok := false; begin perform public.register_lead_document(s, current_setting('rls.g_token'), 'image/jpeg', 10); exception when others then ok := sqlerrm = 'document_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: slot cap ignores removed documents (got %)', err; end if;
+
+  -- completed lead: an open window no longer applies, no new request
+  perform public.request_lead_document_removal(s, current_setting('rls.f_token'), (current_setting('rls.f_doc2'))::uuid);
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents';
+  if n <> 1 then raise exception 'FAIL: reopened window shows % objects', n; end if;
+  perform public.complete_lead(s, current_setting('rls.f_token'), '{}');
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents';
+  if n <> 0 then raise exception 'FAIL: anon sees an object of a completed lead'; end if;
+  delete from storage.objects where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: anon deleted an object of a completed lead'; end if;
+  ok := false; begin perform public.request_lead_document_removal(s, current_setting('rls.f_token'), (current_setting('rls.f_doc2'))::uuid); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: request removal on a completed lead (got %)', err; end if;
+  ok := false; begin perform public.finish_lead_document_removal(s, current_setting('rls.f_token'), (current_setting('rls.f_doc2'))::uuid); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: finish removal on a completed lead (got %)', err; end if;
+  raise notice 'ok: phase 12b anon removal (part 2)';
+end $$;
+
+-- admin (aal2): sees only the remaining documents of lead F
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}';
+do $$
+declare n integer;
+begin
+  select count(*) into n from public.lead_documents
+   where lead_id = current_setting('rls.f_id')::uuid
+     and id in (current_setting('rls.f_doc2')::uuid, current_setting('rls.f_doc3')::uuid);
+  if n <> 2 or (select count(*) from public.lead_documents where lead_id = current_setting('rls.f_id')::uuid) <> 2 then
+    raise exception 'FAIL: admin does not see exactly the 2 remaining documents of lead F';
+  end if;
+  raise notice 'ok: phase 12b admin sees only remaining documents';
+end $$;
+
 reset role;
 do $$ begin raise notice 'ALL RLS TESTS PASSED'; end $$;
 rollback;

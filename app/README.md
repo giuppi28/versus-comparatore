@@ -78,6 +78,7 @@ All bodies are JSON (`Content-Type: application/json`, max 32 KB), every object 
 | `POST /api/lead/complete` | `{ data: <full lead> }` | 200 | Server-side validation of all PRD §10 rules, then `step_reached = completed`, `status = new`, `notifyNewLead()`; **expires the cookies** |
 | `DELETE /api/lead` | — | 200 | Expires the cookies ("new comparison") |
 | `POST /api/lead/document` | `multipart/form-data`, one part `file` (JPEG or PDF, 1 B–5 MiB) | 201 `{ ok: true, document: { id, mime_type, size_bytes } }` | Needs the cookie; max 2 per lead, in-progress leads only; never returns `lead_id` / storage paths (see "Identity document upload" below) |
+| `DELETE /api/lead/document` | `{ "id": "<document uuid>" }` (exactly that key) | 200 `{ ok: true }` | Needs the cookie; removes one of the lead's uploaded documents (file + record), in-progress leads only; the slot can be reused (see "Identity document removal" below) |
 
 Never writable by the customer: `id`, `token`, `created_at`, `updated_at`, `status`, `notes`,
 `step_reached = completed/page1`; `privacy_consent` only on create.
@@ -130,7 +131,7 @@ the server-only `LEAD_API_SECRET` required by the Supabase lead functions (direc
 the publishable key are refused).
 
 **Rate limit**: in-memory sliding window per IP and route: create 10 / complete 10 / update 60 /
-delete 30 / document upload 10 per 10 minutes (`/api/comuni`: 120 per minute; admin login and TOTP: 5 per 15 minutes per
+delete 30 / document upload 10 / document removal 10 per 10 minutes (`/api/comuni`: 120 per minute; admin login and TOTP: 5 per 15 minutes per
 IP + account). The client IP comes from `src/lib/client-ip.ts` and uses **only the headers set by
 Vercel**: `x-real-ip`, else the first value of `x-forwarded-for` (Vercel overwrites it); any other
 client-IP header is ignored because a client could spoof it. Per instance only — optionally add a
@@ -151,6 +152,24 @@ cookies expired) · 409 `too_many_files` (2 already) · 413 `file_size` · 415 `
 422 `file_missing` / `file_content` · 429 `rate_limited` · 502 `upload_failed` (storage error,
 retry) · 500 `server_error`. Bodies are `{ ok: false, error }` only (no raw error text).
 
+### Identity document removal (`DELETE /api/lead/document`)
+
+Order of checks: same-origin (403 `forbidden_origin`) → rate limit (10 / 10 min per IP, own
+counter: uploads unaffected) → cookie (401 `no_lead`) → JSON body `{ "id": "<uuid>" }` with no
+other key (else 400 `invalid_body`; 413 `payload_too_large` over 32 KB) →
+`removeLeadDocument(token, id)`.
+
+Errors: 400 `invalid_body` · 401 `no_lead` · 403 `forbidden_origin` · 404 `lead_not_found`
+(unknown/completed lead, cookies expired) · 404 `document_not_found` (not a document of this
+lead, or already removed) · 429 `rate_limited` (+ `Retry-After`) · 500 `server_error` (storage
+failure: the document is kept and still counts, the customer can retry). Bodies are
+`{ ok: false, error }` only; the lead id and storage path are never returned.
+
+After a successful removal the document no longer counts toward the 2-document cap (upload
+another one); removed documents still count toward the 20 upload slots per lead (abuse cap →
+409 `too_many_files` on upload). The admin lead detail lists documents from the table, so a
+removed document disappears there too.
+
 **Notification**: `notifyNewLead({ id, data, completedAt })` in `src/lib/lead/notify.ts` sends the new-lead email
 (see the "Notifications" section above). A failing notification never fails the submit.
 
@@ -163,6 +182,7 @@ completeLead(data: LeadCompleteData): Promise<void>
 clearLead(): Promise<void>
 uploadLeadDocument(file: File): Promise<{ id: string; mime_type: "image/jpeg" | "application/pdf"; size_bytes: number }>
 // pre-checks before sending: empty → "file_missing", not JPEG/PDF → "file_type", > 5 MiB → "file_size"
+removeLeadDocument(id: string): Promise<void>   // id from uploadLeadDocument; "document_not_found" when gone
 // failures throw LeadApiError { status, code, fields, retryAfterSec } ("network_error" = status 0)
 ```
 

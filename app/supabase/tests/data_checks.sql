@@ -227,28 +227,60 @@ begin
      and has_function_privilege('anon', p.oid, 'execute')
      and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where a.grantee = 0);
   if n <> 5 then raise exception 'FAIL: % of 5 Phase 12 functions are security definer / search_path '''' / anon-only-by-grant', n; end if;
-  -- `private` is usable by anon only for the upload-policy helper: no other private function or table
+  -- `private` is usable by anon only for the upload / removal policy helpers: no other private function or table
   select count(*) into n from pg_proc p join pg_namespace s on s.oid = p.pronamespace
    where s.nspname = 'private' and has_function_privilege('anon', p.oid, 'execute')
-     and p.oid <> 'private.lead_document_upload_allowed(text)'::regprocedure;
+     and p.oid not in ('private.lead_document_upload_allowed(text)'::regprocedure,
+                       'private.lead_document_removal_allowed(text)'::regprocedure);
   if n <> 0 then raise exception 'FAIL: % other private functions executable by anon', n; end if;
   select count(*) into n from pg_class c join pg_namespace s on s.oid = c.relnamespace
    where s.nspname = 'private' and c.relkind in ('r', 'v', 'm', 'p')
      and has_table_privilege('anon', c.oid, 'select, insert, update, delete');
   if n <> 0 then raise exception 'FAIL: anon has privileges on % private tables', n; end if;
 
-  -- storage: bucket private, policies present (anon: INSERT only)
+  -- storage: bucket private, policies present (anon: INSERT + removal-window SELECT/DELETE)
   select count(*) into n from storage.buckets
    where id = 'lead-documents' and not public and file_size_limit = 5242880
      and allowed_mime_types = array['image/jpeg', 'application/pdf'];
   if n <> 1 then raise exception 'FAIL: lead-documents bucket config'; end if;
   select count(*) into n from pg_policies
    where schemaname = 'storage' and tablename = 'objects' and policyname like 'lead_documents_%';
-  if n <> 4 then raise exception 'FAIL: % of 4 lead-documents storage policies', n; end if;
+  if n <> 6 then raise exception 'FAIL: % of 6 lead-documents storage policies', n; end if;
+  -- anon: INSERT (upload helper) + SELECT/DELETE only through the removal helper (Phase 12b)
   select count(*) into n from pg_policies
    where schemaname = 'storage' and tablename = 'objects' and 'anon' = any (roles) and cmd <> 'INSERT'
-     and coalesce(qual, '') || coalesce(with_check, '') like '%lead-documents%';
-  if n <> 0 then raise exception 'FAIL: anon has a non-INSERT policy on lead-documents objects'; end if;
+     and coalesce(qual, '') || coalesce(with_check, '') like '%lead-documents%'
+     and not (cmd in ('SELECT', 'DELETE') and qual like '%lead_document_removal_allowed(name)%'
+              and with_check is null);
+  if n <> 0 then raise exception 'FAIL: anon has a non-INSERT policy on lead-documents objects outside the removal helper'; end if;
+  select count(*) into n from pg_policies
+   where schemaname = 'storage' and tablename = 'objects' and roles = array['anon']::name[]
+     and policyname in ('lead_documents_anon_remove_select', 'lead_documents_anon_remove_delete')
+     and qual like '%lead-documents%' and qual like '%lead_document_removal_allowed(name)%';
+  if n <> 2 then raise exception 'FAIL: % of 2 anon removal policies (SELECT, DELETE) on lead-documents', n; end if;
+
+  -- ---------------------------------------------------------------- Phase 12b (T12b.1)
+  -- removal columns: lead counter (not null, default 0, not writable), removal window (nullable)
+  select count(*) into n from information_schema.columns
+   where table_schema = 'public'
+     and ((table_name = 'leads' and column_name = 'document_removed_count' and data_type = 'integer'
+           and is_nullable = 'NO' and column_default = '0')
+       or (table_name = 'lead_documents' and column_name = 'removal_expires_at'
+           and data_type = 'timestamp with time zone' and is_nullable = 'YES' and column_default is null));
+  if n <> 2 then raise exception 'FAIL: % of 2 Phase 12b columns', n; end if;
+  if 'document_removed_count' = any (private.lead_writable_fields()) then
+    raise exception 'FAIL: document_removed_count is writable by the lead functions';
+  end if;
+  select count(*) into n from pg_proc p
+   where p.oid in ('public.request_lead_document_removal(text, text, uuid)'::regprocedure,
+                   'public.finish_lead_document_removal(text, text, uuid)'::regprocedure,
+                   'public.register_lead_document(text, text, text, integer)'::regprocedure,
+                   'private.lead_document_removal_allowed(text)'::regprocedure)
+     and p.prosecdef
+     and 'search_path=""' = any (p.proconfig)
+     and has_function_privilege('anon', p.oid, 'execute')
+     and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where a.grantee = 0);
+  if n <> 4 then raise exception 'FAIL: % of 4 Phase 12b functions are security definer / search_path '''' / anon-only-by-grant', n; end if;
 
   raise notice 'ALL DATA CHECKS PASSED';
 end $$;

@@ -245,8 +245,10 @@ export type LeadDocumentMime = "image/jpeg" | "application/pdf";
 export const LEAD_DOCUMENT_MIME_TYPES: readonly LeadDocumentMime[] = ["image/jpeg", "application/pdf"];
 /** Max size per file (bucket limit, 5 MiB). */
 export const MAX_LEAD_DOCUMENT_BYTES = 5 * 1024 * 1024;
-/** Max documents per lead. */
+/** Max documents per lead (removed documents free their slot). */
 export const MAX_LEAD_DOCUMENTS = 2;
+/** Abuse cap: upload slots issued per lead, removed documents included (DB: register_lead_document). */
+export const MAX_LEAD_DOCUMENT_SLOTS = 20;
 /** Max lifetime of an admin signed URL, in seconds. */
 export const LEAD_DOCUMENT_URL_MAX_SECONDS = 300;
 /** Private Supabase Storage bucket holding the documents. */

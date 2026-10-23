@@ -30,7 +30,9 @@ export type LeadApiErrorCode =
   | "file_size" // 413: file > 5 MiB (or request body too large)
   | "file_content" // 422: magic bytes do not match the declared type
   | "too_many_files" // 409: the lead already has the maximum number of documents
-  | "upload_failed"; // 502: storage error, retry later
+  | "upload_failed" // 502: storage error, retry later
+  // DELETE /api/lead/document only:
+  | "document_not_found"; // 404: not a document of this lead, or already removed
 
 export interface LeadApiSuccess {
   ok: true;
@@ -47,6 +49,12 @@ export interface UploadedLeadDocument {
 export interface LeadDocumentUploadSuccess {
   ok: true;
   document: UploadedLeadDocument;
+}
+
+/** JSON body of DELETE /api/lead/document (200 response: LeadApiSuccess). */
+export interface LeadDocumentRemoveBody {
+  /** `id` returned by the upload. */
+  id: string;
 }
 
 export interface LeadApiFailure {

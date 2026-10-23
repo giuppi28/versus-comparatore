@@ -11,7 +11,7 @@ import {
   LeadNotFoundError,
   type Repository,
 } from "../repository";
-import { DEFAULT_CALLBACK_PHONE, MAX_LEAD_DOCUMENT_BYTES } from "../types";
+import { DEFAULT_CALLBACK_PHONE, MAX_LEAD_DOCUMENT_BYTES, MAX_LEAD_DOCUMENT_SLOTS } from "../types";
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xdb, 9, 9]);
 const PDF = new TextEncoder().encode("%PDF-1.4\n%test");
@@ -95,6 +95,51 @@ describe("mock lead documents", () => {
     expect(await repo.deleteLeads([b.id, "unknown"])).toBe(1);
     expect(await repo.listLeadDocuments(b.id)).toEqual([]);
     expect((await repo.listLeadDocuments(c.id)).map((d) => d.id)).toEqual([docC.id]);
+  });
+});
+
+describe("mock lead document removal (Phase 12b)", () => {
+  let repo: Repository;
+  beforeEach(() => {
+    repo = createMockRepository();
+  });
+
+  it("removes a document of the token's lead: slot freed, gone from the admin list and URLs", async () => {
+    const ref = await repo.createLead({ privacy_consent: true });
+    const a = await repo.uploadLeadDocument(ref.token, { mime: "image/jpeg", bytes: JPEG });
+    const b = await repo.uploadLeadDocument(ref.token, { mime: "application/pdf", bytes: PDF });
+    await repo.removeLeadDocument(ref.token, a.id);
+    expect((await repo.listLeadDocuments(ref.id)).map((d) => d.id)).toEqual([b.id]);
+    await expect(repo.createLeadDocumentUrl(a.id)).rejects.toBeInstanceOf(LeadDocumentNotFoundError);
+    const c = await repo.uploadLeadDocument(ref.token, { mime: "image/jpeg", bytes: JPEG });
+    expect((await repo.listLeadDocuments(ref.id)).map((d) => d.id)).toEqual([b.id, c.id]);
+    await expect(repo.uploadLeadDocument(ref.token, { mime: "image/jpeg", bytes: JPEG })).rejects.toBeInstanceOf(
+      LeadDocumentLimitError,
+    );
+    await expect(repo.removeLeadDocument(ref.token, a.id)).rejects.toBeInstanceOf(LeadDocumentNotFoundError);
+  });
+
+  it("refuses another lead's document, unknown tokens and completed leads", async () => {
+    const a = await repo.createLead({ privacy_consent: true });
+    const b = await repo.createLead({ privacy_consent: true });
+    const docB = await repo.uploadLeadDocument(b.token, { mime: "image/jpeg", bytes: JPEG });
+    await expect(repo.removeLeadDocument(a.token, docB.id)).rejects.toBeInstanceOf(LeadDocumentNotFoundError);
+    await expect(repo.removeLeadDocument("nope", docB.id)).rejects.toBeInstanceOf(LeadNotFoundError);
+    await repo.completeLead(b.token, {});
+    await expect(repo.removeLeadDocument(b.token, docB.id)).rejects.toBeInstanceOf(LeadNotFoundError);
+    expect(await repo.listLeadDocuments(b.id)).toHaveLength(1);
+  });
+
+  it("removals count toward the 20 upload slots per lead", async () => {
+    const ref = await repo.createLead({ privacy_consent: true });
+    for (let i = 0; i < MAX_LEAD_DOCUMENT_SLOTS; i++) {
+      const d = await repo.uploadLeadDocument(ref.token, { mime: "image/jpeg", bytes: JPEG });
+      await repo.removeLeadDocument(ref.token, d.id);
+    }
+    await expect(repo.uploadLeadDocument(ref.token, { mime: "image/jpeg", bytes: JPEG })).rejects.toBeInstanceOf(
+      LeadDocumentLimitError,
+    );
+    expect(await repo.listLeadDocuments(ref.id)).toEqual([]);
   });
 });
 

@@ -15,6 +15,7 @@ import {
   type LeadApiErrorCode,
   type LeadApiFailure,
   type LeadApiResponse,
+  type LeadDocumentRemoveBody,
   type UploadedLeadDocument,
 } from "./api-types";
 import type { LeadCompleteData, LeadCreateData, LeadPatchData } from "./schemas";
@@ -152,6 +153,17 @@ export async function uploadLeadDocument(file: File): Promise<UploadedLeadDocume
     {},
     Number.isFinite(retry) && retry > 0 ? retry : null,
   );
+}
+
+/**
+ * Removes an uploaded identity document of the current lead (`id` returned by
+ * uploadLeadDocument); the freed slot can be used for another upload. Throws LeadApiError:
+ * "document_not_found" (404: not a document of this lead / already removed), "no_lead",
+ * "lead_not_found", "invalid_body", "rate_limited", "forbidden_origin", "server_error"
+ * (the document is kept: retry later), "network_error".
+ */
+export function removeLeadDocument(id: string): Promise<void> {
+  return call(LEAD_DOCUMENT_API_PATH, "DELETE", { id } satisfies LeadDocumentRemoveBody);
 }
 
 /** Forgets the lead in this browser (expires the cookie). Use with `reset()` of the flow state. */

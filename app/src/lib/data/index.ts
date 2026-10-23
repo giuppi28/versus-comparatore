@@ -18,6 +18,7 @@ export {
   LeadDocumentNotFoundError,
   assertLeadDocument,
   detectLeadDocumentMime,
+  isUuid,
   leadDocumentFileName,
   leadDocumentUrlSeconds,
   assertSafeSvg,

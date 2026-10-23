@@ -3,6 +3,7 @@ import { isStorageLogoPath } from "../logo";
 import { normalizeSearch } from "../normalize";
 import {
   assertLeadDocument,
+  isUuid,
   assertSafeSvg,
   DEFAULT_COMUNI_LIMIT,
   InvalidLeadDocumentError,
@@ -75,6 +76,14 @@ import {
  *   - rpc confirm_lead_document(p_secret, p_token, p_document_id)
  *       -> { id, lead_id, mime_type, size_bytes, created_at }   (error document_not_found)
  *   - table lead_documents (admin SELECT only; cascades with the lead)
+ * - Phase 12b (migration 20261023110000), customer removal:
+ *   - rpc request_lead_document_removal(p_secret, p_token, p_document_id)
+ *       -> { id, path, bucket }   (opens a 1-minute removal window on an uploaded document)
+ *   - Storage remove([path]) with the anon key: anon SELECT + DELETE allowed only on the
+ *     object of an open window of an in-progress lead
+ *   - rpc finish_lead_document_removal(p_secret, p_token, p_document_id)
+ *       -> { id, removed }   (removed = false: the object still exists, row kept)
+ *   - errors document_not_found / lead_not_found / invalid_secret
  */
 
 export interface SupabaseConfig {
@@ -121,6 +130,7 @@ function fail(error: { message: string; code?: string }, ctx?: "supplier" | "off
   if (/privacy_consent_required/i.test(error.message)) throw new PrivacyConsentRequiredError();
   if (/document_limit_reached/i.test(error.message)) throw new LeadDocumentLimitError();
   if (/invalid_document/i.test(error.message)) throw new InvalidLeadDocumentError("type");
+  if (/document_not_found/i.test(error.message)) throw new LeadDocumentNotFoundError();
   throw new Error(error.message);
 }
 
@@ -460,6 +470,36 @@ export function createSupabaseRepository(
       });
       if (conf.error) fail(conf.error, "lead");
       return toLeadDocument(conf.data);
+    },
+
+    async removeLeadDocument(token, documentId) {
+      // A malformed id would fail the uuid cast (22P02): same as an unknown document.
+      if (!isUuid(documentId)) throw new LeadDocumentNotFoundError();
+      const secret = leadSecret();
+      const args = { p_secret: secret, p_token: token, p_document_id: documentId };
+      // 1. Removal window on exactly this document (secret, in-progress lead, own document).
+      const req = await client.rpc("request_lead_document_removal", args);
+      if (req.error) fail(req.error, "lead");
+      const target = firstRow(req.data) as { path?: unknown } | null;
+      if (!target || typeof target.path !== "string") {
+        throw new Error("Unexpected response from request_lead_document_removal");
+      }
+      // 2. The object (Storage API: Supabase forbids SQL deletes on storage.objects).
+      let storageError: string | null = null;
+      try {
+        const rm = await client.storage.from(LEAD_DOCUMENT_BUCKET).remove([target.path]);
+        if (rm.error) storageError = rm.error.message;
+      } catch (err) {
+        storageError = err instanceof Error ? err.message : "unknown error";
+      }
+      // 3. Always finish: deletes the row only if the object is really gone, otherwise keeps
+      //    it and closes the window (retry-safe in both cases).
+      const fin = await client.rpc("finish_lead_document_removal", args);
+      if (fin.error) fail(fin.error, "lead");
+      const done = firstRow(fin.data) as { removed?: unknown } | null;
+      if (!done || done.removed !== true) {
+        throw new Error(`Document removal failed: ${storageError ?? "object still present"}`);
+      }
     },
 
     // ---- Admin: require an authenticated admin session on `client` (RLS) ----

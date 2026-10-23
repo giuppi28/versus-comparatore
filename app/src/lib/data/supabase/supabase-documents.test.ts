@@ -33,7 +33,7 @@ function builder(result: Result) {
   return { b, calls };
 }
 
-function setup(opts: { rpc?: Result[]; from?: Result[]; upload?: Result; signed?: Result } = {}) {
+function setup(opts: { rpc?: Result[]; from?: Result[]; upload?: Result; signed?: Result; remove?: Result | Error } = {}) {
   const rpcQueue = [...(opts.rpc ?? [])];
   const rpc = vi.fn(() => Promise.resolve({ error: null, ...(rpcQueue.shift() ?? {}) }));
   const fromQueue = [...(opts.from ?? [])];
@@ -47,9 +47,13 @@ function setup(opts: { rpc?: Result[]; from?: Result[]; upload?: Result; signed?
   const createSignedUrl = vi
     .fn()
     .mockResolvedValue({ data: { signedUrl: "https://x.supabase.co/sign/doc?token=t" }, error: null, ...opts.signed });
-  const fromBucket = vi.fn().mockReturnValue({ upload, createSignedUrl });
+  const remove =
+    opts.remove instanceof Error
+      ? vi.fn().mockRejectedValue(opts.remove)
+      : vi.fn().mockResolvedValue({ data: [{ name: PATH }], error: null, ...opts.remove });
+  const fromBucket = vi.fn().mockReturnValue({ upload, createSignedUrl, remove });
   const client = { rpc, from, storage: { from: fromBucket } } as unknown as SupabaseClient;
-  return { client, rpc, from, builders, upload, createSignedUrl, fromBucket };
+  return { client, rpc, from, builders, upload, createSignedUrl, remove, fromBucket };
 }
 
 const withSecret = { leadSecret: () => SECRET };
@@ -220,5 +224,80 @@ describe("lead rows: Phase 12 fields", () => {
     };
     const present = setup({ from: [{ data: row }] });
     expect(await createSupabaseRepository(present.client).getLead("l1")).toMatchObject(row);
+  });
+});
+
+describe("removeLeadDocument (request -> Storage remove -> finish)", () => {
+  const requested = { data: { id: DOC, path: PATH, bucket: "lead-documents" } };
+  const removed = { data: { id: DOC, removed: true } };
+  const kept = { data: { id: DOC, removed: false } };
+  const args = { p_secret: SECRET, p_token: "tok", p_document_id: DOC };
+
+  it("opens the removal window, removes exactly the returned path, then finishes", async () => {
+    const t = setup({ rpc: [requested, removed] });
+    await expect(createSupabaseRepository(t.client, withSecret).removeLeadDocument("tok", DOC)).resolves.toBeUndefined();
+    expect(t.rpc).toHaveBeenNthCalledWith(1, "request_lead_document_removal", args);
+    expect(t.fromBucket).toHaveBeenCalledWith("lead-documents");
+    expect(t.remove).toHaveBeenCalledWith([PATH]);
+    expect(t.rpc).toHaveBeenNthCalledWith(2, "finish_lead_document_removal", args);
+    expect(t.rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("non-UUID id: LeadDocumentNotFoundError without any call; no secret: fails closed", async () => {
+    const t = setup();
+    await expect(createSupabaseRepository(t.client, withSecret).removeLeadDocument("tok", "../x.jpg")).rejects.toBeInstanceOf(
+      LeadDocumentNotFoundError,
+    );
+    await expect(
+      createSupabaseRepository(t.client, { leadSecret: () => undefined }).removeLeadDocument("tok", DOC),
+    ).rejects.toBeInstanceOf(LeadApiSecretError);
+    expect(t.rpc).not.toHaveBeenCalled();
+    expect(t.remove).not.toHaveBeenCalled();
+  });
+
+  it("maps request errors and never touches Storage after a refusal", async () => {
+    const cases: Array<[Result, unknown]> = [
+      [{ error: { message: "document_not_found", code: "P0002" } }, LeadDocumentNotFoundError],
+      [{ error: { message: "lead_not_found", code: "P0002" } }, LeadNotFoundError],
+      [{ error: { message: "invalid_secret", code: "28000" } }, LeadApiSecretError],
+    ];
+    for (const [res, type] of cases) {
+      const t = setup({ rpc: [res] });
+      await expect(createSupabaseRepository(t.client, withSecret).removeLeadDocument("tok", DOC)).rejects.toBeInstanceOf(type as never);
+      expect(t.remove).not.toHaveBeenCalled();
+      expect(t.rpc).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("Storage error or rejection: still finishes (closes the window) and throws when the row is kept", async () => {
+    for (const remove of [{ data: null, error: { message: "storage down" } }, new Error("fetch failed")]) {
+      const t = setup({ rpc: [requested, kept], remove });
+      await expect(createSupabaseRepository(t.client, withSecret).removeLeadDocument("tok", DOC)).rejects.toThrow(
+        /Document removal failed/,
+      );
+      expect(t.rpc).toHaveBeenNthCalledWith(2, "finish_lead_document_removal", args);
+    }
+  });
+
+  it("Storage error but the object is gone (finish removed it): success", async () => {
+    const t = setup({ rpc: [requested, removed], remove: { data: null, error: { message: "timeout" } } });
+    await expect(createSupabaseRepository(t.client, withSecret).removeLeadDocument("tok", DOC)).resolves.toBeUndefined();
+  });
+
+  it("silent Storage refusal (no error, object still present): throws, row kept", async () => {
+    const t = setup({ rpc: [requested, kept], remove: { data: [], error: null } });
+    await expect(createSupabaseRepository(t.client, withSecret).removeLeadDocument("tok", DOC)).rejects.toThrow(
+      /object still present/,
+    );
+  });
+
+  it("maps finish errors; unexpected request result is an error", async () => {
+    const t = setup({ rpc: [requested, { error: { message: "document_not_found", code: "P0002" } }] });
+    await expect(createSupabaseRepository(t.client, withSecret).removeLeadDocument("tok", DOC)).rejects.toBeInstanceOf(
+      LeadDocumentNotFoundError,
+    );
+    const u = setup({ rpc: [{ data: { id: DOC } }] });
+    await expect(createSupabaseRepository(u.client, withSecret).removeLeadDocument("tok", DOC)).rejects.toThrow(/Unexpected response/);
+    expect(u.remove).not.toHaveBeenCalled();
   });
 });
