@@ -1,12 +1,13 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
-import { Button, CheckIcon, Input, Select, SpinnerIcon } from "@/components/ui";
+import { Button, CheckIcon, CloseIcon, Input, Select, SpinnerIcon } from "@/components/ui";
 import { CheckboxField } from "@/components/page1/parts";
 import { DOCUMENT_MAX_FILES } from "@/lib/logic/validators";
 import { DOCUMENT_TYPES, type DocumentType } from "@/lib/data/types";
-import { LeadApiError, uploadLeadDocument } from "@/lib/lead/client";
-import { formatUploadSize, groupIban, uploadErrorMessage } from "./logic";
+import { LeadApiError, removeLeadDocument, uploadLeadDocument } from "@/lib/lead/client";
+import { DocumentPrepareError, prepareDocumentFile } from "./compress-image";
+import { formatUploadSize, groupIban, removeErrorMessage, uploadErrorMessage } from "./logic";
 import { normalizeIban, validateCodiceFiscale } from "@/lib/logic/validators";
 import type { StepProps } from "./types";
 
@@ -125,6 +126,8 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const documents = a.documents;
   const full = documents.length >= DOCUMENT_MAX_FILES;
 
@@ -133,15 +136,36 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
     if (inputRef.current) inputRef.current.value = "";
     if (!file) return;
     setUploadError(null);
+    setRemoveError(null);
     setUploading(true);
     try {
-      const doc = await uploadLeadDocument(file);
-      update({ activation: { documents: [...documents, { ...doc, name: file.name }] } });
+      const prepared = await prepareDocumentFile(file);
+      const doc = await uploadLeadDocument(prepared);
+      update({ activation: { documents: [...documents, { ...doc, name: prepared.name }] } });
     } catch (err) {
-      setUploadError(uploadErrorMessage(err instanceof LeadApiError ? err.code : "upload_failed"));
+      const code = err instanceof LeadApiError || err instanceof DocumentPrepareError ? err.code : "upload_failed";
+      setUploadError(uploadErrorMessage(code));
     } finally {
       setUploading(false);
     }
+  }
+
+  async function onRemove(id: string) {
+    setRemoveError(null);
+    setUploadError(null);
+    setRemovingId(id);
+    try {
+      await removeLeadDocument(id);
+    } catch (err) {
+      // 404: already gone on the server, so drop it from the list too.
+      if (!(err instanceof LeadApiError && err.code === "document_not_found")) {
+        setRemoveError(removeErrorMessage(err instanceof LeadApiError ? err.code : "server_error"));
+        setRemovingId(null);
+        return;
+      }
+    }
+    update({ activation: { documents: documents.filter((d) => d.id !== id) } });
+    setRemovingId(null);
   }
 
   return (
@@ -219,6 +243,19 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
                 </span>
                 <span className="min-w-0 flex-1 truncate">{d.name}</span>
                 <span className="shrink-0 text-ink-muted">{formatUploadSize(d.size_bytes)}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  data-testid="document-remove"
+                  aria-label={`Rimuovi ${d.name}`}
+                  loading={removingId === d.id}
+                  disabled={removingId !== null || uploading}
+                  className="-my-2 -mr-2 shrink-0 gap-1.5 px-3"
+                  onClick={() => void onRemove(d.id)}
+                >
+                  <CloseIcon className="size-4" />
+                  Rimuovi
+                </Button>
               </li>
             ))}
           </ul>
@@ -232,7 +269,7 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
                 data-testid="document-file"
                 name="document_file"
                 type="file"
-                accept=".jpg,.jpeg,.pdf,image/jpeg,application/pdf"
+                accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
                 disabled={uploading}
                 aria-describedby={`${fileId}-hint`}
                 onChange={(e) => void onFiles(e.target.files)}
@@ -254,7 +291,7 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
               )}
             </div>
             <p id={`${fileId}-hint`} className="text-sm text-ink-muted">
-              JPG o PDF, max 4 MB, fino a 2 file
+              Foto (JPG, PNG, HEIC) o PDF, fino a 2 file. Le foto vengono ridotte in automatico; max 4 MB.
             </p>
           </div>
         )}
@@ -262,6 +299,11 @@ export function DocumentFields({ state, update, errorFor, touch, edited }: Secti
           <p data-testid="document-uploading" role="status" className="flex items-center gap-2 text-sm text-ink-muted">
             <SpinnerIcon className="size-4 animate-spin" />
             Caricamento in corso&hellip;
+          </p>
+        )}
+        {removeError && (
+          <p data-testid="document-remove-error" role="alert" className="text-sm font-medium text-danger">
+            {removeError}
           </p>
         )}
         {uploadError && (

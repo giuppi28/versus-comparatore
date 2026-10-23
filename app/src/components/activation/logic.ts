@@ -376,7 +376,8 @@ export function podWarning(state: FlowState): string | null {
 
 export const UPLOAD_ERROR_MESSAGES: Record<string, string> = {
   file_type: "Formato non supportato: carica un file JPG o PDF.",
-  file_size: "Il file supera 4 MB.",
+  file_size: "Il file supera il limite di 4 MB, anche dopo la riduzione. Prova con un file più leggero.",
+  image_decode: "Formato immagine non supportato da questo browser. Carica una foto JPG o un PDF.",
   file_content: "Il file non sembra un JPG o PDF valido.",
   file_missing: "Il file è vuoto: scegline un altro.",
   too_many_files: "Puoi caricare al massimo 2 file.",
@@ -385,6 +386,21 @@ export const UPLOAD_ERROR_MESSAGES: Record<string, string> = {
 /** Italian message for a failed document upload (never blocks the submit). */
 export function uploadErrorMessage(code: string): string {
   return UPLOAD_ERROR_MESSAGES[code] ?? "Caricamento non riuscito, riprova.";
+}
+
+/** Italian message for a failed document removal (the item stays in the list). */
+export function removeErrorMessage(code: string): string {
+  switch (code) {
+    case "rate_limited":
+      return "Troppe richieste: attendi qualche istante e riprova.";
+    case "network_error":
+      return "Connessione assente: controlla la rete e riprova.";
+    case "lead_not_found":
+    case "no_lead":
+      return "Sessione scaduta: ricarica la pagina e riprova.";
+    default:
+      return "Non siamo riusciti a rimuovere il file, riprova.";
+  }
 }
 
 /** "1,2 MB" / "340 KB" / "512 B". */

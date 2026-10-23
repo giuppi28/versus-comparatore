@@ -394,7 +394,10 @@ describe("IBAN, holder and document validation (step B extras)", () => {
 describe("upload helpers and POD warning", () => {
   it("maps upload error codes to Italian messages", () => {
     expect(uploadErrorMessage("file_type")).toBe("Formato non supportato: carica un file JPG o PDF.");
-    expect(uploadErrorMessage("file_size")).toBe("Il file supera 4 MB.");
+    expect(uploadErrorMessage("file_size")).toContain("4 MB");
+    expect(uploadErrorMessage("image_decode")).toBe(
+      "Formato immagine non supportato da questo browser. Carica una foto JPG o un PDF.",
+    );
     expect(uploadErrorMessage("file_content")).toBe("Il file non sembra un JPG o PDF valido.");
     expect(uploadErrorMessage("too_many_files")).toBe("Puoi caricare al massimo 2 file.");
     expect(uploadErrorMessage("rate_limited")).toBe("Caricamento non riuscito, riprova.");
