@@ -119,3 +119,11 @@ Decisions: hosting = Vercel (Hobby, custom domain); Cloudflare removed entirely 
 - [x] T12.7 (519c1f0) Activation step B UI: IBAN + holder, document data/upload, POD/PDR messages + distributor warning → `activation-form-builder` (sonnet)
 - [x] T12.8 (fb4efc8, design fixes see PROGRESS) Final check: typecheck, lint, Vitest, affected Playwright + one full regression, quick design pass → `qa-tester` (sonnet) + `design-reviewer` (sonnet)
 - [x] T12.9 (this commit) PRD v0.6 (§5, §10, §11), TASKS, PROGRESS, HANDOFF, push `preview/phase12` → orchestrator + haiku
+
+## Phase 12b — document removal, client compression, gas PDR, privacy (Giuseppe, 2026-10-23)
+- [x] T12b.1 (6ee93e3) Customer removal of an uploaded identity document: migration `20261023110000_lead_document_removal.sql` (window RPC, anon remove policies, finish RPC, `document_removed_count`), `DELETE /api/lead/document`, client `removeLeadDocument` → `db-builder` (opus)
+- [x] T12b.2 (d152922) Gas PDR not analyzed for the distributor: PDR table and `pdrDistributor` removed, admin gas distributor line removed; PDR format and POD/PDR swap checks kept → `logic-builder` (sonnet)
+- [x] T12b.3 (e652f8d) /privacy section "IBAN e documento d'identità (facoltativi)" (retention placeholder [DA COMPLETARE]) → `thankyou-builder` (haiku)
+- [x] T12b.4 (567aaa5) `PRD_VERSUS_v0.5.md` → `PRD_VERSUS_v0.6.md` references in CLAUDE.md, `.claude/agents/*.md`, PHASE10_BRIEF.md → `general-purpose` (haiku)
+- [x] T12b.5 (3ec2eaf) Activation step B: "Rimuovi" per uploaded file, client-side photo compression to JPEG (max 2000 px, 4 MB check), PNG/WebP/HEIC accepted → `activation-form-builder` (sonnet)
+- [x] T12b.6 (this commit) PRD v0.6.1 (§4, §5.1, §10, §12), app/README.md lead documents + PDR wording, TASKS/PROGRESS/HANDOFF/QUESTIONS → docs (haiku)

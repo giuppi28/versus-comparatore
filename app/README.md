@@ -98,7 +98,7 @@ Complete rules: names, phone, CF (format + check char + consistency with name/su
 housing title, comune, CAP, address, civico, residente always required; Partita IVA → ragione
 sociale + P.IVA (checksum); Luce → chosen offer, POD (not for Primo allaccio), `power_kw`
 (one of 1.5/3/3.5/4/4.5/5/6/10/15, `null` = "Altro"), voltage 220/380, current supplier for
-Cambio fornitore/Voltura; Gas → chosen offer, PDR (not for Primo allaccio; `has_gas = false`
+Cambio fornitore/Voltura; Gas → chosen offer, PDR (14 digits, format only, no distributor lookup; not for Primo allaccio; `has_gas = false`
 forces gas to Primo allaccio), ≥1 gas use, current supplier for Cambio/Voltura. Fields hidden
 in the flow are stored as `null`. POD / PDR are normalised server-side (upper case, spaces, dots
 and hyphens removed) before validation.
@@ -316,7 +316,11 @@ issues a one-time object name `<lead_id>/<32 hex>.(jpg|pdf)` valid 5 minutes →
 uploads to exactly that name with the publishable (anon) client, `upsert: false` (the only anon
 Storage policy is an INSERT allowed for a pending, unexpired slot of an in-progress lead; names
 are unique, so single-use) → `confirm_lead_document(secret, token, id)` closes the slot. anon can
-never list, read, overwrite or delete objects. Mock: in-memory store with the same rules.
+never list, read, overwrite or delete objects, except during a customer removal: anon may SELECT and
+DELETE a single object only inside a server-opened removal window (max 1 minute) for an uploaded
+document of its own in-progress lead (`request_lead_document_removal` → Storage `remove` →
+`finish_lead_document_removal`; migration `20261023110000_lead_document_removal.sql`). Otherwise no
+list / read / delete. Mock: in-memory store with the same rules.
 
 Admin (`getAdminRepository()`):
 - `listLeadDocuments(leadId): Promise<LeadDocument[]>` (uploaded only, oldest first);

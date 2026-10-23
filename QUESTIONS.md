@@ -156,6 +156,7 @@ Phase 12 E5 (logic-builder, `app/src/config/distributors.ts`). No official ARERA
 - POD prefixes: `IT001` e-distribuzione (certain); `IT002` areti, `IT011` inrete, `IT012` unareti, `IT020` ireti — consistent across several secondary sources (Switcho, Segugio, Selectra), not officially verified.
 - PDR first-4-digit table is EMPTY. Italgas `0088` appears in a single source only, so it is NOT included.
 - Comune warning assumptions: Roma (ISTAT 058091) served exclusively by areti; Milano (015146) exclusively by unareti; areti PODs are expected only in Roma and Formello (058038). Any other comune with an areti POD triggers the (non-blocking) warning.
+**Answer (Giuseppe, 2026-10-23):** the PDR is not analyzed for the distributor; PDR table removed (Phase 12b). POD codes as implemented.
 
 ## APPLY: 20261023100000_activation_documents_callback.sql
 T12.1 (db-builder, 2026-10-23, Phase 12 E2–E4). **Additive and backward compatible** with the app in production (same Supabase project): no DROP of any object (policies are created only when missing, via `pg_policies` checks), no data change, existing RPC signatures unchanged; idempotent (applied twice in PGlite).
@@ -172,9 +173,11 @@ Options:
 - (a) keep 4 MB (current; no infrastructure change);
 - (b) direct-to-Storage upload: the server issues a signed upload URL bound to the lead token, and the browser uploads straight to Storage (allows 5 MB; design change: new client upload path, same token binding and one-time slot).
 Recommendation: (a) for now; choose (b) only if Aldo needs 5 MB. Please confirm.
+**Answer (Giuseppe, 2026-10-23):** keep 4 MB, max 2 files.
 
 ## Q (T12.8) — Privacy text "essere ricontattato"
 `/privacy` (pre-existing legal text, not written in Phase 12) says the customer will be "ricontattato" (called back). Is this acceptable under the copy rule (no call/callback wording before the thank-you page)? Options: keep it as legal wording, or change it to a neutral "contattato" wording. Giuseppe to confirm. Not a blocker for the preview.
+**Answer (Giuseppe, 2026-10-23):** keep "essere ricontattato" (legal text).
 
 ## APPLY: 20261023110000_lead_document_removal.sql
 T12b.1 (db-builder, 2026-10-23, Phase 12b: the customer removes an identity document uploaded by mistake in activation step B). **Must be applied AFTER `20261023100000_activation_documents_callback.sql`** (it uses `lead_documents`, the bucket and the `private` helpers created there). **Additive and backward compatible**: no DROP of any object (policies created only when missing via `pg_policies` checks), no data change, existing RPC signatures/results unchanged; idempotent (applied twice in PGlite).
