@@ -17,12 +17,6 @@ export const POD_DISTRIBUTORS: Record<string, string> = {
   IT020: "ireti",
 };
 
-/**
- * PDR first 4 digits -> distributor. Intentionally EMPTY: no reliable source found
- * (Italgas "0088" comes from a single source and is only listed in QUESTIONS.md).
- */
-export const PDR_DISTRIBUTORS: Record<string, string> = {};
-
 /** ISTAT codes used by the comune/distributor consistency warning. */
 export const COMUNE_ROMA = "058091";
 export const COMUNE_FORMELLO = "058038";

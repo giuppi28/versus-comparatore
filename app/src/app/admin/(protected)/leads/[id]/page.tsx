@@ -6,7 +6,7 @@ import { Card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import type { Lead } from "@/lib/data/types";
-import { podDistributor, pdrDistributor } from "@/lib/logic";
+import { podDistributor } from "@/lib/logic";
 import { DeleteLeadButton } from "../DeleteLeadButton";
 import { LeadDocuments } from "../LeadDocuments";
 import { LeadEditForm } from "../LeadEditForm";
@@ -181,16 +181,7 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
             />
             <Field label="Potenza (kW)" value={lead.power_kw === null ? null : num.format(lead.power_kw)} />
             <Field label="Tensione" value={lead.voltage === null ? null : `${lead.voltage} V`} />
-            <Field
-              label="PDR"
-              value={
-                <WithDistributor
-                  value={lead.pdr}
-                  distributor={lead.pdr ? pdrDistributor(lead.pdr) : null}
-                  testId="pdr-distributor"
-                />
-              }
-            />
+            <Field label="PDR" value={lead.pdr} />
           </Group>
 
           <Group title="Pagamento" testId="group-pagamento">

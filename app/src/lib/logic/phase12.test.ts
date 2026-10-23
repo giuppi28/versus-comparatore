@@ -5,7 +5,6 @@ import {
   normalizeIban,
   normalizePdr,
   normalizePod,
-  pdrDistributor,
   podDistributor,
   podDistributorComuneWarning,
   POD_MESSAGES,
@@ -56,9 +55,6 @@ describe("distributors", () => {
   it("recognizes POD distributors", () => {
     expect(podDistributor("it001e12345678")).toEqual({ code: "IT001", name: "e-distribuzione" });
     expect(podDistributor("IT999E12345678")).toBeNull();
-  });
-  it("PDR table is empty", () => {
-    expect(pdrDistributor("00881234567890")).toBeNull();
   });
   it("comune warning", () => {
     const w = "Controlla il POD: il distributore indicato non serve di solito questo comune.";

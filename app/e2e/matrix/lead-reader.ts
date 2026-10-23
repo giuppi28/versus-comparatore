@@ -37,7 +37,7 @@ export function parseLeadDetail(html: string): Omit<LeadView, "id"> {
   const fields: Record<string, string | null> = {};
   const re = /<dt[^>]*>([^<]*)<\/dt><dd[^>]*>([\s\S]*?)<\/dd>/g;
   for (let m = re.exec(html); m; m = re.exec(html)) {
-    // The admin renders "Distributore: …" next to POD/PDR: drop it so the field holds the code only.
+    // The admin renders "Distributore: …" next to the POD: drop it so the field holds the code only.
     const value = decode(m[2]).replace(/\s*Distributore:.*$/, "").trim();
     fields[decode(m[1])] = value === "" || value === "—" ? null : value;
   }
