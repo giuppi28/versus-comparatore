@@ -456,7 +456,7 @@ export async function fillActivation(
 export async function checkThankYou(page: Page, c: MatrixCase, chosen: { luce: Chosen | null; gas: Chosen | null }) {
   await expect(page.getByTestId("thankyou-heading")).toHaveText(`Grazie, ${c.person.first}!`);
   await expect(
-    page.getByText("Sarai ricontattato a breve da un nostro consulente per confermare l'attivazione della tua offerta."),
+    page.getByText("Riceverai a breve una chiamata dal numero +39 095 0000000 da un nostro consulente per confermare l'attivazione."),
   ).toBeVisible();
   for (const key of ["luce", "gas"] as const) {
     const ch = chosen[key];

@@ -85,6 +85,12 @@ export default function PrivacyPage() {
                 Non raccogliamo dati appartenenti a categorie particolari (come i dati relativi alla
                 salute).
               </p>
+              <p>
+                IBAN e documento d&apos;identità: sono facoltativi. Se li indichi, li usiamo solo per
+                completare l&apos;attivazione dell&apos;offerta scelta con il fornitore; il documento
+                caricato è conservato in un archivio privato accessibile solo al nostro personale
+                autorizzato e viene cancellato insieme alla tua richiesta.
+              </p>
             </Section>
 
             <Section title="3. Finalità del trattamento">
