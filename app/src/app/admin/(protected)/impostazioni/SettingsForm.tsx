@@ -5,7 +5,13 @@ import { Button, Input } from "@/components/ui";
 import { sendTestEmailAction, updateSettingsAction } from "./actions";
 import { INITIAL_SETTINGS_STATE, INITIAL_TEST_EMAIL_STATE } from "./settings-state";
 
-export function SettingsForm({ notificationEmail }: { notificationEmail: string | null }) {
+export function SettingsForm({
+  notificationEmail,
+  callbackPhone,
+}: {
+  notificationEmail: string | null;
+  callbackPhone: string;
+}) {
   const [state, formAction, pending] = useActionState(updateSettingsAction, INITIAL_SETTINGS_STATE);
   return (
     <form action={formAction} noValidate data-attempt={state.attempt} className="flex flex-col gap-4">
@@ -19,6 +25,17 @@ export function SettingsForm({ notificationEmail }: { notificationEmail: string 
         defaultValue={state.email ?? notificationEmail ?? ""}
         error={state.error}
         hint="Lascia vuoto per disattivare le notifiche."
+      />
+      <Input
+        label="Numero da cui chiamiamo"
+        name="callback_phone"
+        type="tel"
+        inputMode="tel"
+        autoComplete="off"
+        maxLength={30}
+        defaultValue={state.phone ?? callbackPhone}
+        error={state.phoneError}
+        hint="Compare nella pagina di ringraziamento: «Riceverai a breve una chiamata dal numero …»."
       />
       {state.saved && (
         <p role="status" data-testid="settings-saved" className="text-sm font-semibold text-brand-700">

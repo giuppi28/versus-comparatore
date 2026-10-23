@@ -77,7 +77,20 @@ test.describe("admin settings and go-live checklist", () => {
     await expect(page.getByLabel("Email per le notifiche dei nuovi lead")).toHaveValue("aldo@azienda.it");
     await shot("saved");
 
-    // Restore: empty again.
+    // Callback phone: invalid rejected, valid saved and persisted.
+    const phone = page.getByLabel("Numero da cui chiamiamo");
+    await expect(phone).toHaveValue("+39 095 0000000");
+    await phone.fill("abc");
+    await save(page, "aldo@azienda.it");
+    await expect(page.getByRole("alert").filter({ hasText: "numero valido" })).toBeVisible();
+    await phone.fill("+39  06 7654321");
+    await save(page, "aldo@azienda.it");
+    await expect(page.getByTestId("settings-saved")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Numero da cui chiamiamo")).toHaveValue("+39 06 7654321");
+
+    // Restore defaults.
+    await page.getByLabel("Numero da cui chiamiamo").fill("+39 095 0000000");
     await save(page, "");
     await expect(page.getByTestId("notifications-disabled")).toBeVisible();
   });

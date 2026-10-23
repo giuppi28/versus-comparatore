@@ -5,9 +5,10 @@ import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import { normalizeEmail } from "@/lib/notify/email-address";
 import { sendTestEmail } from "@/lib/notify/test-email";
+import { normalizeCallbackPhone } from "./phone";
 import { SETTINGS_MESSAGES, type SettingsFormState, type TestEmailState } from "./settings-state";
 
-/** Saves settings.notification_email. Empty value = notifications disabled. */
+/** Saves settings.notification_email (empty = notifications disabled) and callback_phone. */
 export async function updateSettingsAction(
   prev: SettingsFormState,
   formData: FormData,
@@ -17,16 +18,22 @@ export async function updateSettingsAction(
   const raw = formData.get("notification_email");
   const value = (typeof raw === "string" ? raw : "").trim().slice(0, 300);
 
+  const rawPhone = formData.get("callback_phone");
+  const phoneValue = (typeof rawPhone === "string" ? rawPhone : "").slice(0, 100);
+
   const email = value === "" ? null : normalizeEmail(value);
-  if (value !== "" && !email) {
-    return { error: SETTINGS_MESSAGES.invalidEmail, email: value, attempt };
+  const phone = normalizeCallbackPhone(phoneValue);
+  const emailError = value !== "" && !email ? SETTINGS_MESSAGES.invalidEmail : undefined;
+  const phoneError = phone ? undefined : SETTINGS_MESSAGES.invalidPhone;
+  if (emailError || phoneError) {
+    return { error: emailError, phoneError, email: value, phone: phoneValue, attempt };
   }
   try {
     const repo = await getAdminRepository();
-    await repo.updateSettings({ notification_email: email });
+    await repo.updateSettings({ notification_email: email, callback_phone: phone! });
   } catch (err) {
     console.error("[settings] update failed:", err instanceof Error ? err.name : "unknown");
-    return { error: SETTINGS_MESSAGES.saveFailed, email: value, attempt };
+    return { error: SETTINGS_MESSAGES.saveFailed, email: value, phone: phoneValue, attempt };
   }
   revalidatePath("/admin/impostazioni");
   return { saved: email ? "enabled" : "disabled", attempt };

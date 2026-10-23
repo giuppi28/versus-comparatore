@@ -3,11 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireAdmin = vi.fn();
 vi.mock("@/lib/auth", () => ({ requireAdmin: () => requireAdmin() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const updateSettings = vi.fn(async () => undefined);
 vi.mock("@/lib/data/admin", () => ({
-  getAdminRepository: async () => ({ getSettings: async () => ({ notification_email: "aldo@example.it" }) }),
+  getAdminRepository: async () => ({
+    getSettings: async () => ({ notification_email: "aldo@example.it" }),
+    updateSettings,
+  }),
 }));
 
-import { sendTestEmailAction } from "./actions";
+import { sendTestEmailAction, updateSettingsAction } from "./actions";
 import { resetTestEmailLimiter } from "@/lib/notify/test-email";
 
 describe("sendTestEmailAction", () => {
@@ -63,5 +67,36 @@ describe("sendTestEmailAction", () => {
     const s = await sendTestEmailAction({ attempt: 0 });
     expect(s.message).toBe('Errore Resend, HTTP 403: {"message":"nope"}');
     expect(s.message).not.toContain("re_x");
+  });
+});
+
+describe("updateSettingsAction callback_phone", () => {
+  const form = (email: string, phone: string) => {
+    const f = new FormData();
+    f.set("notification_email", email);
+    f.set("callback_phone", phone);
+    return f;
+  };
+  beforeEach(() => {
+    requireAdmin.mockResolvedValue({ id: "u1", email: null });
+    updateSettings.mockClear();
+  });
+
+  it("saves a normalized phone together with the email", async () => {
+    const s = await updateSettingsAction({ attempt: 0 }, form("a@b.it", " +39  06  7654321 "));
+    expect(s.saved).toBe("enabled");
+    expect(updateSettings).toHaveBeenCalledWith({ notification_email: "a@b.it", callback_phone: "+39 06 7654321" });
+  });
+
+  it("falls back to the default when empty", async () => {
+    await updateSettingsAction({ attempt: 0 }, form("", ""));
+    expect(updateSettings).toHaveBeenCalledWith({ notification_email: null, callback_phone: "+39 095 0000000" });
+  });
+
+  it("rejects an invalid phone with an Italian error and saves nothing", async () => {
+    const s = await updateSettingsAction({ attempt: 0 }, form("a@b.it", "abc"));
+    expect(s.phoneError).toContain("numero valido");
+    expect(s.phone).toBe("abc");
+    expect(updateSettings).not.toHaveBeenCalled();
   });
 });

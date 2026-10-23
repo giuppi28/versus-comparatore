@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
-import { getDataSource } from "@/lib/data";
+import { DEFAULT_CALLBACK_PHONE, getDataSource } from "@/lib/data";
 import { normalizeEmail } from "@/lib/notify/email-address";
 import { MANUAL_CHECKS, computeGoLiveChecks, isReadyForGoLive } from "./checks";
 import { isResendDevSender, RESEND_DEV_WARNING } from "@/lib/notify/test-email";
@@ -60,7 +60,10 @@ export default async function SettingsPage() {
               {RESEND_DEV_WARNING}
             </p>
           )}
-          <SettingsForm notificationEmail={notificationEmail} />
+          <SettingsForm
+            notificationEmail={notificationEmail}
+            callbackPhone={settings.callback_phone ?? DEFAULT_CALLBACK_PHONE}
+          />
           <TestEmailButton />
         </Card>
       </section>
