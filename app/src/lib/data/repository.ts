@@ -8,6 +8,11 @@ import type {
   LeadPage,
   LeadQuery,
   LeadCompletion,
+  LeadDeletion,
+  LeadDocument,
+  LeadDocumentFile,
+  LeadDocumentMime,
+  LeadDocumentUrlOptions,
   LeadRef,
   Offer,
   OfferCreateInput,
@@ -22,6 +27,7 @@ import type {
   SupplierInput,
   SupplierPatch,
 } from "./types";
+import { LEAD_DOCUMENT_MIME_TYPES, LEAD_DOCUMENT_URL_MAX_SECONDS, MAX_LEAD_DOCUMENT_BYTES } from "./types";
 
 export class LeadNotFoundError extends Error {
   constructor() {
@@ -108,6 +114,65 @@ export class InvalidLogoError extends Error {
   }
 }
 
+/** Rejected identity document: type not JPEG/PDF, empty or > 5 MiB, or bytes not matching the type. */
+export class InvalidLeadDocumentError extends Error {
+  readonly code = "invalid_document" as const;
+  constructor(readonly reason: "type" | "size" | "content") {
+    super(`Invalid document: ${reason}`);
+    this.name = "InvalidLeadDocumentError";
+  }
+}
+
+/** The lead already has MAX_LEAD_DOCUMENTS documents (or too many upload attempts). */
+export class LeadDocumentLimitError extends Error {
+  readonly code = "document_limit_reached" as const;
+  constructor() {
+    super("Maximum number of documents reached for this lead");
+    this.name = "LeadDocumentLimitError";
+  }
+}
+
+/** Admin: no document with this id (or not visible to the session). */
+export class LeadDocumentNotFoundError extends Error {
+  constructor() {
+    super("Document not found");
+    this.name = "LeadDocumentNotFoundError";
+  }
+}
+
+/** Mime type from the magic bytes: JPEG `FF D8 FF`, PDF `%PDF-`; null otherwise. */
+export function detectLeadDocumentMime(bytes: Uint8Array): LeadDocumentMime | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes.length >= 5 && String.fromCharCode(...bytes.subarray(0, 5)) === "%PDF-") return "application/pdf";
+  return null;
+}
+
+/**
+ * Defence in depth for uploadLeadDocument (the route validates first): allowed type,
+ * 1 byte..5 MiB, magic bytes matching the declared type. Throws InvalidLeadDocumentError.
+ */
+export function assertLeadDocument(file: LeadDocumentFile): void {
+  if (!file || !LEAD_DOCUMENT_MIME_TYPES.includes(file.mime)) throw new InvalidLeadDocumentError("type");
+  // ArrayBuffer.isView, not instanceof: byte arrays may come from another realm.
+  const bytes = file.bytes as Uint8Array | undefined;
+  if (!bytes || !ArrayBuffer.isView(bytes) || bytes.BYTES_PER_ELEMENT !== 1 || bytes.length === 0 || bytes.length > MAX_LEAD_DOCUMENT_BYTES) {
+    throw new InvalidLeadDocumentError("size");
+  }
+  if (detectLeadDocumentMime(file.bytes) !== file.mime) throw new InvalidLeadDocumentError("content");
+}
+
+/** Signed-URL lifetime: default and upper bound 300 s, at least 1 s. */
+export function leadDocumentUrlSeconds(options?: LeadDocumentUrlOptions): number {
+  const raw = options?.expiresIn;
+  if (raw === undefined || !Number.isFinite(raw)) return LEAD_DOCUMENT_URL_MAX_SECONDS;
+  return Math.min(Math.max(Math.floor(raw), 1), LEAD_DOCUMENT_URL_MAX_SECONDS);
+}
+
+/** Download file name for a document, e.g. "documento-1a2b3c4d.pdf". */
+export function leadDocumentFileName(doc: Pick<LeadDocument, "id" | "mime_type">): string {
+  return `documento-${doc.id.slice(0, 8)}.${doc.mime_type === "application/pdf" ? "pdf" : "jpg"}`;
+}
+
 /** Max accepted logo size in bytes (after sanitizing). */
 export const MAX_LOGO_BYTES = 200_000;
 /** Public Supabase Storage bucket holding the supplier logos. */
@@ -156,6 +221,24 @@ export interface Repository {
    */
   completeLead(token: string, data: LeadData): Promise<LeadCompletion>;
 
+  // ---- Public (no session, no secret) ----
+  /**
+   * settings.callback_phone for the thank-you page (the only settings value readable
+   * publicly). Never throws: DEFAULT_CALLBACK_PHONE when unavailable.
+   */
+  getCallbackPhone(): Promise<string>;
+
+  // ---- Lead documents (server route bound to the lead token cookie) ----
+  /**
+   * Stores an identity document for the IN-PROGRESS lead owning `token`
+   * (Supabase: register slot -> upload to the private bucket -> confirm; see README
+   * "Lead documents"). Validates type, size and magic bytes again (assertLeadDocument).
+   * Throws InvalidLeadDocumentError, LeadDocumentLimitError (max 2 per lead),
+   * LeadNotFoundError (unknown/completed lead), LeadApiSecretError, or a generic Error
+   * (storage failure).
+   */
+  uploadLeadDocument(token: string, file: LeadDocumentFile): Promise<LeadDocument>;
+
   // ---- Admin (authenticated admin session; get it via getAdminRepository()) ----
 
   // Leads
@@ -172,6 +255,20 @@ export interface Repository {
    * Id validation (UUID, max 200 per call) belongs to the server action.
    */
   deleteLeads(ids: string[]): Promise<number>;
+  /**
+   * Same as deleteLeads (which delegates here), plus the outcome of the document-file
+   * cleanup: the leads' files are removed from Storage after the rows are deleted; a
+   * storage failure does not undo the deletion and is reported as documentCleanupFailed.
+   */
+  deleteLeadsAndDocuments(ids: string[]): Promise<LeadDeletion>;
+  /** Uploaded identity documents of the lead, oldest first ([] when none). */
+  listLeadDocuments(leadId: string): Promise<LeadDocument[]>;
+  /**
+   * Short-lived URL of a document (Supabase: signed URL, <= 300 s; `download: true` adds
+   * Content-Disposition attachment with leadDocumentFileName). Mock: a data: URL.
+   * Throws LeadDocumentNotFoundError.
+   */
+  createLeadDocumentUrl(documentId: string, options?: LeadDocumentUrlOptions): Promise<string>;
 
   // Suppliers
   /** All suppliers including inactive ones, ordered by sort_order. */

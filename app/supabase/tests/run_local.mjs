@@ -3,7 +3,7 @@
  * LOCAL validation of app/supabase SQL with PGlite (real Postgres compiled to WASM).
  * No Docker / Supabase CLI needed. Steps:
  *   1. tests/supabase_stub.sql   (roles, auth schema, default privileges like Supabase)
- *   2. migrations/*.sql          (in filename order)
+ *   2. migrations/*.sql          (in filename order; the additive ones from 20261015170000 twice)
  *   3. seed.sql                  (run twice: must be idempotent)
  *   4. tests/data_checks.sql     (row counts, seed values, search, climate zones)
  *   5. tests/rls_test.sql        (RLS + lead functions; rolled back)
@@ -47,6 +47,10 @@ await run("tests/supabase_stub.sql", readFileSync(path.join(here, "supabase_stub
 const migDir = path.join(root, "migrations");
 for (const f of readdirSync(migDir).filter((f) => f.endsWith(".sql")).sort()) {
   await run(`migrations/${f}`, readFileSync(path.join(migDir, f), "utf8"));
+}
+// Additive migrations written to be re-runnable (Phase 11+): apply them a second time.
+for (const f of readdirSync(migDir).filter((f) => f.endsWith(".sql") && f >= "20261015170000").sort()) {
+  await run(`migrations/${f} (second run, idempotency)`, readFileSync(path.join(migDir, f), "utf8"));
 }
 const seed = readFileSync(path.join(root, "seed.sql"), "utf8");
 await run("seed.sql", seed);

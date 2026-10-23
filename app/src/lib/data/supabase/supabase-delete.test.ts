@@ -85,23 +85,91 @@ describe("lead rows", () => {
   });
 });
 
-describe("deleteLeads", () => {
+describe("deleteLeads / deleteLeadsAndDocuments", () => {
   it("deletes by id (deduplicated) and returns the deleted count", async () => {
-    const { client, builders } = clientFor([{ data: [{ id: "a" }, { id: "b" }] }]);
+    const { client, builders } = clientFor([{ data: [] }, { data: [{ id: "a" }, { id: "b" }] }], storageMock().storage);
     expect(await createSupabaseRepository(client).deleteLeads(["a", "b", "a"])).toBe(2);
-    expect(builders[0].table).toBe("leads");
-    expect(names(builders[0])).toEqual(["delete", "in", "select"]);
-    expect(builders[0].calls[1][1]).toEqual(["id", ["a", "b"]]);
+    expect(builders[0].table).toBe("lead_documents");
+    expect(names(builders[0])).toEqual(["select", "in"]);
+    expect(builders[0].calls[1][1]).toEqual(["lead_id", ["a", "b"]]);
+    expect(builders[1].table).toBe("leads");
+    expect(names(builders[1])).toEqual(["delete", "in", "select"]);
+    expect(builders[1].calls[1][1]).toEqual(["id", ["a", "b"]]);
+  });
+
+  it("removes the files of the deleted leads only (pending slots included), after the rows", async () => {
+    const st = storageMock();
+    const docs = [
+      { lead_id: "a", object_path: "a/1.jpg" },
+      { lead_id: "a", object_path: "a/2.pdf" },
+      { lead_id: "b", object_path: "b/1.pdf" }, // b not deleted (e.g. not visible) -> file kept
+    ];
+    const { client, builders } = clientFor([{ data: docs }, { data: [{ id: "a" }] }], st.storage);
+    expect(await createSupabaseRepository(client).deleteLeadsAndDocuments(["a", "b"])).toEqual({
+      deleted: 1,
+      documentCleanupFailed: false,
+    });
+    expect(builders.map((b) => b.table)).toEqual(["lead_documents", "leads"]);
+    expect(st.fromBucket).toHaveBeenCalledWith("lead-documents");
+    expect(st.remove).toHaveBeenCalledTimes(1);
+    expect(st.remove).toHaveBeenCalledWith(["a/1.jpg", "a/2.pdf"]);
+  });
+
+  it("no documents: no storage call", async () => {
+    const st = storageMock();
+    const { client } = clientFor([{ data: [] }, { data: [{ id: "a" }] }], st.storage);
+    expect(await createSupabaseRepository(client).deleteLeadsAndDocuments(["a"])).toEqual({
+      deleted: 1,
+      documentCleanupFailed: false,
+    });
+    expect(st.fromBucket).not.toHaveBeenCalled();
+  });
+
+  it("storage failure (error or throw) is a warning, the rows stay deleted", async () => {
+    const docs = [{ lead_id: "a", object_path: "a/1.jpg" }];
+    const failing = storageMock({ remove: { data: null, error: { message: "boom" } } });
+    const one = clientFor([{ data: docs }, { data: [{ id: "a" }] }], failing.storage);
+    expect(await createSupabaseRepository(one.client).deleteLeadsAndDocuments(["a"])).toEqual({
+      deleted: 1,
+      documentCleanupFailed: true,
+    });
+    const throwing = storageMock();
+    throwing.remove.mockRejectedValue(new Error("network"));
+    const two = clientFor([{ data: docs }, { data: [{ id: "a" }] }], throwing.storage);
+    expect(await createSupabaseRepository(two.client).deleteLeads(["a"])).toBe(1);
+  });
+
+  it("chunks the storage removal by 1000 paths", async () => {
+    const st = storageMock();
+    const ids = Array.from({ length: 2 }, (_, i) => `l${i}`);
+    const docs = Array.from({ length: 1001 }, (_, i) => ({ lead_id: ids[i % 2], object_path: `${ids[i % 2]}/${i}.pdf` }));
+    const { client } = clientFor([{ data: docs }, { data: ids.map((id) => ({ id })) }], st.storage);
+    await createSupabaseRepository(client).deleteLeadsAndDocuments(ids);
+    expect(st.remove).toHaveBeenCalledTimes(2);
+    expect((st.remove.mock.calls[0][0] as string[]).length).toBe(1000);
+    expect((st.remove.mock.calls[1][0] as string[]).length).toBe(1);
+  });
+
+  it("works before the documents migration (missing table) and aborts on other read errors", async () => {
+    const missing = clientFor([{ data: null, error: { message: "no table", code: "PGRST205" } }, { data: [{ id: "a" }] }]);
+    expect(await createSupabaseRepository(missing.client).deleteLeads(["a"])).toBe(1);
+    const denied = clientFor([{ data: null, error: { message: "permission denied", code: "42501" } }]);
+    await expect(createSupabaseRepository(denied.client).deleteLeads(["a"])).rejects.toThrow("permission denied");
+    expect(denied.builders).toHaveLength(1); // no lead row deleted
   });
 
   it("empty array: 0 without any query", async () => {
     const { client, from } = clientFor([]);
     expect(await createSupabaseRepository(client).deleteLeads([])).toBe(0);
+    expect(await createSupabaseRepository(client).deleteLeadsAndDocuments([])).toEqual({
+      deleted: 0,
+      documentCleanupFailed: false,
+    });
     expect(from).not.toHaveBeenCalled();
   });
 
-  it("surfaces errors", async () => {
-    const { client } = clientFor([{ data: null, error: { message: "permission denied", code: "42501" } }]);
+  it("surfaces lead delete errors", async () => {
+    const { client } = clientFor([{ data: [] }, { data: null, error: { message: "permission denied", code: "42501" } }]);
     await expect(createSupabaseRepository(client).deleteLeads(["a"])).rejects.toThrow("permission denied");
   });
 });

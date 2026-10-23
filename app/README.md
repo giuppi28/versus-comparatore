@@ -200,3 +200,67 @@ only rejects scripts/handlers/external refs as defence in depth) and returns a `
 `supplier-logos` bucket). Store it with `updateSupplier(id, { logo_path })`. Public screens
 turn any `logo_path` into an `<img src>` with `resolveLogoUrl(logo_path)` from `@/lib/data`.
 The Storage bucket and its policies need a migration (not part of the current ones).
+
+## Activation data, callback number, lead documents (Phase 12)
+
+Migration `supabase/migrations/20261023100000_activation_documents_callback.sql` (additive).
+Before it is applied the data layer degrades gracefully: new lead fields read as `null`,
+`listLeadDocuments` returns `[]`, `getCallbackPhone()` returns the default.
+
+**Lead fields** (`Lead` / `LeadData`, written with the normal lead API / RPCs, all optional):
+`iban`, `iban_holder_different`, `iban_holder_first_name`, `iban_holder_last_name`,
+`iban_holder_tax_code`, `document_type` (`carta_identita | patente | passaporto`),
+`document_number`, `document_expiry` (ISO `YYYY-MM-DD`, `""` = null), `document_issuer`.
+The DB strips spaces + upper-cases `iban` / `document_number`, upper-cases the holder tax code,
+and checks formats only (IBAN `^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$`, personal CF pattern, document
+number `^[A-Z0-9/-]{4,30}$`, issuer 2–120, names 1–100, expiry 2000–2100). Mod-97, CF check
+char / name consistency and "expiry not in the past" are the app's job.
+
+**Callback number**: `settings.callback_phone` (default `DEFAULT_CALLBACK_PHONE` =
+`+39 095 0000000`; DB check: digits, spaces, leading `+`, 6–20 chars). `settings` stays
+admin-only; the value alone is public:
+- `repo.getCallbackPhone(): Promise<string>` — public RPC `get_callback_phone()`, never throws,
+  falls back to the default (use it on the thank-you page, server side);
+- `completeLead()` also returns `callback_phone` (`LeadCompletion.callback_phone`);
+- admin: `getSettings()` / `updateSettings({ callback_phone })` (`Settings.callback_phone` is
+  typed optional but always filled in results).
+
+### Lead documents
+
+Private Storage bucket `lead-documents` (5 MiB, `image/jpeg` + `application/pdf`), max
+`MAX_LEAD_DOCUMENTS` = 2 per lead, only while the lead is in progress (before complete).
+
+Server route (bound to the `versus_lead` cookie token; the lead secret must be registered,
+i.e. import `@/lib/lead/secret` as the other lead handlers do):
+
+```ts
+import { getRepository, detectLeadDocumentMime, InvalidLeadDocumentError,
+         LeadDocumentLimitError, LeadNotFoundError } from "@/lib/data";
+const doc = await getRepository().uploadLeadDocument(token, { mime, bytes }); // bytes: Uint8Array
+// -> LeadDocument { id, lead_id, mime_type, size_bytes, created_at }
+```
+
+`uploadLeadDocument` re-validates (`assertLeadDocument`: type, 1 B..5 MiB, magic bytes
+`FF D8 FF` / `%PDF-` must match `mime`; `detectLeadDocumentMime(bytes)` is exported for the
+route) and throws `InvalidLeadDocumentError` (`reason: "type" | "size" | "content"`),
+`LeadDocumentLimitError` (2 already, or > 20 upload attempts), `LeadNotFoundError` (unknown or
+completed lead), `LeadApiSecretError`, or a plain `Error` (storage failure). Never return
+`lead_id` or storage paths to the browser.
+
+Supabase mechanism (no service-role key): `register_lead_document(secret, token, mime, size)`
+issues a one-time object name `<lead_id>/<32 hex>.(jpg|pdf)` valid 5 minutes → the server
+uploads to exactly that name with the publishable (anon) client, `upsert: false` (the only anon
+Storage policy is an INSERT allowed for a pending, unexpired slot of an in-progress lead; names
+are unique, so single-use) → `confirm_lead_document(secret, token, id)` closes the slot. anon can
+never list, read, overwrite or delete objects. Mock: in-memory store with the same rules.
+
+Admin (`getAdminRepository()`):
+- `listLeadDocuments(leadId): Promise<LeadDocument[]>` (uploaded only, oldest first);
+- `createLeadDocumentUrl(documentId, { download?, expiresIn? }): Promise<string>` — signed URL,
+  default and max 300 s; `download: true` → attachment named `leadDocumentFileName(doc)`
+  (`documento-<id8>.pdf|jpg`). Mock: a `data:` URL. Throws `LeadDocumentNotFoundError`;
+- `deleteLeadsAndDocuments(ids): Promise<LeadDeletion>` → `{ deleted, documentCleanupFailed }`:
+  reads every issued path, deletes the rows (documents cascade), then removes the files with
+  the Storage API; a storage failure keeps the deletion and sets `documentCleanupFailed`
+  (show a warning, like `logoCleanupFailed`). `deleteLeads(ids)` delegates to it and still
+  returns the count, so existing callers already delete the files.

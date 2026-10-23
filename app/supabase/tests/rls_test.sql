@@ -599,6 +599,319 @@ begin
   raise notice 'ok: postgres verification after deletions';
 end $$;
 
+-- ================================================================ PHASE 12 (T12.1)
+-- Activation data (IBAN, identity document), callback number, identity-document uploads.
+reset role;
+do $$
+declare b storage.buckets;
+begin
+  select * into b from storage.buckets where id = 'lead-documents';
+  if b.id is null or b.public or b.file_size_limit <> 5242880
+     or b.allowed_mime_types <> array['image/jpeg', 'application/pdf'] then
+    raise exception 'FAIL: lead-documents bucket config (%)', row_to_json(b);
+  end if;
+end $$;
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  ok   boolean;
+  err  text;
+  n    integer;
+  v    jsonb;
+  d    jsonb;
+  s    text := 'rls-test-secret-not-the-real-one';
+begin
+  -- callback number: the only settings value anon can read
+  if public.get_callback_phone() is distinct from '+39 095 0000000' then
+    raise exception 'FAIL: get_callback_phone() = %', public.get_callback_phone();
+  end if;
+  ok := false; begin perform callback_phone from public.settings; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could read settings.callback_phone directly'; end if;
+
+  -- lead_documents: no anon privilege at all
+  ok := false; begin perform 1 from public.lead_documents limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could select lead_documents'; end if;
+  ok := false; begin insert into public.lead_documents (lead_id, object_path, mime_type, size_bytes, expires_at) values (gen_random_uuid(), 'x', 'image/jpeg', 1, now()); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could insert into lead_documents'; end if;
+  ok := false; begin update public.lead_documents set status = 'pending'; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could update lead_documents'; end if;
+  ok := false; begin delete from public.lead_documents; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon could delete lead_documents'; end if;
+
+  -- new lead fields: normalization through create_lead / update_lead
+  v := public.create_lead(s, '{"privacy_consent":true,"commodity":"luce","customer_type":"casa","first_name":"Anna","last_name":"Verdi","phone":"3331112222","comune_istat":"999999","service_type":"cambio_fornitore","iban":" it60 x054 2811 1010 0000 0123 456 "}');
+  perform set_config('rls.d_id', v ->> 'id', true);
+  perform set_config('rls.d_token', v ->> 'token', true);
+  perform public.update_lead(s, v ->> 'token', '{"iban_holder_different":true,"iban_holder_first_name":" Mario ","iban_holder_last_name":"Rossi","iban_holder_tax_code":"rssmra80a01h501u","document_type":"carta_identita","document_number":"ca 12345 ab","document_expiry":"2031-05-31","document_issuer":" Comune di Roma "}');
+  ok := false; begin perform public.update_lead(s, v ->> 'token', '{"iban":"IT60X054"}'); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: short IBAN accepted'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', '{"iban":"6060X0542811101000000123456"}'); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: IBAN without country accepted'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', '{"iban_holder_tax_code":"RSSMRA80A01H50"}'); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: malformed holder tax code accepted'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', '{"iban_holder_tax_code":"12345678901"}'); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: P.IVA accepted as holder tax code'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', '{"document_type":"tessera"}'); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: unknown document type accepted'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', '{"document_number":"a#1"}'); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: malformed document number accepted'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', '{"document_expiry":"1990-01-01"}'); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: absurd document expiry accepted'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', '{"document_expiry":"31/05/2031"}'); exception when others then ok := true; end;
+  if not ok then raise exception 'FAIL: non-ISO document expiry accepted'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', jsonb_build_object('document_issuer', repeat('x', 121))); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: overlong document issuer accepted'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', jsonb_build_object('iban_holder_first_name', repeat('x', 101))); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: overlong holder first name accepted'; end if;
+
+  -- register_lead_document: secret, token, type, size
+  ok := false; begin perform public.register_lead_document('wrong-secret', v ->> 'token', 'image/jpeg', 1000); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register_lead_document wrong secret (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(null, v ->> 'token', 'image/jpeg', 1000); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register_lead_document null secret (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(s, repeat('0', 64), 'image/jpeg', 1000); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register_lead_document unknown token (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(s, null, 'image/jpeg', 1000); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register_lead_document null token (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(s, v ->> 'token', 'image/png', 1000); exception when others then ok := sqlerrm = 'invalid_document'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register_lead_document png (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(s, v ->> 'token', 'image/svg+xml', 1000); exception when others then ok := sqlerrm = 'invalid_document'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register_lead_document svg (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(s, v ->> 'token', 'application/pdf', 0); exception when others then ok := sqlerrm = 'invalid_document'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register_lead_document empty file (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(s, v ->> 'token', 'application/pdf', 5242881); exception when others then ok := sqlerrm = 'invalid_document'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register_lead_document > 5 MiB (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(s, v ->> 'token', 'application/pdf', null); exception when others then ok := sqlerrm = 'invalid_document'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register_lead_document null size (got %)', err; end if;
+
+  -- slot 1: JPEG, one-time unguessable name in the lead's folder
+  d := public.register_lead_document(s, v ->> 'token', 'image/jpeg', 5242880);
+  if d ->> 'path' !~ ('^' || (v ->> 'id') || '/[0-9a-f]{32}\.jpg$') or d ->> 'bucket' <> 'lead-documents'
+     or (d ->> 'lead_id') <> (v ->> 'id') or (d ->> 'expires_at')::timestamptz <= now() then
+    raise exception 'FAIL: register_lead_document returned %', d;
+  end if;
+  perform set_config('rls.d_doc1', d ->> 'id', true);
+  perform set_config('rls.d_path1', d ->> 'path', true);
+
+  -- anon upload: arbitrary names refused, the issued name accepted exactly once
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('lead-documents', (v ->> 'id') || '/' || repeat('a', 32) || '.jpg'); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon uploaded to an unregistered path'; end if;
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('lead-documents', 'evil.pdf'); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon uploaded to an arbitrary path'; end if;
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('supplier-logos', d ->> 'path'); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon used a document slot in another bucket'; end if;
+  insert into storage.objects (bucket_id, name) values ('lead-documents', d ->> 'path');
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('lead-documents', d ->> 'path'); exception when others then ok := true; end;
+  if not ok then raise exception 'FAIL: anon reused an upload path'; end if;
+
+  -- anon cannot list / read / overwrite / delete document objects
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents';
+  if n <> 0 then raise exception 'FAIL: anon can list % lead documents', n; end if;
+  update storage.objects set name = name || '.x' where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: anon updated a lead document'; end if;
+  delete from storage.objects where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: anon deleted a lead document'; end if;
+
+  -- confirm: wrong secret / wrong id refused; then the slot is closed
+  ok := false; begin perform public.confirm_lead_document('wrong-secret', v ->> 'token', (d ->> 'id')::uuid); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: confirm_lead_document wrong secret (got %)', err; end if;
+  ok := false; begin perform public.confirm_lead_document(s, v ->> 'token', gen_random_uuid()); exception when others then ok := sqlerrm = 'document_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: confirm_lead_document unknown id (got %)', err; end if;
+  d := public.confirm_lead_document(s, v ->> 'token', (d ->> 'id')::uuid);
+  if d ->> 'mime_type' <> 'image/jpeg' or (d ->> 'size_bytes')::int <> 5242880 or (d ->> 'lead_id') <> (v ->> 'id') then
+    raise exception 'FAIL: confirm_lead_document returned %', d;
+  end if;
+  ok := false; begin perform public.confirm_lead_document(s, v ->> 'token', (d ->> 'id')::uuid); exception when others then ok := sqlerrm = 'document_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: confirm_lead_document twice (got %)', err; end if;
+
+  -- slot 2: PDF registered + confirmed WITHOUT an upload: the name is closed after confirm
+  d := public.register_lead_document(s, v ->> 'token', 'application/pdf', 1234);
+  if d ->> 'path' !~ '\.pdf$' then raise exception 'FAIL: pdf slot path %', d ->> 'path'; end if;
+  perform set_config('rls.d_path2', d ->> 'path', true);
+  perform public.confirm_lead_document(s, v ->> 'token', (d ->> 'id')::uuid);
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('lead-documents', d ->> 'path'); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon uploaded to a confirmed (closed) slot'; end if;
+
+  -- max 2 documents per lead
+  ok := false; begin perform public.register_lead_document(s, v ->> 'token', 'image/jpeg', 10); exception when others then ok := sqlerrm = 'document_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: third document accepted (got %)', err; end if;
+
+  -- lead E: expired and completed-lead slots
+  v := public.create_lead(s, '{"privacy_consent":true,"commodity":"luce","customer_type":"casa","first_name":"Elena","last_name":"Neri","phone":"3334445555","comune_istat":"999999","service_type":"subentro","tax_code":"NRELNE80A41H501X","housing_title":"inquilino","cap":"99999","address":"Via Po","street_number":"2","is_resident":true,"chosen_offer_luce":"00000000-0000-4000-8000-00000000c001"}');
+  perform set_config('rls.e_id', v ->> 'id', true);
+  perform set_config('rls.e_token', v ->> 'token', true);
+  d := public.register_lead_document(s, v ->> 'token', 'image/jpeg', 100);
+  perform set_config('rls.e_doc_expired', d ->> 'id', true);
+  perform set_config('rls.e_path_expired', d ->> 'path', true);
+  d := public.register_lead_document(s, v ->> 'token', 'application/pdf', 100);
+  perform set_config('rls.e_path_pending', d ->> 'path', true);
+  -- a slot of lead E cannot be confirmed with lead D's token
+  ok := false; begin perform public.confirm_lead_document(s, current_setting('rls.d_token'), (d ->> 'id')::uuid); exception when others then ok := sqlerrm = 'document_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: confirm with another lead''s token (got %)', err; end if;
+  raise notice 'ok: phase 12 anon checks (part 1)';
+end $$;
+
+-- expire one slot of lead E (as postgres)
+reset role;
+update public.lead_documents set expires_at = now() - interval '1 second'
+ where id = current_setting('rls.e_doc_expired')::uuid;
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  ok  boolean;
+  err text;
+  w   jsonb;
+  s   text := 'rls-test-secret-not-the-real-one';
+begin
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('lead-documents', current_setting('rls.e_path_expired')); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon uploaded to an expired slot'; end if;
+  -- the expired slot no longer counts toward the limit
+  perform public.register_lead_document(s, current_setting('rls.e_token'), 'image/jpeg', 100);
+  ok := false; begin perform public.register_lead_document(s, current_setting('rls.e_token'), 'image/jpeg', 100); exception when others then ok := sqlerrm = 'document_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: limit with one expired slot (got %)', err; end if;
+
+  -- complete lead E: returns the callback number; its pending slot is closed
+  w := public.complete_lead(s, current_setting('rls.e_token'), '{}');
+  if (w ->> 'callback_phone') is distinct from '+39 095 0000000' or not (w ? 'notification_email') then
+    raise exception 'FAIL: complete_lead result %', w;
+  end if;
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('lead-documents', current_setting('rls.e_path_pending')); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon uploaded to a slot of a completed lead'; end if;
+  ok := false; begin perform public.register_lead_document(s, current_setting('rls.e_token'), 'image/jpeg', 100); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: register on a completed lead (got %)', err; end if;
+  raise notice 'ok: phase 12 anon checks (part 2)';
+end $$;
+
+-- verify as postgres: normalization, slots, objects
+reset role;
+do $$
+declare
+  l public.leads;
+  n integer;
+begin
+  select * into l from public.leads where id = current_setting('rls.d_id')::uuid;
+  if l.iban is distinct from 'IT60X0542811101000000123456' then raise exception 'FAIL: IBAN normalization (%)', l.iban; end if;
+  if l.iban_holder_different is not true or l.iban_holder_first_name <> 'Mario' or l.iban_holder_last_name <> 'Rossi'
+     or l.iban_holder_tax_code <> 'RSSMRA80A01H501U' then
+    raise exception 'FAIL: IBAN holder fields (%, %, %, %)', l.iban_holder_different, l.iban_holder_first_name, l.iban_holder_last_name, l.iban_holder_tax_code;
+  end if;
+  if l.document_type <> 'carta_identita' or l.document_number <> 'CA12345AB' or l.document_expiry <> date '2031-05-31'
+     or l.document_issuer <> 'Comune di Roma' then
+    raise exception 'FAIL: document fields (%, %, %, %)', l.document_type, l.document_number, l.document_expiry, l.document_issuer;
+  end if;
+  select count(*) into n from public.lead_documents where lead_id = current_setting('rls.d_id')::uuid and status = 'uploaded' and uploaded_at is not null;
+  if n <> 2 then raise exception 'FAIL: lead D has % of 2 uploaded documents', n; end if;
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents' and name = current_setting('rls.d_path1');
+  if n <> 1 then raise exception 'FAIL: uploaded object missing'; end if;
+  -- empty date string clears the expiry
+  perform public.update_lead('rls-test-secret-not-the-real-one', current_setting('rls.d_token'), '{"document_expiry":""}');
+  if (select document_expiry from public.leads where id = current_setting('rls.d_id')::uuid) is not null then
+    raise exception 'FAIL: empty document_expiry not stored as null';
+  end if;
+  perform public.update_lead('rls-test-secret-not-the-real-one', current_setting('rls.d_token'), '{"document_expiry":"2031-05-31"}');
+  raise notice 'ok: phase 12 postgres verification';
+end $$;
+
+-- authenticated non-admin: sees nothing, cannot upload
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a2","role":"authenticated"}';
+do $$
+declare ok boolean; n integer;
+begin
+  select count(*) into n from public.lead_documents;
+  if n <> 0 then raise exception 'FAIL: non-admin sees % lead documents', n; end if;
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents';
+  if n <> 0 then raise exception 'FAIL: non-admin lists % document objects', n; end if;
+  delete from storage.objects where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: non-admin deleted document objects'; end if;
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('lead-documents', 'user/x.pdf'); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: non-admin uploaded a document'; end if;
+  ok := false; begin insert into public.lead_documents (lead_id, object_path, mime_type, size_bytes, expires_at) values (current_setting('rls.d_id')::uuid, 'x', 'image/jpeg', 1, now()); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: non-admin inserted a lead document row'; end if;
+  update public.settings set callback_phone = '+39 02 1111111';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: non-admin updated callback_phone'; end if;
+  if public.get_callback_phone() <> '+39 095 0000000' then raise exception 'FAIL: get_callback_phone for authenticated'; end if;
+  raise notice 'ok: phase 12 non-admin checks';
+end $$;
+
+-- admin on aal1 (verified factor): blocked by the MFA restrictive policies
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal1"}';
+do $$
+declare n integer;
+begin
+  select count(*) into n from public.lead_documents;
+  if n <> 0 then raise exception 'FAIL: admin on aal1 sees % lead documents', n; end if;
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents';
+  if n <> 0 then raise exception 'FAIL: admin on aal1 lists document objects'; end if;
+  delete from storage.objects where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: admin on aal1 deleted document objects'; end if;
+  raise notice 'ok: phase 12 admin aal1 blocked';
+end $$;
+
+-- admin (aal2): reads documents + objects, deletes objects, edits callback_phone, deletes the lead
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}';
+do $$
+declare ok boolean; n integer;
+begin
+  select count(*) into n from public.lead_documents where lead_id = current_setting('rls.d_id')::uuid;
+  if n <> 2 then raise exception 'FAIL: admin sees % of 2 documents of lead D', n; end if;
+  select count(*) into n from storage.objects where bucket_id = 'lead-documents' and name = current_setting('rls.d_path1');
+  if n <> 1 then raise exception 'FAIL: admin cannot see the document object (signed URLs need SELECT)'; end if;
+  ok := false; begin insert into storage.objects (bucket_id, name) values ('lead-documents', current_setting('rls.d_id') || '/admin.pdf'); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: admin uploaded into lead-documents (not needed, not allowed)'; end if;
+  update storage.objects set metadata = '{"x":1}' where bucket_id = 'lead-documents';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: admin updated a document object'; end if;
+  ok := false; begin insert into public.lead_documents (lead_id, object_path, mime_type, size_bytes, expires_at) values (current_setting('rls.d_id')::uuid, 'x', 'image/jpeg', 1, now()); exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: admin inserted a lead document row'; end if;
+
+  select count(*) into n from public.settings where callback_phone = '+39 095 0000000';
+  if n <> 1 then raise exception 'FAIL: admin cannot read callback_phone'; end if;
+  ok := false; begin update public.settings set callback_phone = '095-000' where id; exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: invalid callback_phone accepted'; end if;
+  ok := false; begin update public.settings set callback_phone = '12345' where id; exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: too short callback_phone accepted'; end if;
+  ok := false; begin update public.settings set callback_phone = null where id; exception when not_null_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: null callback_phone accepted'; end if;
+  update public.settings set callback_phone = '+39 02 1234567' where id;
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'FAIL: admin could not update callback_phone'; end if;
+
+  delete from storage.objects where bucket_id = 'lead-documents' and name = current_setting('rls.d_path1');
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'FAIL: admin could not delete a document object'; end if;
+  delete from public.leads where id = current_setting('rls.d_id')::uuid;
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'FAIL: admin could not delete lead D'; end if;
+  raise notice 'ok: phase 12 admin checks';
+end $$;
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  if public.get_callback_phone() is distinct from '+39 02 1234567' then
+    raise exception 'FAIL: get_callback_phone after admin edit = %', public.get_callback_phone();
+  end if;
+end $$;
+
+reset role;
+do $$
+declare n integer;
+begin
+  select count(*) into n from public.lead_documents where lead_id = current_setting('rls.d_id')::uuid;
+  if n <> 0 then raise exception 'FAIL: % document rows survived the lead delete', n; end if;
+  raise notice 'ok: phase 12 lead delete cascades to lead_documents';
+end $$;
+
 reset role;
 do $$ begin raise notice 'ALL RLS TESTS PASSED'; end $$;
 rollback;

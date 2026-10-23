@@ -185,5 +185,70 @@ begin
   select count(*) into n from public.settings;
   if n <> 1 then raise exception 'FAIL: settings must have exactly 1 row, got %', n; end if;
 
+  -- ---------------------------------------------------------------- Phase 12 (T12.1)
+  -- new lead columns: nullable, no default, right type, writable by the lead functions
+  select count(*) into n from information_schema.columns
+   where table_schema = 'public' and table_name = 'leads' and is_nullable = 'YES' and column_default is null
+     and ((column_name in ('iban', 'iban_holder_first_name', 'iban_holder_last_name', 'iban_holder_tax_code',
+                           'document_type', 'document_number', 'document_issuer') and data_type = 'text')
+       or (column_name = 'iban_holder_different' and data_type = 'boolean')
+       or (column_name = 'document_expiry' and data_type = 'date'));
+  if n <> 9 then raise exception 'FAIL: % of 9 Phase 12 lead columns (nullable, no default, right type)', n; end if;
+  select count(*) into n from unnest(private.lead_writable_fields()) f
+   where f in ('iban', 'iban_holder_different', 'iban_holder_first_name', 'iban_holder_last_name', 'iban_holder_tax_code',
+               'document_type', 'document_number', 'document_expiry', 'document_issuer');
+  if n <> 9 then raise exception 'FAIL: % of 9 Phase 12 lead columns are writable by the lead functions', n; end if;
+
+  -- settings.callback_phone: not null, default number
+  select count(*) into n from public.settings where callback_phone = '+39 095 0000000';
+  if n <> 1 then raise exception 'FAIL: settings.callback_phone default'; end if;
+
+  -- lead_documents: RLS on; anon has no privilege; authenticated only SELECT
+  if not (select c.relrowsecurity from pg_class c where c.oid = 'public.lead_documents'::regclass) then
+    raise exception 'FAIL: RLS disabled on lead_documents';
+  end if;
+  if has_table_privilege('anon', 'public.lead_documents', 'select, insert, update, delete') then
+    raise exception 'FAIL: anon has a privilege on lead_documents';
+  end if;
+  if has_table_privilege('authenticated', 'public.lead_documents', 'insert, update, delete')
+     or not has_table_privilege('authenticated', 'public.lead_documents', 'select') then
+    raise exception 'FAIL: authenticated privileges on lead_documents (select only expected)';
+  end if;
+
+  -- new functions: SECURITY DEFINER, search_path '', never executable by PUBLIC
+  select count(*) into n from pg_proc p
+   where p.oid in ('public.get_callback_phone()'::regprocedure,
+                   'public.register_lead_document(text, text, text, integer)'::regprocedure,
+                   'public.confirm_lead_document(text, text, uuid)'::regprocedure,
+                   'public.complete_lead(text, text, jsonb)'::regprocedure,
+                   'private.lead_document_upload_allowed(text)'::regprocedure)
+     and p.prosecdef
+     and 'search_path=""' = any (p.proconfig)
+     and has_function_privilege('anon', p.oid, 'execute')
+     and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where a.grantee = 0);
+  if n <> 5 then raise exception 'FAIL: % of 5 Phase 12 functions are security definer / search_path '''' / anon-only-by-grant', n; end if;
+  -- `private` is usable by anon only for the upload-policy helper: no other private function or table
+  select count(*) into n from pg_proc p join pg_namespace s on s.oid = p.pronamespace
+   where s.nspname = 'private' and has_function_privilege('anon', p.oid, 'execute')
+     and p.oid <> 'private.lead_document_upload_allowed(text)'::regprocedure;
+  if n <> 0 then raise exception 'FAIL: % other private functions executable by anon', n; end if;
+  select count(*) into n from pg_class c join pg_namespace s on s.oid = c.relnamespace
+   where s.nspname = 'private' and c.relkind in ('r', 'v', 'm', 'p')
+     and has_table_privilege('anon', c.oid, 'select, insert, update, delete');
+  if n <> 0 then raise exception 'FAIL: anon has privileges on % private tables', n; end if;
+
+  -- storage: bucket private, policies present (anon: INSERT only)
+  select count(*) into n from storage.buckets
+   where id = 'lead-documents' and not public and file_size_limit = 5242880
+     and allowed_mime_types = array['image/jpeg', 'application/pdf'];
+  if n <> 1 then raise exception 'FAIL: lead-documents bucket config'; end if;
+  select count(*) into n from pg_policies
+   where schemaname = 'storage' and tablename = 'objects' and policyname like 'lead_documents_%';
+  if n <> 4 then raise exception 'FAIL: % of 4 lead-documents storage policies', n; end if;
+  select count(*) into n from pg_policies
+   where schemaname = 'storage' and tablename = 'objects' and 'anon' = any (roles) and cmd <> 'INSERT'
+     and coalesce(qual, '') || coalesce(with_check, '') like '%lead-documents%';
+  if n <> 0 then raise exception 'FAIL: anon has a non-INSERT policy on lead-documents objects'; end if;
+
   raise notice 'ALL DATA CHECKS PASSED';
 end $$;

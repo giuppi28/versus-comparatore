@@ -143,11 +143,16 @@ describe("supabase repository admin", () => {
 
   it("settings: single-row upsert, null when empty", async () => {
     const empty = clientFor([{ data: null }]);
-    expect(await createSupabaseRepository(empty.client).getSettings()).toEqual({ notification_email: null });
-    const upd = clientFor([{ data: { id: true, notification_email: "a@b.it", updated_at: "z" } }]);
-    expect(await createSupabaseRepository(upd.client).updateSettings({ notification_email: "a@b.it" })).toEqual({
-      notification_email: "a@b.it",
+    expect(await createSupabaseRepository(empty.client).getSettings()).toEqual({
+      notification_email: null,
+      callback_phone: "+39 095 0000000",
     });
-    expect(upd.builders[0].calls.find((c) => c[0] === "upsert")?.[1]).toEqual([{ id: true, notification_email: "a@b.it" }]);
+    const upd = clientFor([{ data: { id: true, notification_email: "a@b.it", callback_phone: "+39 02 1234567", updated_at: "z" } }]);
+    expect(
+      await createSupabaseRepository(upd.client).updateSettings({ notification_email: "a@b.it", callback_phone: "+39 02 1234567" }),
+    ).toEqual({ notification_email: "a@b.it", callback_phone: "+39 02 1234567" });
+    expect(upd.builders[0].calls.find((c) => c[0] === "upsert")?.[1]).toEqual([
+      { id: true, notification_email: "a@b.it", callback_phone: "+39 02 1234567" },
+    ]);
   });
 });
