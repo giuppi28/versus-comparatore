@@ -439,7 +439,7 @@ export async function fillActivation(
     }
     if (c.customer === "business") await page.getByTestId(`gas-use-${c.businessGasUse}`).getByRole("checkbox").click();
   }
-  await expect(page.getByText("(facoltativo)")).toHaveCount(expectedOptional);
+  await expect(page.getByText(/Codice (POD|PDR) \(facoltativo\)/)).toHaveCount(expectedOptional);
 
   await hooks.beforeSubmit?.();
   const completed = page.waitForResponse((r) => r.url().endsWith("/api/lead/complete") && r.request().method() === "POST");

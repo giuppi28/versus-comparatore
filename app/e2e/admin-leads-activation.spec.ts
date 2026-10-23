@@ -58,12 +58,12 @@ test.describe("admin lead detail: payment, document, distributor", () => {
     test.skip(patched.status() === 400, "Lead API does not yet accept the Phase 12 activation fields");
     expect(patched.status(), await patched.text()).toBeLessThan(300);
 
-    // Optional upload (route name per Phase 12 lead API); the file assertions run only if it exists.
+    // Upload through the token-bound route (cookie kept by the context).
     const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0, 1, 2, 3]);
     const upload = await ctx.post("/api/lead/document", {
       multipart: { file: { name: "doc.jpg", mimeType: "image/jpeg", buffer: jpeg } },
     });
-    const hasUpload = upload.status() < 300;
+    expect(upload.status(), await upload.text()).toBe(201);
     await ctx.dispose();
 
     await login(page);
@@ -85,14 +85,17 @@ test.describe("admin lead detail: payment, document, distributor", () => {
     await expect(page.getByTestId("pod-distributor")).toContainText("Distributore:");
     await expect(page.getByTestId("pdr-distributor")).toContainText("Distributore:");
 
-    if (hasUpload) {
-      await expect(page.getByTestId("lead-document")).toHaveCount(1);
-      await expect(page.getByTestId("lead-document")).toContainText("JPEG");
-      // No signed/data URL embedded in the page before the admin asks for it.
-      expect(await page.content()).not.toContain("data:image/jpeg");
-      await page.getByTestId("lead-document-preview").click();
-      await expect(page.getByTestId("lead-document-inline")).toHaveAttribute("src", /^data:image\/jpeg;base64,/);
-    }
+    await expect(page.getByTestId("lead-document")).toHaveCount(1);
+    await expect(page.getByTestId("lead-document")).toContainText("JPEG");
+    // No signed/data URL embedded in the page before the admin asks for it.
+    expect(await page.content()).not.toContain("data:image/jpeg");
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByTestId("lead-document-download").click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/\.jpe?g$/i);
+    await page.getByTestId("lead-document-preview").click();
+    await expect(page.getByTestId("lead-document-inline")).toHaveAttribute("src", /^data:image\/jpeg;base64,/);
     await page.screenshot({ path: `${SHOTS}/admin-lead-activation-${page.viewportSize()?.width}.png`, fullPage: true });
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

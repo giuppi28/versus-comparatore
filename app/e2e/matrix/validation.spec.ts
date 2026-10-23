@@ -394,7 +394,7 @@ test.describe("activation step B", () => {
   test("Primo allaccio: POD / PDR are optional, but a wrong one is still refused", TAG, async ({ page }) => {
     const primo = MATRIX.find((c) => c.commodity === "dual" && c.customer === "casa" && c.service === "primo_allaccio" && c.hasGas === true)!;
     await toStepB(page, primo);
-    await expect(page.getByText("(facoltativo)")).toHaveCount(2);
+    await expect(page.getByText(/Codice (POD|PDR) \(facoltativo\)/)).toHaveCount(2);
     await field(page, "pod").fill("XX1");
     await field(page, "pod").blur();
     await expect(page.getByText(/Il POD/)).toBeVisible();
