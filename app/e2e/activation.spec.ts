@@ -206,6 +206,8 @@ test.describe("activation form", () => {
     await expect(field(page, "current_supplier_luce")).toHaveValue("enel-energia");
     await expect(field(page, "power_kw")).toHaveValue("3");
     await expect(page.getByTestId("activation-gas")).toHaveCount(0);
+    await expect(page.getByTestId("iban-discount")).toBeVisible();
+    await expect(page.getByTestId("iban-discount")).toHaveText("Sconto del 15% se paghi con IBAN");
     await fillAddress(page);
     await field(page, "pod").fill("it001e123456789"); // 15 chars, lower case
     await field(page, "pod").blur();
