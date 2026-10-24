@@ -246,8 +246,13 @@ test.describe("activation step A", () => {
   test("empty required fields and prefilled fields that get cleared", TAG, async ({ page }) => {
     await reachActivation(page, BUSINESS_DUAL);
     const next = page.getByTestId("activation-next");
+    // Each failed "Prosegui" moves focus to the first invalid field in a requestAnimationFrame (a11y,
+    // by design). Wait for it before touching another field, or it steals focus from fill() and the
+    // clear is lost.
+    const firstInvalid = page.locator('[data-testid^="activation-step-"] [aria-invalid="true"]').first();
     await next.click();
     await expect(page.getByTestId("activation-step-a")).toBeVisible();
+    await expect(firstInvalid).toBeFocused();
     await expect(page.getByText("Inserisci il codice fiscale.")).toBeVisible();
     await expect(page.getByText("Inserisci la partita IVA.")).toBeVisible();
     await expect(page.getByText("Seleziona una risposta.")).toBeVisible();
@@ -259,8 +264,10 @@ test.describe("activation step A", () => {
       ["company_name", "Inserisci la ragione sociale."],
     ] as const) {
       await field(page, name).fill("");
+      await expect(field(page, name)).toHaveValue("");
       await next.click();
       await expect(page.getByText(message), name).toBeVisible();
+      await expect(firstInvalid).toBeFocused();
     }
     await expect(page.getByTestId("activation-step-b")).toHaveCount(0);
   });
