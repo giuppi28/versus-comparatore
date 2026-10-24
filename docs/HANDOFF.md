@@ -4,7 +4,7 @@ Updated: 2026-10-24 · Phase: 13 — Test stability and data checks · Branch: d
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Phase 13 Block A closed. Next: Block B, T13.6 (`docs/TASKS.md`). Then Block B (T13.6–T13.10: FAQ removal, 6 s loading screen, IBAN 15% line, privacy/cookie). T13.11 (POD codes) stays blocked until the codes are confirmed.
+Phase 13 Block A closed. Next: Block B, T13.7 (`docs/TASKS.md`). Then Block B (T13.6–T13.10: FAQ removal, 6 s loading screen, IBAN 15% line, privacy/cookie). T13.11 (POD codes) stays blocked until the codes are confirmed.
 
 ## Status
 - Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–12c + recipient hotfix (merge commit 0d6620c, PR #2). Offers are still placeholders (`price_verified = false`).
@@ -44,3 +44,4 @@ Phase 13 Block A closed. Next: Block B, T13.6 (`docs/TASKS.md`). Then Block B (T
 - 2026-10-24 T13.3 done: callback phone flake = single process-wide mock settings row shared by desktop+mobile; test now desktop-only, test.slow(), phone restored in finally (85 passed / 5 skipped ×5) — 8407817.
 - 2026-10-24 T13.4 done: page1 flake = admin-suppliers created non-E2E logo suppliers in the shared mock repo; renamed E2E…, removed in finally (355 passed / 5 skipped ×5) — 6529d53.
 - 2026-10-24 T13.5 Block A check: Vitest 1152/1152, e2e 306 passed ×3 (0 flaky), matrix 390; review: 0 high, 2 medium (page1 already filters E2E/QA — no change; admin-leads save expects back to default timeout — 698b552), 3 low → Later.
+- 2026-10-24 T13.6 done: FAQ "compaiono nei risultati" removed (4 FAQ left), page1 e2e 65 passed / 1 skipped — 6f61c59.
