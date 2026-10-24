@@ -49,7 +49,7 @@ export async function sendTestEmailAction(prev: TestEmailState): Promise<TestEma
     if (r.status === "sent") {
       return {
         result: "sent",
-        message: `Email inviata a ${r.to}. Risposta Resend: ${r.body}`,
+        message: `Email di prova inviata a ${r.to}. Risposta Resend: ${r.body}`,
         attempt,
       };
     }

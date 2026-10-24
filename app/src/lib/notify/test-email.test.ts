@@ -27,6 +27,27 @@ describe("sendTestEmail", () => {
     );
   });
 
+  it("settings address wins over env NOTIFICATION_EMAIL", async () => {
+    const send = okSend();
+    const r = await sendTestEmail("u1", {
+      config: { ...config, envRecipient: "env@example.it" },
+      repo: repo("settings@example.it"),
+      send,
+    });
+    expect(r).toEqual({ status: "sent", to: "settings@example.it", body: '{"id":"abc"}' });
+    expect(send).toHaveBeenCalledWith("re_secret", expect.objectContaining({ to: "settings@example.it" }));
+  });
+
+  it("falls back to env when the setting is empty", async () => {
+    const send = okSend();
+    const r = await sendTestEmail("u1", {
+      config: { ...config, envRecipient: "env@example.it" },
+      repo: repo(null),
+      send,
+    });
+    expect(r.status === "sent" && r.to).toBe("env@example.it");
+  });
+
   it.each([
     ["RESEND_API_KEY", { ...config, apiKey: null }, "a@b.it"],
     ["RESEND_FROM", { ...config, from: null }, "a@b.it"],
