@@ -38,8 +38,10 @@ The new-lead email to Aldo is sent through Resend via `fetch`. Without `RESEND_A
 `RESEND_FROM` or a recipient it is log-only (the submit never fails).
 
 Recipient order: (1) `notification_email` returned by the `complete_lead` RPC (the admin setting
-`settings.notification_email`, supabase mode, QUESTIONS Q7); (2) the `NOTIFICATION_EMAIL` env var,
-now only a **fallback** (used when the RPC returns null); (3) the admin settings in mock mode.
+`settings.notification_email`, supabase mode, QUESTIONS Q7); (2) `settings.notification_email` read
+through the repository (always used by the admin "Invia email di prova"; the admin setting wins over
+env); (3) the `NOTIFICATION_EMAIL` env var, only a **fallback** (used when the setting is empty/invalid
+or not readable, e.g. RLS with the public client).
 
 ## Supabase keep-alive (Vercel Cron)
 

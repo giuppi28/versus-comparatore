@@ -69,6 +69,12 @@ Brief and decisions: PROGRESS.md "PHASE 12b". Commits: 6ee93e3 removal · d15292
 - **Admin lead detail**: Pagamento and Documento sections; preview/download of uploaded files; the distributor line for luce only (**a gas lead shows no gas distributor line**); delete the lead and check its files are gone.
 - Note: both APPLY migrations are on the real DB, so the new fields, uploads and removals are stored there.
 
+## Hotfix 2026-10-24 — notification recipient (branch `preview/hotfix-recipient`)
+- Recipient order is now: completeLead result, then `settings.notification_email`, then env `NOTIFICATION_EMAIL` (fallback only when the setting is empty or unreadable). It applies to both "Invia email di prova" and the new-lead notifications. Before, the env value won and the address edited in Impostazioni was ignored.
+- The test-send success message shows the recipient: "Email di prova inviata a <address>. Risposta Resend: …". A Resend error is still shown verbatim.
+- To check on the preview: Admin → Impostazioni, set a notification email different from the env one, click "Invia email di prova", and confirm the message names the address you set. Note: with sender `onboarding@resend.dev`, Resend delivers only to the account owner's address.
+- Not merged. Giuseppe merges after review.
+
 ## Working preferences (Giuseppe)
 - Talk to him in Italian; anything given to Claude Code (prompts, docs) in English; always state model + effort for prompts to paste elsewhere.
 - Wants autonomy; mixed models to control cost (Sonnet default, Opus only for security-critical work).

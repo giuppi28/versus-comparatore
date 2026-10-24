@@ -52,10 +52,24 @@ describe("sendTestEmailAction", () => {
     const s = await sendTestEmailAction({ attempt: 0 });
     expect(s).toEqual({
       result: "sent",
-      message: 'Email inviata a aldo@example.it. Risposta Resend: {"id":"id-1"}',
+      message: 'Email di prova inviata a aldo@example.it. Risposta Resend: {"id":"id-1"}',
       attempt: 1,
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends to the settings address even when env NOTIFICATION_EMAIL is set", async () => {
+    requireAdmin.mockResolvedValue({ id: "u1", email: null });
+    vi.stubEnv("RESEND_API_KEY", "re_x");
+    vi.stubEnv("RESEND_FROM", "noreply@versus.it");
+    vi.stubEnv("NOTIFICATION_EMAIL", "env@example.it");
+    const fetchMock = vi.fn(async () => new Response('{"id":"id-2"}', { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const s = await sendTestEmailAction({ attempt: 0 });
+    expect(s.message).toContain("Email di prova inviata a aldo@example.it");
+    expect(s.message).not.toContain("env@example.it");
+    const calls = fetchMock.mock.calls as unknown as [string, { body: string }][];
+    expect(JSON.parse(calls[0][1].body).to).toEqual(["aldo@example.it"]);
   });
 
   it("passes Resend errors through verbatim", async () => {

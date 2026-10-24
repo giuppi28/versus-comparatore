@@ -157,6 +157,6 @@ test.describe("admin settings: test email", () => {
     await expect(form).toHaveAttribute("data-test-attempt", "0", { timeout: 20_000 });
     await button.click();
     await expect(form).toHaveAttribute("data-test-attempt", "1");
-    await expect(page.getByTestId("test-email-result")).toContainText(/configurazione mancante|Email inviata|Errore Resend|Troppi invii/);
+    await expect(page.getByTestId("test-email-result")).toContainText(/configurazione mancante|Email di prova inviata|Errore Resend|Troppi invii/);
   });
 });

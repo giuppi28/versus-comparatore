@@ -5,9 +5,11 @@
  * -> POST to Resend. Never throws: failures are logged (lead id + error code, no personal data).
  *
  * Recipient (see README "Notifications"): the `settings.notification_email` table is admin-only
- * under RLS, but the complete_lead RPC returns its value (T8.2 / Q7). Resolution order:
- * (1) the notification_email returned by completeLead, (2) env NOTIFICATION_EMAIL,
- * (3) settings via the repository when readable (mock mode; fails under RLS in Supabase mode).
+ * under RLS for the public client, but the complete_lead RPC returns its value (T8.2 / Q7) and the
+ * admin repository can read it. Resolution order (admin setting always wins over env):
+ * (1) the notification_email returned by completeLead, (2) settings.notification_email via the
+ * repository, (3) env NOTIFICATION_EMAIL, only as a fallback when the setting is empty/invalid or
+ * not readable (e.g. RLS with the public client).
  */
 import { getRepository } from "@/lib/data";
 import type { LeadData, Repository } from "@/lib/data";
@@ -50,8 +52,8 @@ export function readNotifyConfig(env: NodeJS.ProcessEnv = process.env): NotifyCo
 }
 
 /**
- * The completeLead recipient when valid, else env NOTIFICATION_EMAIL, else
- * settings.notification_email when readable, else null.
+ * The completeLead recipient when valid, else settings.notification_email (when readable and
+ * valid), else env NOTIFICATION_EMAIL as a fallback, else null.
  */
 export async function resolveRecipient(
   repo: Pick<Repository, "getSettings">,
@@ -60,13 +62,13 @@ export async function resolveRecipient(
 ): Promise<string | null> {
   const fromCompletion = normalizeEmail(completionRecipient);
   if (fromCompletion) return fromCompletion;
-  if (envRecipient) return envRecipient;
   try {
-    return normalizeEmail((await repo.getSettings()).notification_email);
+    const fromSettings = normalizeEmail((await repo.getSettings()).notification_email);
+    if (fromSettings) return fromSettings;
   } catch {
-    // Not readable with the public client (RLS).
-    return null;
+    // Not readable with the public client (RLS): fall through to the env fallback.
   }
+  return envRecipient;
 }
 
 const COMMODITY_LABEL = { luce: "Luce", gas: "Gas", dual: "Luce + Gas" } as const;

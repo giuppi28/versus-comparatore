@@ -154,13 +154,18 @@ describe("resolveRecipient", () => {
   const settings = (email: string | null) => ({ getSettings: async () => ({ notification_email: email }) });
   const unreadable = { getSettings: async (): Promise<{ notification_email: string | null }> => { throw new Error("rls"); } };
 
-  it("order: completeLead recipient, then env NOTIFICATION_EMAIL, then settings", async () => {
+  it("order: completeLead recipient, then settings, then env NOTIFICATION_EMAIL (fallback)", async () => {
     expect(await resolveRecipient(settings("s@x.it"), "e@x.it", "c@x.it")).toBe("c@x.it");
     expect(await resolveRecipient(unreadable, "e@x.it", " c@x.it ")).toBe("c@x.it");
-    expect(await resolveRecipient(settings("s@x.it"), "e@x.it", null)).toBe("e@x.it");
-    expect(await resolveRecipient(settings("s@x.it"), "e@x.it", "not-an-email")).toBe("e@x.it");
+    expect(await resolveRecipient(settings("s@x.it"), "e@x.it", null)).toBe("s@x.it");
+    expect(await resolveRecipient(settings("s@x.it"), "e@x.it", "not-an-email")).toBe("s@x.it");
+    expect(await resolveRecipient(settings(null), "e@x.it", null)).toBe("e@x.it");
     expect(await resolveRecipient(settings("s@x.it"), null, null)).toBe("s@x.it");
     expect(await resolveRecipient(settings("s@x.it"), null)).toBe("s@x.it");
+  });
+
+  it("settings address wins over env when there is no completion recipient", async () => {
+    expect(await resolveRecipient(settings("s@x.it"), "e@x.it")).toBe("s@x.it");
   });
 
   it("tolerates an unreadable settings table and invalid values", async () => {
@@ -263,6 +268,17 @@ describe("sendNewLeadNotification", () => {
     );
     expect(r).toBe("sent");
     expect(send.mock.calls[0][1].to).toBe("db@azienda.it");
+  });
+
+  it("sends to the settings address ahead of env when completeLead gives none", async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true, id: "m1" });
+    const r = await sendNewLeadNotification(lead, {
+      repo: await repoWith("settings@azienda.it"),
+      config: { ...CONFIG, envRecipient: "env@azienda.it" },
+      send,
+    });
+    expect(r).toBe("sent");
+    expect(send.mock.calls[0][1].to).toBe("settings@azienda.it");
   });
 
   it("swallows send failures and unexpected errors", async () => {
