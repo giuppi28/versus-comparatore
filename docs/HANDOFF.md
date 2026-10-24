@@ -4,7 +4,7 @@ Updated: 2026-10-24 · Phase: 13 — Test stability and data checks · Branch: d
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Phase 13 Block A closed. Next: Block B, T13.10 (verifier + reviewer) (`docs/TASKS.md`). Then Block B (T13.6–T13.10: FAQ removal, 6 s loading screen, IBAN 15% line, privacy/cookie). T13.11 (POD codes) stays blocked until the codes are confirmed.
+Phase 13 Blocks A and B closed. Block C (T13.11) blocked on POD codes. Next: phase-end protocol (scribe), then Giuseppe check + push. (`docs/TASKS.md`). Then Block B (T13.6–T13.10: FAQ removal, 6 s loading screen, IBAN 15% line, privacy/cookie). T13.11 (POD codes) stays blocked until the codes are confirmed.
 
 ## Status
 - Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–12c + recipient hotfix (merge commit 0d6620c, PR #2). Offers are still placeholders (`price_verified = false`).
@@ -32,6 +32,8 @@ Phase 13 Block A closed. Next: Block B, T13.10 (verifier + reviewer) (`docs/TASK
 - `e2e/admin-settings.spec.ts:80` also writes the global callback phone (mock settings row): may race `acceptance-phase12` — watch in T13.5.
 - `acceptance-phase12` settings test is desktop-only: callback-number form + thank-you `tel:` link no longer checked at 390 px (add a read-only 390 px check if needed).
 - `finally` cleanup in `acceptance-phase12.spec.ts` / `admin-suppliers.spec.ts` can throw and mask the original assertion error — wrap cleanup steps in `.catch`.
+- `/privacy` admin-cookie bullet: add lifetime ("durata della sessione").
+- `LoadingScreen` message timings scale with a custom `durationMs`; the 2.5 s guarantee holds only at 6000 ms.
 - Align server `MAX_LEAD_DOCUMENT_BYTES` (5 MiB) with the 4 MB client limit — `app/src` lead document route.
 - Accepted residual exposure in the 1-minute document-removal window (QUESTIONS.md APPLY 20261023110000).
 
@@ -48,3 +50,4 @@ Phase 13 Block A closed. Next: Block B, T13.10 (verifier + reviewer) (`docs/TASK
 - 2026-10-24 T13.7 done: loading 6 s (5×0.7 s + 2.5 s "offerta più bassa"), Vitest 1153, loading e2e green both projects — 62f728d.
 - 2026-10-24 T13.8 done: bold "Sconto del 15% se paghi con IBAN" under the IBAN field (not in aria-describedby), activation e2e 34 passed — 2113887. Visual check at 1440/390 left to Giuseppe.
 - 2026-10-24 T13.9 done: /privacy Cookie section (#7, technical only), full "Dati raccolti", footer "Privacy e cookie"; copy.spec 13 passed — c927ffb.
+- 2026-10-24 T13.10 Block B check: Vitest 1153, e2e 306 passed / 2 skipped, matrix 390; review: 0 high, 1 medium (privacy sessionStorage sentence untrue — fixed ab85f27), 2 low → Later.
