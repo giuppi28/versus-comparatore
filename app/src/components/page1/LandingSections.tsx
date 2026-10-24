@@ -39,10 +39,6 @@ const FAQ: { q: string; a: string }[] = [
     a: "Con il cambio fornitore passi a un nuovo fornitore. Il subentro riattiva un contatore spento. La voltura cambia l'intestatario di un contratto già attivo. Il primo allaccio serve per una nuova fornitura.",
   },
   {
-    q: "Le offerte del mio fornitore attuale compaiono nei risultati?",
-    a: "No: se indichi il fornitore attuale, le sue offerte vengono escluse dal confronto.",
-  },
-  {
     q: "Le stime di spesa comprendono l'IVA?",
     a: "No, le stime di spesa mostrate sono IVA esclusa.",
   },
