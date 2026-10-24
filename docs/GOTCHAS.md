@@ -33,16 +33,15 @@ Known traps. Read the section relevant to your task before starting. Add new one
 
 ## VERSUS — project-specific
 - **`main` = Vercel Production Branch.** Every push or merge to `main` deploys production. Work on `dev`; only Giuseppe merges to `main`.
-- **Shared database.** One Supabase project (`felnnfisnobpgetgtxle`) serves preview, production and the real-DB test suites. There is no dev DB. Tests create their own rows with a `TEST-`/`E2E` prefix and clean them in `finally`; `npm run test:security` leaves 2 `TEST-SECURITY%` leads per run (Giuseppe cleans them).
-- **Migrations are not applied by Claude Code.** Write the file in `app/supabase/migrations/` + `## APPLY: <file>` in `QUESTIONS.md`; the reviewer applies it after Giuseppe's OK. Until then code must work against the old schema (or the mock data layer).
-- **No service role key.** Leads only through secret-gated `SECURITY DEFINER` functions with the server-only `LEAD_API_SECRET`. Never add `anon` grants on `leads`.
+- **Shared database.** One Supabase project serves preview, production and the real-DB tests; there is no dev DB. Tests use `TEST-`/`E2E` names and clean up in `finally`; `npm run test:security` leaves 2 `TEST-SECURITY%` leads per run (Giuseppe cleans them).
+- **Migrations are not applied by Claude Code.** Write the file in `app/supabase/migrations/` and add `## APPLY: <file>` to `QUESTIONS.md`; the reviewer applies it after Giuseppe's OK. Code must work on the old schema (or the mock layer) until then.
+- **No service role key.** Leads only through secret-gated `SECURITY DEFINER` functions (server-only `LEAD_API_SECRET`). Never add `anon` grants on `leads`.
 - **The app is in `app/`.** Run npm/npx/playwright from `app/`; env file is `app/.env.local`.
-- **Resend test sender** `onboarding@resend.dev` delivers only to the Resend account owner's address. Other recipients fail until the domain is verified and `RESEND_FROM` is set.
-- **`RESEND_API_KEY` is set for Production only** on Vercel: on previews "Invia email di prova" returns "configurazione mancante (RESEND_API_KEY)". Expected.
-- **Vercel request body ≈4.5 MB.** Upload limit is therefore 4 MB client-side; a larger body is rejected by Vercel before our route runs.
+- **Resend.** The test sender `onboarding@resend.dev` only delivers to the Resend owner's address until the domain is verified and `RESEND_FROM` is set. `RESEND_API_KEY` is set for Production only, so "Invia email di prova" on previews returning "configurazione mancante (RESEND_API_KEY)" is expected.
+- **Vercel request body ≈4.5 MB.** Client-side upload limit is 4 MB; larger bodies are rejected by Vercel before our route runs.
 - **HEIC** decodes only in browsers that support it (Safari); Chromium tests can't cover it.
-- **Parallel e2e on one mock repository.** The mock data layer is one process-wide instance shared by all parallel tests and both projects: test-created rows must use E2E/QA names and be removed in `finally`; specs must not assert on rows they did not create. Under heavy parallel load the `next dev` server compiles routes on first hit: long specs need `test.slow()` / longer expect timeouts. Tests touching global settings must restore them and avoid running in parallel with each other.
-- **Cookies = technical only.** `/privacy` states the site uses only technical cookies, so there is no consent banner. Adding analytics (incl. Vercel Analytics), pixels, embeds that set cookies or any non-technical cookie requires a consent banner first, plus an update of the `/privacy` "Cookie" section (SPEC decision #13).
+- **Parallel e2e share one mock repository.** Test rows use E2E/QA names and are removed in `finally`; never assert on rows you did not create. Long specs need `test.slow()` or longer expect timeouts; specs touching global settings must restore them and not run in parallel.
+- **Cookies = technical only.** `/privacy` says so, so there is no consent banner. Any analytics (incl. Vercel Analytics), pixel or non-technical cookie needs a consent banner and an update of the `/privacy` "Cookie" section (SPEC decision #13).
 - **IBAN 15% line is fixed copy** (activation step B), valid only while the 15% IBAN discount applies to all offers (SPEC decision #12).
-- **No Prettier config in the repo.** Never run `prettier --write` on existing files: it reflows them to 80 cols and buries the real change in the diff (happened in T13.4, T13.8). Match the surrounding formatting by hand.
+- **No Prettier config.** Never `prettier --write` existing files (reflows to 80 cols, buries the real diff; happened in T13.4, T13.8). Match formatting by hand.
 - **UI copy rules:** Italian only; no "demo" wording; no phone/call-center/callback mention before the thank-you page; no Facile.it branding.
