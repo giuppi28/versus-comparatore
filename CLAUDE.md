@@ -84,3 +84,17 @@ Code, comments, commits, docs, coordination files: **English**. All customer-fac
 - VERSUS — "comparatore luce e gas". Logo files in `/Users/pippo/Desktop/versus elementi/versus-logo-svg/` (copy what you need into `app/public/brand/`). Black & white logo, **green palette**, clean and modern, rounded cards, icon-based selection blocks, generous whitespace.
 - Supplier logos: originals in `/Users/pippo/Desktop/versus elementi/loghi energia /` (folder name ends with a space) and `/Users/pippo/Desktop/versus elementi/logopack/originali/` (see its MANIFEST.md) (from Giuseppe); processed pack goes in this project's `logopack/`. Until ready, use a neutral text-based logo fallback.
 - Mobile-first: the entire flow must work perfectly at 390px.
+
+## Build-orchestrator workflow (adopted 2026-10-24)
+Phases 1–12c are live. From Phase 13 the project follows the build-orchestrator skill. Where this section and the older rules above differ, this section wins.
+- **Branches:** work branch `dev` (Vercel builds it as a preview). `main` = production, merged only by Giuseppe. This replaces the `preview/*` branches.
+- **Single sources:** remaining work → `docs/TASKS.md`; current state → `docs/HANDOFF.md`; traps → `docs/GOTCHAS.md` (read the "VERSUS" section before every task); features → `docs/FEATURES.md`; spec index + decision log → `docs/SPEC.md`. Root `TASKS.md`, `PROGRESS.md`, `HANDOFF_VERSUS_*.md` are history. `QUESTIONS.md` stays the channel for `APPLY:` requests and questions to the reviewer.
+- **Agents:** kit agents `architect`, `backend-builder`, `frontend-builder`, `verifier`, `reviewer`, `critical-reviewer`, `scribe` sit next to the existing screen agents. The kit agent `reviewer` (code review inside this repo) is not the claude.ai "Reviewer" session described in Roles.
+- **Commits:** `T<phase>.<n>: <summary>` per task. Agents never push (the `bash-guard` hook blocks it); Giuseppe pushes `dev` after his check.
+- **Skill conventions that do NOT apply here** (decision log in `docs/SPEC.md`):
+  - the app lives in `app/`, not at repo root — run every npm/npx command from `app/`;
+  - one shared Supabase project (`felnnfisnobpgetgtxle`) for preview and production — no dev database;
+  - no Supabase secret/service-role key; leads only via secret-gated `SECURITY DEFINER` functions;
+  - migrations are never applied by Claude Code (file + `## APPLY:` in `QUESTIONS.md`; the reviewer applies it after Giuseppe's OK); types are updated by hand, not regenerated;
+  - prices are decimals (`numeric`), not integer cents; Supabase Auth only (no Clerk);
+  - the spec lives in `PRD_VERSUS_v0.6.md` + `app/README.md` + `app/DEPLOY.md`, not in `docs/PRD.md` / `docs/DESIGN.md` (design: PRD §1 + `PHASE10_BRIEF.md`).

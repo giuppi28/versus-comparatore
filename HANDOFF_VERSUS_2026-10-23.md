@@ -1,3 +1,5 @@
+> **Superseded (2026-10-24):** the current handoff is `docs/HANDOFF.md`. This file is history.
+
 # VERSUS — Handoff status (2026-10-23)
 
 ## What it is
