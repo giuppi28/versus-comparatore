@@ -42,4 +42,6 @@ Known traps. Read the section relevant to your task before starting. Add new one
 - **Vercel request body ≈4.5 MB.** Upload limit is therefore 4 MB client-side; a larger body is rejected by Vercel before our route runs.
 - **HEIC** decodes only in browsers that support it (Safari); Chromium tests can't cover it.
 - **Known flaky e2e** (green on re-run, under `fullyParallel`): `matrix/validation.spec.ts:246` (mobile), `admin-leads.spec.ts:213` (desktop), `acceptance-phase12` callback phone (mobile, global `settings` row shared by parallel projects), `page1.spec.ts:108` (concurrent admin-suppliers test leaves a logo supplier). Tests touching global settings must restore them and avoid running in parallel with each other.
+- **Cookies = technical only.** `/privacy` states the site uses only technical cookies, so there is no consent banner. Adding analytics (incl. Vercel Analytics), pixels, embeds that set cookies or any non-technical cookie requires a consent banner first, plus an update of the `/privacy` "Cookie" section (SPEC decision #13).
+- **IBAN 15% line is fixed copy** (activation step B), valid only while the 15% IBAN discount applies to all offers (SPEC decision #12).
 - **UI copy rules:** Italian only; no "demo" wording; no phone/call-center/callback mention before the thank-you page; no Facile.it branding.
