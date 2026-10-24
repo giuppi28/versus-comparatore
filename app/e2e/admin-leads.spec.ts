@@ -224,7 +224,7 @@ test.describe("admin leads", () => {
     await page.getByLabel("Stato").selectOption("in_progress");
     await page.getByLabel("Note interne").fill("Richiamare domani alle 10.\nInteressato alla luce.");
     await page.getByRole("button", { name: "Salva" }).click();
-    await expect(page.getByTestId("save-success")).toHaveText("Modifiche salvate.", { timeout: 20_000 });
+    await expect(page.getByTestId("save-success")).toHaveText("Modifiche salvate.");
     await expect(page.getByTestId("status-badge").first()).toHaveText("In lavorazione");
 
     await page.reload();
@@ -240,7 +240,7 @@ test.describe("admin leads", () => {
     await page.goto(detailUrl);
     await page.getByLabel("Note interne").fill("x".repeat(5001));
     await page.getByRole("button", { name: "Salva" }).click();
-    await expect(page.getByTestId("save-error")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("save-error")).toBeVisible();
     await expect(page.getByRole("alert").filter({ hasText: "al massimo 5000" })).toBeVisible();
     await page.goto(detailUrl);
     await expect(page.getByLabel("Note interne")).toHaveValue("Richiamare domani alle 10.\nInteressato alla luce.");
@@ -249,7 +249,7 @@ test.describe("admin leads", () => {
     await page.getByLabel("Stato").selectOption("closed");
     await page.getByLabel("Note interne").fill("");
     await page.getByRole("button", { name: "Salva" }).click();
-    await expect(page.getByTestId("save-success")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("save-success")).toBeVisible();
     await page.reload();
     await expect(page.getByLabel("Stato")).toHaveValue("closed");
     await expect(page.getByLabel("Note interne")).toHaveValue("");
