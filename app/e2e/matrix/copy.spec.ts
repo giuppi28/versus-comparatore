@@ -3,7 +3,7 @@
  *
  * A MutationObserver (installed before the first page load) reports every distinct text snapshot of
  * the document (visible text + placeholders / aria-labels / titles / alt texts + <title> + meta
- * description) while a real flow runs, so even transient states (the ~4 s loading screen, tooltips,
+ * description) while a real flow runs, so even transient states (the ~6 s loading screen, tooltips,
  * the modal, inline errors) are checked. Snapshots taken on /grazie are excluded from the "no
  * callback" rules: the thank-you page is the ONLY place where the callback is mentioned (PRD §11).
  */
