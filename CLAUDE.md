@@ -14,7 +14,8 @@ Deliver a **fully working service**: every screen of the PRD implemented, connec
 For any visual/UI work, agents must read `.claude/skills/frontend-design/SKILL.md` and `.claude/skills/ui-ux-pro-max/SKILL.md` and query ui-ux-pro-max with `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --domain <domain>` (see PHASE10_BRIEF.md).
 
 ## Model policy (cost control — mandatory)
-- **Orchestrator (main session): Claude Sonnet.** It plans and verifies; it does not need Opus.
+- **Orchestrator (main session): Claude Opus 5.5, effort medium** (decision 2026-10-24, build-orchestrator skill; the earlier "Sonnet orchestrator" rule is obsolete).
+- Kit agents keep the models set in their files: `architect` and `critical-reviewer` opus; `backend-builder`, `frontend-builder`, `reviewer` sonnet; `verifier`, `scribe` haiku.
 - Each subagent has its model set in `.claude/agents/<name>.md`. Defaults:
   - **opus** only for security-critical work: `db-builder`, `lead-api-builder`, `admin-auth-builder`;
   - **haiku** for trivial screens: `thankyou-builder`;

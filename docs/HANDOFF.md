@@ -4,7 +4,7 @@ Updated: 2026-10-24 · Phase: 13 — Test stability and data checks · Branch: d
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Start Phase 13, Block A: T13.1 (`docs/TASKS.md`). T13.5 stays blocked until the POD codes are confirmed.
+Start Phase 13, Block A: T13.1 (`docs/TASKS.md`). T13.6 stays blocked until the POD codes are confirmed.
 
 ## Status
 - Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–12c + recipient hotfix (merge commit 0d6620c, PR #2). Offers are still placeholders (`price_verified = false`).
@@ -13,9 +13,8 @@ Start Phase 13, Block A: T13.1 (`docs/TASKS.md`). T13.5 stays blocked until the 
 - Previous phases: 0 setup · 1 DB · 2 logic · 3 customer screens · 4 admin · 5 logo pack · 6 deploy prep · 7 test matrix · 8–9 review rounds · 10 visual upgrade · 11 admin deletions · 12/12b/12c activation data, documents, callback number, Resend test.
 
 ## Open issues (to solve)
-- Flaky e2e: `validation.spec.ts:246` (mobile), `admin-leads.spec.ts:213` (desktop), `acceptance-phase12` callback phone (mobile, parallel) → T13.1–T13.3.
-- Also flaky, not yet in TASKS: `page1.spec.ts:108` (fixture interference from a concurrent admin-suppliers test). Ask Giuseppe whether to add it to Block A.
-- POD codes IT002/IT011/IT012/IT020 unconfirmed → T13.5.
+- Flaky e2e: `validation.spec.ts:246` (mobile), `admin-leads.spec.ts:213` (desktop), `acceptance-phase12` callback phone (mobile, parallel), `page1.spec.ts:108` (fixture interference) → T13.1–T13.4.
+- POD codes IT002/IT011/IT012/IT020 unconfirmed → T13.6 (blocked).
 
 ## Waiting on Giuseppe (manual / go-live, not code tasks)
 - Resend: verify the sending domain and set `RESEND_FROM` (with `onboarding@resend.dev` Resend delivers only to the account owner). Then test "Invia email di prova" on production.
@@ -34,4 +33,5 @@ Start Phase 13, Block A: T13.1 (`docs/TASKS.md`). T13.5 stays blocked until the 
 - Accepted residual exposure in the 1-minute document-removal window (QUESTIONS.md APPLY 20261023110000).
 
 ## Log (current phase)
-- 2026-10-24 Adopted build-orchestrator workflow (docs/, kit agents, hooks, statusline, settings).
+- 2026-10-24 Adopted build-orchestrator workflow (docs/, kit agents, hooks, statusline, settings) — a4a2d58.
+- 2026-10-24 Decisions: page1 flake added (T13.4); orchestrator = Opus 5.5; POD codes still unconfirmed.
