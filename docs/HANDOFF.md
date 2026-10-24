@@ -4,7 +4,7 @@ Updated: 2026-10-24 · Phase: 13 — Test stability and data checks · Branch: d
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Phase 13 Block A closed. Next: Block B, T13.9 (`docs/TASKS.md`). Then Block B (T13.6–T13.10: FAQ removal, 6 s loading screen, IBAN 15% line, privacy/cookie). T13.11 (POD codes) stays blocked until the codes are confirmed.
+Phase 13 Block A closed. Next: Block B, T13.10 (verifier + reviewer) (`docs/TASKS.md`). Then Block B (T13.6–T13.10: FAQ removal, 6 s loading screen, IBAN 15% line, privacy/cookie). T13.11 (POD codes) stays blocked until the codes are confirmed.
 
 ## Status
 - Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–12c + recipient hotfix (merge commit 0d6620c, PR #2). Offers are still placeholders (`price_verified = false`).
@@ -47,3 +47,4 @@ Phase 13 Block A closed. Next: Block B, T13.9 (`docs/TASKS.md`). Then Block B (T
 - 2026-10-24 T13.6 done: FAQ "compaiono nei risultati" removed (4 FAQ left), page1 e2e 65 passed / 1 skipped — 6f61c59.
 - 2026-10-24 T13.7 done: loading 6 s (5×0.7 s + 2.5 s "offerta più bassa"), Vitest 1153, loading e2e green both projects — 62f728d.
 - 2026-10-24 T13.8 done: bold "Sconto del 15% se paghi con IBAN" under the IBAN field (not in aria-describedby), activation e2e 34 passed — 2113887. Visual check at 1440/390 left to Giuseppe.
+- 2026-10-24 T13.9 done: /privacy Cookie section (#7, technical only), full "Dati raccolti", footer "Privacy e cookie"; copy.spec 13 passed — c927ffb.
