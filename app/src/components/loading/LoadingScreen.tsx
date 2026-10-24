@@ -19,7 +19,7 @@ export interface LoadingScreenProps {
   excludeSupplierIds?: string[];
   /** Commodities being compared; only used to word the messages ("offerte luce", "offerte gas"...). */
   commodities?: Commodity[];
-  /** Total animation time in ms (PRD §7: ~4 s). */
+  /** Total animation time in ms (~6 s). */
   durationMs?: number;
   /** Called once, when the animation ends. */
   onComplete: () => void;
@@ -28,11 +28,21 @@ export interface LoadingScreenProps {
   className?: string;
 }
 
-export const DEFAULT_DURATION_MS = 4000;
+export const DEFAULT_DURATION_MS = 6000;
 const TICK_MS = 50;
 
 /** Progress thresholds (0..1) at which each message starts. */
-const MESSAGE_STARTS = [0, 0.2, 0.42, 0.64, 0.86] as const;
+const SHORT_MESSAGE_MS = 700;
+const LOWEST_OFFER_MS = 2500;
+/** Four short messages (0.7 s), then the lowest-offer message (2.5 s, the longest), then the final one (0.7 s). */
+const MESSAGE_STARTS = [
+  0,
+  SHORT_MESSAGE_MS / DEFAULT_DURATION_MS,
+  (2 * SHORT_MESSAGE_MS) / DEFAULT_DURATION_MS,
+  (3 * SHORT_MESSAGE_MS) / DEFAULT_DURATION_MS,
+  (4 * SHORT_MESSAGE_MS) / DEFAULT_DURATION_MS,
+  (4 * SHORT_MESSAGE_MS + LOWEST_OFFER_MS) / DEFAULT_DURATION_MS,
+] as const;
 
 /** A message is a list of parts; `{ em }` parts are highlighted in VERSUS green. */
 export type MessagePart = string | { em: string };
@@ -60,6 +70,8 @@ export function getLoadingMessageParts(progress: number, commodities?: Commodity
       return ["Analizziamo i ", { em: "migliori fornitori" }];
     case 3:
       return ["Calcoliamo la tua ", { em: "spesa mensile" }];
+    case 4:
+      return ["Stiamo ricercando per te l'", { em: "offerta più bassa" }];
     default:
       return ["Ecco le ", { em: "migliori offerte" }, " per te!"];
   }

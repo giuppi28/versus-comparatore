@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import {
+  DEFAULT_DURATION_MS,
   LoadingScreen,
   blackLogoUrl,
   commodityPhrase,
@@ -40,16 +41,21 @@ describe("LoadingScreen", () => {
   });
 
   it("shows the messages in order, ending with the final one", () => {
-    render(<LoadingScreen suppliers={SUPPLIERS} commodities={["luce"]} durationMs={1000} onComplete={() => {}} />);
+    render(<LoadingScreen suppliers={SUPPLIERS} commodities={["luce"]} durationMs={6000} onComplete={() => {}} />);
     expect(screen.getByTestId("loading-screen")).toBeInTheDocument();
     expect(message()).toBe("Analizziamo i tuoi consumi");
-    advance(300);
+    advance(800);
     expect(message()).toBe("Stiamo confrontando le offerte luce per te");
-    advance(200);
+    advance(700);
     expect(message()).toBe("Analizziamo i migliori fornitori");
-    advance(200);
+    advance(700);
     expect(message()).toBe("Calcoliamo la tua spesa mensile");
-    advance(300);
+    advance(700);
+    expect(message()).toBe("Stiamo ricercando per te l'offerta più bassa");
+    // Longest message: still on screen ~2.3 s later (t = 5.2 s), gone shortly after 5.3 s.
+    advance(2300);
+    expect(message()).toBe("Stiamo ricercando per te l'offerta più bassa");
+    advance(200);
     expect(message()).toBe("Ecco le migliori offerte per te!");
   });
 
@@ -60,13 +66,22 @@ describe("LoadingScreen", () => {
     expect(em?.className).toContain("text-brand-700");
   });
 
+  it("highlights 'offerta più bassa' with the same green markup as the other messages", () => {
+    expect(getLoadingMessageParts(0.6)).toEqual(["Stiamo ricercando per te l'", { em: "offerta più bassa" }]);
+    render(<LoadingScreen suppliers={SUPPLIERS} durationMs={6000} onComplete={() => {}} />);
+    advance(3000);
+    const em = screen.getByTestId("loading-message").querySelector("span span");
+    expect(em?.textContent).toBe("offerta più bassa");
+    expect(em?.className).toContain("text-brand-700");
+  });
+
   it("words the comparison message per commodity", () => {
     expect(commodityPhrase(["luce"])).toBe("offerte luce");
     expect(commodityPhrase(["gas"])).toBe("offerte gas");
     expect(commodityPhrase(["luce", "gas"])).toBe("offerte luce e gas");
     expect(commodityPhrase(undefined)).toBe("offerte");
-    expect(getLoadingMessage(0.3, ["gas"])).toBe("Stiamo confrontando le offerte gas per te");
-    expect(getLoadingMessage(0.3, ["luce", "gas"])).toBe("Stiamo confrontando le offerte luce e gas per te");
+    expect(getLoadingMessage(0.15, ["gas"])).toBe("Stiamo confrontando le offerte gas per te");
+    expect(getLoadingMessage(0.15, ["luce", "gas"])).toBe("Stiamo confrontando le offerte luce e gas per te");
     expect(getLoadingMessageParts(0.95)).toEqual(["Ecco le ", { em: "migliori offerte" }, " per te!"]);
   });
 
@@ -149,10 +164,11 @@ describe("LoadingScreen", () => {
     expect(onStart).toHaveBeenCalledTimes(1);
   });
 
-  it("uses the 4 second default duration", () => {
+  it("uses the 6 second default duration", () => {
+    expect(DEFAULT_DURATION_MS).toBe(6000);
     const onComplete = vi.fn();
     render(<LoadingScreen suppliers={SUPPLIERS} onComplete={onComplete} />);
-    advance(3900);
+    advance(5900);
     expect(onComplete).not.toHaveBeenCalled();
     advance(200);
     expect(onComplete).toHaveBeenCalledTimes(1);
@@ -217,9 +233,9 @@ describe("LoadingScreen", () => {
     screen.getAllByTestId("loading-supplier").forEach((li) => expect(li.className).not.toMatch(/(^|\s)(sm:)?pr-/));
     advance(500);
     expect(screen.getByTestId("loading-ring")).toHaveAttribute("stroke-dashoffset", "50");
-    advance(200);
-    expect(message()).toBe("Calcoliamo la tua spesa mensile");
-    advance(300);
+    // Reduced motion keeps the sequence (scaled to a 1 s run): the lowest-offer message still shows.
+    expect(message()).toBe("Stiamo ricercando per te l'offerta più bassa");
+    advance(500);
     expect(message()).toBe("Ecco le migliori offerte per te!");
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
@@ -240,7 +256,7 @@ describe("LoadingScreen", () => {
 
   it("never uses call or demo wording", () => {
     render(<LoadingScreen suppliers={SUPPLIERS} commodities={["luce", "gas"]} durationMs={1000} onComplete={() => {}} />);
-    for (const t of [0, 300, 200, 200, 300]) {
+    for (const t of [0, 800, 700, 700, 700, 3000]) {
       advance(t);
       expect(screen.getByTestId("loading-screen").textContent).not.toMatch(/chiam|telefon|call|demo/i);
     }

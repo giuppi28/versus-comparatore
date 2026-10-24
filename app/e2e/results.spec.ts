@@ -119,7 +119,7 @@ test.describe("results page", () => {
     expect(shownIds.length).toBeGreaterThan(5);
   });
 
-  test("loading screen (~4 s) hides the current supplier and updates the lead, then shows results", async ({
+  test("loading screen hides the current supplier and updates the lead, then shows results", async ({
     page,
   }, info) => {
     const captured = await setup(page, luceCasa());
@@ -127,7 +127,7 @@ test.describe("results page", () => {
     const loading = page.getByTestId("loading-screen");
     await expect(loading).toBeVisible();
     // The rotating message names the compared commodity (polls until that message shows).
-    await expect(loading).toContainText("offerte luce", { timeout: 4_000 });
+    await expect(loading).toContainText("offerte luce", { timeout: 10_000 });
     await expect(page.getByTestId("loading-supplier").first()).toBeVisible();
     await expect(page.locator('[data-testid="loading-supplier"][data-supplier-id="edison-energia"]')).toHaveCount(0);
     // All active real suppliers with a logo are shown, not only those with luce offers (engie has none).
@@ -145,8 +145,8 @@ test.describe("results page", () => {
     await shot(page, info, "loading");
     await noOverflow(page);
     const started = Date.now();
-    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 10_000 });
-    expect(Date.now() - started).toBeLessThan(6_000);
+    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 20_000 });
+    expect(Date.now() - started).toBeLessThan(9_000);
 
     // Lead updated during the animation: step "results" + final monthly consumption.
     const first = captured.patches[0]?.data;
