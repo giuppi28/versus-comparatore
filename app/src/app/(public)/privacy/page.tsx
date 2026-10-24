@@ -173,9 +173,9 @@ export default function PrivacyPage() {
               </ul>
               <p>
                 Per non perdere i dati inseriti se aggiorni la pagina durante il confronto,
-                utilizziamo anche la memoria di sessione del browser (sessionStorage): contiene solo
-                l’avanzamento del modulo, resta sul tuo dispositivo e viene eliminata alla chiusura
-                della scheda.
+                utilizziamo anche la memoria di sessione del browser (sessionStorage): contiene i dati
+                che inserisci nel modulo (inclusi i dati personali), resta sul tuo dispositivo e viene
+                eliminata alla chiusura della scheda.
               </p>
             </Section>
 
