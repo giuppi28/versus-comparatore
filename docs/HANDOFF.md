@@ -4,7 +4,7 @@ Updated: 2026-10-24 · Phase: 13 — Test stability and data checks · Branch: d
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Continue Phase 13, Block A: T13.4 (`docs/TASKS.md`). Then Block B (T13.6–T13.10: FAQ removal, 6 s loading screen, IBAN 15% line, privacy/cookie). T13.11 (POD codes) stays blocked until the codes are confirmed.
+Continue Phase 13, Block A: T13.5 (verifier + reviewer) (`docs/TASKS.md`). Then Block B (T13.6–T13.10: FAQ removal, 6 s loading screen, IBAN 15% line, privacy/cookie). T13.11 (POD codes) stays blocked until the codes are confirmed.
 
 ## Status
 - Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–12c + recipient hotfix (merge commit 0d6620c, PR #2). Offers are still placeholders (`price_verified = false`).
@@ -13,7 +13,6 @@ Continue Phase 13, Block A: T13.4 (`docs/TASKS.md`). Then Block B (T13.6–T13.1
 - Previous phases: 0 setup · 1 DB · 2 logic · 3 customer screens · 4 admin · 5 logo pack · 6 deploy prep · 7 test matrix · 8–9 review rounds · 10 visual upgrade · 11 admin deletions · 12/12b/12c activation data, documents, callback number, Resend test.
 
 ## Open issues (to solve)
-- Flaky e2e: `page1.spec.ts:108` (fixture interference) → T13.4.
 - POD codes IT002/IT011/IT012/IT020 unconfirmed → T13.11 (blocked).
 
 ## Waiting on Giuseppe (manual / go-live, not code tasks)
@@ -41,3 +40,4 @@ Continue Phase 13, Block A: T13.4 (`docs/TASKS.md`). Then Block B (T13.6–T13.1
 - 2026-10-24 T13.1 done: validation.spec step A flake = test race with focusFirstInvalid rAF; spec waits for focus + asserts cleared value (140/140 mobile ×5) — dc48c8d.
 - 2026-10-24 T13.2 done: admin-leads flake = dev-server compile latency under parallel load (mock data, no shared rows); test.slow() + 20 s expects; ×5 30/30, ×20@8 workers 120/120, @12 workers 2/114 fail (line 137, beyond acceptance) — 1c89098.
 - 2026-10-24 T13.3 done: callback phone flake = single process-wide mock settings row shared by desktop+mobile; test now desktop-only, test.slow(), phone restored in finally (85 passed / 5 skipped ×5) — 8407817.
+- 2026-10-24 T13.4 done: page1 flake = admin-suppliers created non-E2E logo suppliers in the shared mock repo; renamed E2E…, removed in finally (355 passed / 5 skipped ×5) — 6529d53.
