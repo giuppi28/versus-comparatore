@@ -19,7 +19,7 @@ export function SiteFooter() {
             href="/privacy"
             className="-mx-1 inline-flex min-h-11 items-center rounded-control px-1 font-medium text-ink underline decoration-brand-500 decoration-2 underline-offset-4 hover:text-brand-700"
           >
-            Privacy
+            Privacy e cookie
           </Link>
           <p>© VERSUS {new Date().getFullYear()}</p>
         </div>

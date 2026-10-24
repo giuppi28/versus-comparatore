@@ -331,6 +331,14 @@ test.describe("copy and brand rules", () => {
     // PRD §13.1: the privacy notice states the contact purpose; no call-centre / callback wording at all.
     const strict = CALLBACK_WORDING.filter(([name]) => name !== "ricontatt*");
     expect(offenders(seen, strict), "call-centre wording on /privacy").toEqual([]);
+    await page.goto("/privacy");
+    await expect(page.getByRole("heading", { level: 2, name: /Cookie/ })).toBeVisible();
+    const body = await page.locator("main").innerText();
+    for (const needle of ["versus_lead", "versus_lead_step", "sessionStorage", "codice fiscale", "IBAN"]) {
+      expect(body, `privacy mentions ${needle}`).toContain(needle);
+    }
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: "Privacy e cookie" }).first()).toHaveAttribute("href", "/privacy");
     const orange: string[] = [];
     await page.goto("/privacy");
     await expectNoOrange(page, "privacy", orange);

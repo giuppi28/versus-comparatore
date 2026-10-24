@@ -22,11 +22,22 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 const DATA_COLLECTED = [
   "nome e cognome",
   "numero di telefono",
-  "comune di fornitura",
-  "ragione sociale, codice fiscale e partita IVA (per le utenze non domestiche)",
-  "indirizzo di fornitura",
+  "codice fiscale",
+  "ragione sociale e partita IVA (per le utenze non domestiche)",
+  "comune, CAP e indirizzo di fornitura, e se sei residente a quell’indirizzo",
   "codice POD (luce) e codice PDR (gas)",
+  "potenza impegnata e tensione di fornitura",
   "dati di consumo (stimati in base alle tue risposte o inseriti da te)",
+  "fornitore attuale di luce e gas",
+  "offerta scelta e relativa spesa mensile mostrata",
+  "IBAN ed eventuali dati dell’intestatario del conto, se diverso dal titolare (facoltativi)",
+  "dati del documento d’identità (tipo, numero, scadenza, ente di rilascio) e copia del documento caricata (facoltativi)",
+];
+
+const COOKIES = [
+  "versus_lead: cookie tecnico (httpOnly, durata 24 ore) che collega il tuo browser al confronto in corso, così puoi continuare senza ricominciare;",
+  "versus_lead_step: cookie tecnico (httpOnly, durata 24 ore) che ricorda l’ultimo passaggio raggiunto nel confronto;",
+  "cookie di sessione di accesso all’area riservata: impostati solo quando il personale autorizzato effettua il login (autenticazione Supabase) e non riguardano chi usa il comparatore.",
 ];
 
 const RIGHTS = [
@@ -149,7 +160,26 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            <Section title="7. Diritti dell’interessato">
+            <Section title="7. Cookie">
+              <p>
+                Questo sito utilizza solo cookie tecnici, necessari al funzionamento del servizio.
+                Non utilizziamo cookie di analisi, di profilazione o pubblicitari, né strumenti di
+                tracciamento di terze parti: per questo non è richiesto alcun banner di consenso.
+              </p>
+              <ul className="list-disc space-y-1 pl-6">
+                {COOKIES.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <p>
+                Per non perdere i dati inseriti se aggiorni la pagina durante il confronto,
+                utilizziamo anche la memoria di sessione del browser (sessionStorage): contiene solo
+                l’avanzamento del modulo, resta sul tuo dispositivo e viene eliminata alla chiusura
+                della scheda.
+              </p>
+            </Section>
+
+            <Section title="8. Diritti dell’interessato">
               <p>In qualsiasi momento hai il diritto di:</p>
               <ul className="list-disc space-y-1 pl-6">
                 {RIGHTS.map((item) => (
@@ -158,7 +188,7 @@ export default function PrivacyPage() {
               </ul>
             </Section>
 
-            <Section title="8. Contatti">
+            <Section title="9. Contatti">
               <p>
                 Per esercitare i tuoi diritti o per ricevere informazioni sul trattamento dei tuoi dati
                 scrivi a [Indirizzo email di contatto privacy] oppure a [Indirizzo completo del

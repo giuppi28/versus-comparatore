@@ -125,7 +125,7 @@ describe("SiteFooter", () => {
   it("has the lockup, a privacy link and the copyright with the current year", () => {
     const { container } = render(<SiteFooter />);
     expect(screen.getByRole("img", { name: LOGO_TITLE })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Privacy" }).getAttribute("href")).toBe("/privacy");
+    expect(screen.getByRole("link", { name: "Privacy e cookie" }).getAttribute("href")).toBe("/privacy");
     expect(container.textContent).toContain(`© VERSUS ${new Date().getFullYear()}`);
   });
 });
