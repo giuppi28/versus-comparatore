@@ -9,8 +9,8 @@ build/
 next-env.d.ts
 
 # env (keep .env.example)
-.env*.local
-.env
+.env*
+!.env.example
 
 # OS / editor
 .DS_Store

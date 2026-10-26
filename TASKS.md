@@ -1,3 +1,5 @@
+> **History only (2026-10-24):** remaining work lives in `docs/TASKS.md`. This file records Phases 0-12c.
+
 # TASKS — VERSUS
 
 Status: `[ ]` todo · `[~]` in progress · `[x]` done · `BLOCKED: reason`

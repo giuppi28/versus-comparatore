@@ -101,53 +101,61 @@ async function makeJpeg(page: Page): Promise<Buffer> {
 }
 
 test.describe("A. admin settings", () => {
-  test("resend.dev banner, test email result, callback number save + reject", async ({ page }) => {
-    await login(page);
-    await page.goto("/admin/impostazioni");
+  test("resend.dev banner, test email result, callback number save + reject", async ({ page }, testInfo) => {
+    // Root cause: the mock repository (and its single settings row) is one process-wide instance in the
+    // dev server, shared by the desktop and mobile projects running in parallel; each project's save/reject
+    // overwrote the number the other asserted. The settings flow is not viewport-specific, so run it once.
+    test.skip(testInfo.project.name !== "desktop", "global settings row: covered once, on desktop");
+    test.slow();
+    try {
+      await login(page);
+      await page.goto("/admin/impostazioni");
 
-    // Banner: playwright.config.ts sets RESEND_FROM=onboarding@resend.dev for the dev server.
-    await expect(page.getByTestId("resend-dev-warning")).toBeVisible();
-    await expect(page.getByTestId("resend-dev-warning")).toContainText(/resend\.dev/i);
+      // Banner: playwright.config.ts sets RESEND_FROM=onboarding@resend.dev for the dev server.
+      await expect(page.getByTestId("resend-dev-warning")).toBeVisible();
+      await expect(page.getByTestId("resend-dev-warning")).toContainText(/resend\.dev/i);
 
-    const form = page.getByTestId("test-email-form");
-    await expect(form).toHaveAttribute("data-test-attempt", "0", { timeout: 20_000 });
-    await page.getByRole("button", { name: "Invia email di prova" }).click();
-    await expect(form).toHaveAttribute("data-test-attempt", "1");
-    const result = (await page.getByTestId("test-email-result").innerText()).trim();
-    expect(result.length).toBeGreaterThan(10);
+      const form = page.getByTestId("test-email-form");
+      await expect(form).toHaveAttribute("data-test-attempt", "0", { timeout: 20_000 });
+      await page.getByRole("button", { name: "Invia email di prova" }).click();
+      await expect(form).toHaveAttribute("data-test-attempt", "1");
+      const result = (await page.getByTestId("test-email-result").innerText()).trim();
+      expect(result.length).toBeGreaterThan(10);
 
-    const settings = page.locator("form[data-attempt]");
-    const phone = page.getByLabel("Numero da cui chiamiamo");
-    let attempt = Number(await settings.getAttribute("data-attempt"));
-    await phone.fill("abc");
-    await page.getByRole("button", { name: "Salva" }).click();
-    await expect(settings).toHaveAttribute("data-attempt", String(attempt + 1));
-    await expect(page.getByText(PHONE_ERR)).toBeVisible();
+      const settings = page.locator("form[data-attempt]");
+      const phone = page.getByLabel("Numero da cui chiamiamo");
+      let attempt = Number(await settings.getAttribute("data-attempt"));
+      await phone.fill("abc");
+      await page.getByRole("button", { name: "Salva" }).click();
+      await expect(settings).toHaveAttribute("data-attempt", String(attempt + 1));
+      await expect(page.getByText(PHONE_ERR)).toBeVisible();
 
-    attempt += 1;
-    await phone.fill(NEW_PHONE);
-    await page.getByRole("button", { name: "Salva" }).click();
-    await expect(settings).toHaveAttribute("data-attempt", String(attempt + 1));
-    await expect(page.getByTestId("settings-saved")).toBeVisible();
-    await page.reload();
-    await expect(page.getByLabel("Numero da cui chiamiamo")).toHaveValue(NEW_PHONE);
+      attempt += 1;
+      await phone.fill(NEW_PHONE);
+      await page.getByRole("button", { name: "Salva" }).click();
+      await expect(settings).toHaveAttribute("data-attempt", String(attempt + 1));
+      await expect(page.getByTestId("settings-saved")).toBeVisible();
+      await page.reload();
+      await expect(page.getByLabel("Numero da cui chiamiamo")).toHaveValue(NEW_PHONE);
 
-    // C. the thank-you page shows the saved number.
-    await page.addInitScript((flow) => {
-      if (sessionStorage.getItem("e2e.seeded")) return;
-      sessionStorage.setItem("e2e.seeded", "1");
-      sessionStorage.setItem("versus.flow.v1", flow);
-    }, JSON.stringify({ version: 1, commodity: "luce", customerType: "private", firstName: "Mario", lastName: "Rossi", phone: "3331234567", chosenOffers: { luce: luceOffer, gas: null }, leadCreated: true, leadCompleted: true }));
-    await page.goto("/grazie");
-    await expect(page.getByTestId("thankyou-heading")).toHaveText("Grazie, Mario!");
-    await expect(page.getByRole("link", { name: NEW_PHONE })).toHaveAttribute("href", "tel:+390957654321");
+      // C. the thank-you page shows the saved number.
+      await page.addInitScript((flow) => {
+        if (sessionStorage.getItem("e2e.seeded")) return;
+        sessionStorage.setItem("e2e.seeded", "1");
+        sessionStorage.setItem("versus.flow.v1", flow);
+      }, JSON.stringify({ version: 1, commodity: "luce", customerType: "private", firstName: "Mario", lastName: "Rossi", phone: "3331234567", chosenOffers: { luce: luceOffer, gas: null }, leadCreated: true, leadCompleted: true }));
+      await page.goto("/grazie");
+      await expect(page.getByTestId("thankyou-heading")).toHaveText("Grazie, Mario!");
+      await expect(page.getByRole("link", { name: NEW_PHONE })).toHaveAttribute("href", "tel:+390957654321");
 
-    // Restore default for the other specs.
-    await page.goto("/admin/impostazioni");
-    await page.getByLabel("Numero da cui chiamiamo").fill(DEFAULT_PHONE);
-    const before = Number(await page.locator("form[data-attempt]").getAttribute("data-attempt"));
-    await page.getByRole("button", { name: "Salva" }).click();
-    await expect(page.locator("form[data-attempt]")).toHaveAttribute("data-attempt", String(before + 1));
+    } finally {
+      // Restore the original number for the other specs, even when an assertion above failed.
+      await page.goto("/admin/impostazioni");
+      await page.getByLabel("Numero da cui chiamiamo").fill(DEFAULT_PHONE);
+      const before = Number(await page.locator("form[data-attempt]").getAttribute("data-attempt"));
+      await page.getByRole("button", { name: "Salva" }).click();
+      await expect(page.locator("form[data-attempt]")).toHaveAttribute("data-attempt", String(before + 1));
+    }
   });
 });
 

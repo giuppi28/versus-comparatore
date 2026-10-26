@@ -63,7 +63,8 @@ async function login(page: Page) {
   const submit = page.getByRole("button", { name: "Accedi" });
   await expect(submit).toBeEnabled({ timeout: 20_000 });
   await submit.click();
-  await expect(page).toHaveURL(/\/admin$/);
+  // First hit of /admin compiles on the dev server: allow for it under parallel load.
+  await expect(page).toHaveURL(/\/admin$/, { timeout: 20_000 });
 }
 
 const items = (page: Page) => page.locator('[data-testid="lead-item"]:visible');
@@ -176,7 +177,7 @@ test.describe("admin leads", () => {
   test("detail shows all grouped fields and never the lead token", async ({ page }, testInfo) => {
     await page.goto(`/admin/leads?q=${seed.completedKey}`);
     await items(page).first().getByRole("link", { name: "Mario Rossi" }).click();
-    await expect(page).toHaveURL(/\/admin\/leads\/[^/]+$/);
+    await expect(page).toHaveURL(/\/admin\/leads\/[^/]+$/, { timeout: 20_000 });
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mario Rossi");
     await expect(page.getByTestId("step-badge").first()).toHaveText("Completato");
 
@@ -211,9 +212,12 @@ test.describe("admin leads", () => {
   });
 
   test("status and notes persist after reload; invalid notes are rejected", async ({ page }) => {
+    // ~12 sequential navigations/saves against the dev server: under fullyParallel load the
+    // default 30 s budget is the only thing that fails (the test itself ran to the last step).
+    test.slow();
     await page.goto(`/admin/leads?tab=parziali&q=${seed.partialSurname}`);
     await items(page).first().getByRole("link", { name: new RegExp(seed.partialSurname) }).click();
-    await expect(page).toHaveURL(/\/admin\/leads\/[^/]+$/);
+    await expect(page).toHaveURL(/\/admin\/leads\/[^/]+$/, { timeout: 20_000 });
     const detailUrl = page.url();
 
     await expect(page.getByLabel("Stato")).toHaveValue("new");
