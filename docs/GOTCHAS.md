@@ -45,3 +45,5 @@ Known traps. Read the section relevant to your task before starting. Add new one
 - **IBAN 15% line is fixed copy** (activation step B), valid only while the 15% IBAN discount applies to all offers (SPEC decision #12).
 - **No Prettier config.** Never `prettier --write` existing files (reflows to 80 cols, buries the real diff; happened in T13.4, T13.8). Match formatting by hand.
 - **UI copy rules:** Italian only; no "demo" wording; no phone/call-center/callback mention before the thank-you page; no Facile.it branding.
+- **Local `npm run build` with the mock data source fails on `/admin`** (`MockAuthInProductionError`, guard by design). Verify builds with `NEXT_PUBLIC_DATA_SOURCE=supabase npm run build`. PGlite checks: `PGLITE_DIR=<dir with @electric-sql/pglite@0.5> node supabase/tests/run_local.mjs` (PGlite is not an app dependency).
+- **Preview admin writes hit production data.** Until Phase 14 is merged, offers created on the preview that are variable, IBAN-required or audience-specific must stay `active = false` (the `main` code would show them wrongly); real-DB tests use inactive fixtures.
