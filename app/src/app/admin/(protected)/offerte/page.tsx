@@ -7,6 +7,8 @@ import { toggleOfferFlagAction } from "./actions";
 import { DeleteOfferButton } from "./DeleteOfferButton";
 import { isVisibleToCustomers } from "./visibility";
 
+const AUDIENCE_LABEL = { casa: "Casa", business: "Partita IVA", both: "Entrambi" } as const;
+
 export const dynamic = "force-dynamic";
 
 const CUSTOMER_LABEL = { casa: "Casa", business: "Partita IVA", both: "Casa e Partita IVA" } as const;
@@ -143,6 +145,11 @@ export default async function AdminOffersPage({
                     </Link>
                     {o.active ? <Badge tone="green" testId="badge-active">Attiva</Badge> : <Badge tone="grey" testId="badge-active">Disattivata</Badge>}
                     {o.featured && <Badge tone="green" testId="badge-featured">In evidenza</Badge>}
+                    {o.featured && o.featured_audience && (
+                      <Badge tone="grey" testId="badge-audience">{AUDIENCE_LABEL[o.featured_audience]}</Badge>
+                    )}
+                    {o.price_type === "variable" && <Badge tone="grey" testId="badge-variable">Variabile</Badge>}
+                    {o.iban_required && <Badge tone="grey" testId="badge-iban">IBAN obbligatorio</Badge>}
                     {o.price_verified ? (
                       <Badge tone="green" testId="badge-verified">Prezzo verificato</Badge>
                     ) : (

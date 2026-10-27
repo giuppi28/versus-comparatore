@@ -121,7 +121,9 @@ test.describe("admin offers", () => {
     await login(page);
     const name = uniqueName("Gas annuale", info);
     await page.goto("/admin/offerte/nuova");
-    await expect(page.getByTestId("price-type-info")).toContainText("Prezzo fisso monorario");
+    await expect(page.locator("[name=price_type]")).toHaveValue("fixed");
+    await expect(page.locator("[name=iban_required]")).not.toBeChecked();
+    await expect(page.locator("[name=featured_audience]")).toHaveValue("");
 
     // Live preview: 1.400 Smc/anno, IVA esclusa.
     await page.locator("[name=supplier_id]").selectOption("iren");
@@ -292,6 +294,56 @@ test.describe("admin offers", () => {
     await expect(r).toHaveAttribute("data-featured", "false");
     await expect(r.getByTestId("badge-featured")).toHaveCount(0);
     await noOverflow(page);
+  });
+
+  test("variable luce offer with IBAN and audience Casa: values are saved and shown on edit", async ({ page }, info) => {
+    await login(page);
+    const name = uniqueName("Variabile", info);
+    let id: string | null = null;
+    try {
+      await page.goto("/admin/offerte/nuova");
+      await page.locator("[name=supplier_id]").selectOption("iren");
+      await page.locator("[name=name]").fill(name);
+      await page.locator("[name=commodity]").selectOption("luce");
+      await page.locator("[name=customer_type]").selectOption("casa");
+      await page.locator("[name=price_type]").selectOption("variable");
+      await expect(page.locator("label", { hasText: "Spread sul PUN (€/kWh)" })).toBeVisible();
+      await expect(page.locator("[name=locked_months]")).toHaveCount(0);
+      await page.locator("[name=energy_price]").fill("0,0150");
+      await page.locator("[name=fixed_fee]").fill("8");
+      await page.locator("[name=iban_required]").check();
+      await page.locator("[name=featured_audience]").selectOption("casa");
+      await page.locator("[name=active]").uncheck(); // never visible to customers
+      await noOverflow(page);
+      await page.getByRole("button", { name: "Crea offerta" }).click();
+      await page.waitForURL(/\/admin\/offerte\/[^/]+\?esito=creata$/);
+      id = new URL(page.url()).pathname.split("/").pop()!;
+
+      await expect(page.locator("[name=price_type]")).toHaveValue("variable");
+      await expect(page.locator("[name=energy_price]")).toHaveValue("0,0150");
+      await expect(page.locator("label", { hasText: "Spread sul PUN (€/kWh)" })).toBeVisible();
+      await expect(page.locator("[name=locked_months]")).toHaveCount(0);
+      await expect(page.locator("[name=iban_required]")).toBeChecked();
+      await expect(page.locator("[name=featured_audience]")).toHaveValue("casa");
+
+      // Switching to gas forces a fixed price and brings the lock months back.
+      await page.locator("[name=commodity]").selectOption("gas");
+      await expect(page.locator("[name=price_type]")).toHaveValue("fixed");
+      await expect(page.locator("[name=locked_months]")).toBeVisible();
+
+      await page.goto("/admin/offerte?vista=tutte");
+      const r = row(page, id);
+      await expect(r.getByTestId("badge-variable")).toHaveText("Variabile");
+      await expect(r.getByTestId("badge-iban")).toHaveText("IBAN obbligatorio");
+      await expect(r.getByTestId("badge-audience")).toHaveText("Casa");
+    } finally {
+      if (id) {
+        await page.goto(`/admin/offerte/${id}`);
+        await page.getByTestId("delete-offer").click();
+        await page.getByTestId("confirm-dialog-confirm").click();
+        await page.waitForURL(/\/admin\/offerte\?esito=eliminata$/);
+      }
+    }
   });
 
   test("validation errors are shown inline and nothing is saved", async ({ page }, info) => {

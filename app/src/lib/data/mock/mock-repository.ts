@@ -530,7 +530,9 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       const created: Offer = {
         ...structuredClone(input),
         iban_required: input.iban_required ?? false,
-        featured_audience: input.featured_audience ?? (input.featured ? "both" : null),
+        featured_audience: input.featured_audience !== undefined ? input.featured_audience : input.featured ? "both" : null,
+        // Mirrors the DB trigger: an explicit audience drives featured.
+        featured: input.featured_audience !== undefined ? input.featured_audience !== null : input.featured,
         id: crypto.randomUUID(),
         updated_at: new Date().toISOString(),
       };
@@ -546,7 +548,9 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       }
       const changes = structuredClone(definedOnly(patch));
       // Mirrors the DB trigger offers_sync_featured: featured drives featured_audience.
-      if (changes.featured !== undefined && changes.featured_audience === undefined) {
+      if (changes.featured_audience !== undefined) {
+        changes.featured = changes.featured_audience !== null;
+      } else if (changes.featured !== undefined) {
         changes.featured_audience = changes.featured ? (existing.featured_audience ?? "both") : null;
       }
       Object.assign(existing, changes, {

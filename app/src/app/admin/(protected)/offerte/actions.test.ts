@@ -17,7 +17,7 @@ vi.mock("@/lib/data/admin", () => ({
   },
 }));
 
-import { deleteOfferAction } from "./actions";
+import { deleteOfferAction, saveOfferAction } from "./actions";
 
 const EDISON_LUCE = "offer-aldo-10";
 
@@ -83,5 +83,61 @@ describe("deleteOfferAction", () => {
     const result = await deleteOfferAction(EDISON_LUCE);
     expect(result).toMatchObject({ ok: false, error: expect.stringMatching(/non riuscita/) });
     expect(redirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveOfferAction (price type, IBAN, audience)", () => {
+  const state = { errors: {}, attempt: 0 };
+  const form = (fields: Record<string, string>) => {
+    const fd = new FormData();
+    const base: Record<string, string> = {
+      supplier_id: "iren", name: "Test", commodity: "luce", customer_type: "casa", price_type: "fixed",
+      energy_price: "0,03", other_variable_costs: "0", fixed_fee: "9", other_fixed_costs: "0",
+      fixed_fee_period: "month", other_fixed_costs_period: "month", locked_months: "12", activation_cost: "0",
+      featured_audience: "", ...fields,
+    };
+    for (const [k, v] of Object.entries(base)) fd.set(k, v);
+    return fd;
+  };
+  const lastSavedId = async () => {
+    const all = await repo.listAllOffers();
+    return all.find((o) => o.name === "Test")!;
+  };
+
+  it("creates a variable luce offer: null months, IBAN, audience Casa -> featured", async () => {
+    const fd = form({ price_type: "variable", locked_months: "", iban_required: "on", featured_audience: "casa" });
+    await expect(saveOfferAction(state, fd)).rejects.toThrow("NEXT_REDIRECT");
+    expect(await lastSavedId()).toMatchObject({
+      price_type: "variable", locked_months: null, iban_required: true, featured_audience: "casa", featured: true,
+    });
+  });
+
+  it("rejects variable gas without touching the repository", async () => {
+    const spy = vi.spyOn(repo, "createOffer");
+    const result = await saveOfferAction(state, form({ price_type: "variable", commodity: "gas" }));
+    expect(result.errors.price_type).toMatch(/solo per la luce/);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("edit keeps what the form posts: audience Nessuno clears featured, IBAN off", async () => {
+    await expect(saveOfferAction(state, form({ iban_required: "on", featured_audience: "both" }))).rejects.toThrow();
+    const created = await lastSavedId();
+    expect(created).toMatchObject({ iban_required: true, featured: true, featured_audience: "both" });
+    await expect(saveOfferAction(state, form({ id: created.id }))).rejects.toThrow();
+    expect(await repo.getOffer(created.id)).toMatchObject({ iban_required: false, featured: false, featured_audience: null });
+  });
+});
+
+describe("mock repository parity with offers_sync_featured", () => {
+  it("featured_audience drives featured; featured alone keeps current behaviour", async () => {
+    const base = { ...(await repo.getOffer(EDISON_LUCE))!, active: false };
+    const a = await repo.createOffer({ ...base, featured: false, featured_audience: "business" });
+    expect(a).toMatchObject({ featured: true, featured_audience: "business" });
+    const b = await repo.updateOffer(a.id, { featured_audience: null });
+    expect(b).toMatchObject({ featured: false, featured_audience: null });
+    const c = await repo.updateOffer(a.id, { featured: true });
+    expect(c).toMatchObject({ featured: true, featured_audience: "both" });
+    const d = await repo.updateOffer(a.id, { featured: false });
+    expect(d).toMatchObject({ featured: false, featured_audience: null });
   });
 });

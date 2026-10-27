@@ -71,7 +71,7 @@ async function createGasOffer(page: Page, supplierId: string, name: string, feat
   await page.locator("[name=fixed_fee]").fill("1");
   await page.locator("[name=fixed_fee_period]").selectOption("month");
   await page.locator("[name=locked_months]").fill("12");
-  if (featured) await page.locator("[name=featured]").check();
+  if (featured) await page.locator("[name=featured_audience]").selectOption("both");
   await page.getByRole("button", { name: "Crea offerta" }).click();
   await page.waitForURL(/\/admin\/offerte\/[^/]+\?esito=creata$/);
   return new URL(page.url()).pathname.split("/").pop()!;

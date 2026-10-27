@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildSupplierChoices,
   DEFAULT_OFFER_VALUES,
+  formDataToValues,
   offerToFormValues,
   parseDecimal,
   parseOfferForm,
@@ -73,6 +74,8 @@ describe("parseOfferForm", () => {
       details: null,
       active: true,
       featured: false,
+      featured_audience: null,
+      iban_required: false,
       price_verified: false,
     });
     expect(r.data.advantages).toEqual(["Prezzo **bloccato**", "Tariffa monoraria"]);
@@ -126,17 +129,83 @@ describe("parseOfferForm", () => {
   });
 
   it("round-trips an existing offer through the form values", () => {
-    const offer = MOCK_OFFERS[1]; // first offer needs IBAN, not yet in the admin form (T14.9)
-    const r = parseOfferForm(offerToFormValues(offer));
-    expect(r.ok).toBe(true);
-    if (!r.ok) return;
-    const rest: Record<string, unknown> = { ...offer };
-    delete rest.id;
-    delete rest.updated_at;
-    // The form does not send these (kept on edit, derived by the DB trigger; T14.9 adds them).
-    delete rest.iban_required;
-    delete rest.featured_audience;
-    expect(r.data).toEqual(rest);
+    for (const offer of [MOCK_OFFERS[0], ...MOCK_OFFERS.filter((o) => o.price_type === "variable")]) {
+      const r = parseOfferForm(offerToFormValues(offer));
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      const rest: Record<string, unknown> = { ...offer };
+      delete rest.id;
+      delete rest.updated_at;
+      expect(r.data).toEqual(rest);
+    }
+  });
+});
+
+describe("price type, IBAN and featured audience", () => {
+  it("defaults: fixed price, IBAN not required, no audience", () => {
+    const r = parseOfferForm(valid());
+    expect(r.ok && r.data).toMatchObject({
+      price_type: "fixed",
+      iban_required: false,
+      featured_audience: null,
+      featured: false,
+      locked_months: 12,
+    });
+  });
+
+  it.each([
+    ["", null, false],
+    ["casa", "casa", true],
+    ["business", "business", true],
+    ["both", "both", true],
+  ] as const)("audience %j -> featured_audience %j, featured %j", (raw, audience, featured) => {
+    const r = parseOfferForm(valid({ featured_audience: raw }));
+    expect(r.ok && r.data).toMatchObject({ featured_audience: audience, featured });
+  });
+
+  it("rejects an unknown audience", () => {
+    const r = parseOfferForm(valid({ featured_audience: "x" as never }));
+    expect(!r.ok && r.errors.featured_audience).toBeTruthy();
+  });
+
+  it("sends iban_required as set", () => {
+    const r = parseOfferForm(valid({ iban_required: true }));
+    expect(r.ok && r.data.iban_required).toBe(true);
+  });
+
+  it("variable luce: locked_months saved as null whatever the hidden field holds", () => {
+    for (const locked of ["12", "", "0", "abc"]) {
+      const r = parseOfferForm(valid({ price_type: "variable", locked_months: locked }));
+      expect(r.ok && r.data).toMatchObject({ price_type: "variable", locked_months: null });
+    }
+  });
+
+  it("variable is allowed for luce only", () => {
+    const r = parseOfferForm(valid({ price_type: "variable", commodity: "gas" }));
+    expect(!r.ok && r.errors.price_type).toMatch(/solo per la luce/);
+  });
+
+  it("fixed requires 1-120 months (gas included)", () => {
+    expect(parseOfferForm(valid({ commodity: "gas", locked_months: "" })).ok).toBe(false);
+    expect(parseOfferForm(valid({ commodity: "gas", locked_months: "24" })).ok).toBe(true);
+    const r = parseOfferForm(valid({ locked_months: "0" }));
+    expect(!r.ok && r.errors.locked_months).toBeTruthy();
+  });
+
+  it("rejects an unknown price type", () => {
+    expect(parseOfferForm(valid({ price_type: "x" as never })).ok).toBe(false);
+  });
+
+  it("formDataToValues reads the new fields", () => {
+    const fd = new FormData();
+    fd.set("price_type", "variable");
+    fd.set("iban_required", "on");
+    fd.set("featured_audience", "business");
+    expect(formDataToValues(fd)).toMatchObject({
+      price_type: "variable",
+      iban_required: true,
+      featured_audience: "business",
+    });
   });
 });
 

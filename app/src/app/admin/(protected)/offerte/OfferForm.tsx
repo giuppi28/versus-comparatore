@@ -18,7 +18,9 @@ import {
   type SupplierChoice,
   yearlyToMonthly,
   type FeePeriod,
+  type FeaturedAudienceValue,
   type OfferFormValues,
+  type PriceType,
 } from "./offer-form-schema";
 
 /** Sample yearly consumption used by the live cost preview. */
@@ -29,6 +31,17 @@ const COMMODITY_OPTIONS = [
   { value: "gas", label: "Gas" },
 ];
 const CUSTOMER_OPTIONS = [
+  { value: "casa", label: "Casa" },
+  { value: "business", label: "Partita IVA" },
+  { value: "both", label: "Entrambi" },
+];
+const PRICE_TYPE_OPTIONS = [
+  { value: "fixed", label: "Fisso" },
+  { value: "variable", label: "Variabile" },
+];
+const FIXED_ONLY_OPTIONS = PRICE_TYPE_OPTIONS.slice(0, 1);
+const AUDIENCE_OPTIONS = [
+  { value: "", label: "Nessuno" },
   { value: "casa", label: "Casa" },
   { value: "business", label: "Partita IVA" },
   { value: "both", label: "Entrambi" },
@@ -68,6 +81,7 @@ export function OfferForm({
   const set = <K extends keyof OfferFormValues>(key: K, value: OfferFormValues[K]) =>
     setV((prev) => ({ ...prev, [key]: value }));
 
+  const variable = v.price_type === "variable";
   const unit = v.commodity === "luce" ? "kWh" : "Smc";
   const errors = state.errors;
 
@@ -144,7 +158,15 @@ export function OfferForm({
             name="commodity"
             required
             value={v.commodity}
-            onChange={(e) => set("commodity", e.target.value as OfferFormValues["commodity"])}
+            onChange={(e) => {
+              const commodity = e.target.value as OfferFormValues["commodity"];
+              // Variable pricing exists for luce only.
+              setV((prev) => ({
+                ...prev,
+                commodity,
+                price_type: commodity === "gas" ? "fixed" : prev.price_type,
+              }));
+            }}
             options={COMMODITY_OPTIONS}
             error={errors.commodity}
           />
@@ -158,16 +180,23 @@ export function OfferForm({
             error={errors.customer_type}
           />
         </div>
-        <p className="text-sm text-ink-muted" data-testid="price-type-info">
-          Tipo di prezzo: <strong>Prezzo fisso monorario</strong> (l&apos;unico disponibile).
-        </p>
+        <Select
+          label="Tipo di prezzo"
+          name="price_type"
+          required
+          value={v.price_type}
+          onChange={(e) => set("price_type", e.target.value as PriceType)}
+          options={v.commodity === "luce" ? PRICE_TYPE_OPTIONS : FIXED_ONLY_OPTIONS}
+          hint={v.commodity === "luce" ? undefined : "Il prezzo variabile è disponibile solo per la luce."}
+          error={errors.price_type}
+        />
       </Card>
 
       <Card padding="lg" className="flex flex-col gap-5">
         <h2 className="heading-section">Prezzi (IVA esclusa)</h2>
         <div className="grid gap-5 md:grid-cols-2">
           <Input
-            label={`Prezzo energia (€/${unit})`}
+            label={variable ? `Spread sul PUN (€/${unit})` : `Prezzo energia (€/${unit})`}
             name="energy_price"
             required
             inputMode="decimal"
@@ -229,16 +258,18 @@ export function OfferForm({
               options={PERIOD_OPTIONS}
             />
           </div>
-          <Input
-            label="Prezzo bloccato per (mesi)"
-            name="locked_months"
-            required
-            inputMode="numeric"
-            autoComplete="off"
-            value={v.locked_months}
-            onChange={(e) => set("locked_months", e.target.value)}
-            error={errors.locked_months}
-          />
+          {!variable && (
+            <Input
+              label="Prezzo bloccato per (mesi)"
+              name="locked_months"
+              required
+              inputMode="numeric"
+              autoComplete="off"
+              value={v.locked_months}
+              onChange={(e) => set("locked_months", e.target.value)}
+              error={errors.locked_months}
+            />
+          )}
           <Input
             label="Costo di attivazione (€)"
             name="activation_cost"
@@ -392,11 +423,20 @@ export function OfferForm({
           onChange={(c) => set("active", c)}
         />
         <Toggle
-          name="featured"
+          name="iban_required"
+          label="Pagamento con IBAN obbligatorio"
+          hint="Il cliente deve inserire l'IBAN per attivare questa offerta."
+          checked={v.iban_required}
+          onChange={(c) => set("iban_required", c)}
+        />
+        <Select
           label="In evidenza"
-          hint="Mostrata per prima nei risultati."
-          checked={v.featured}
-          onChange={(c) => set("featured", c)}
+          name="featured_audience"
+          value={v.featured_audience}
+          onChange={(e) => set("featured_audience", e.target.value as FeaturedAudienceValue)}
+          options={AUDIENCE_OPTIONS}
+          hint="Mostrata per prima nei risultati per il tipo di cliente scelto."
+          error={errors.featured_audience}
         />
         <Toggle
           name="price_verified"
