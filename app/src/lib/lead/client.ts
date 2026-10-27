@@ -12,12 +12,14 @@ import {
   LEAD_COMPLETE_API_PATH,
   LEAD_DOCUMENT_API_PATH,
   LEAD_DOCUMENT_FIELD,
+  LEAD_DOCUMENT_KIND_FIELD,
   type LeadApiErrorCode,
   type LeadApiFailure,
   type LeadApiResponse,
   type LeadDocumentRemoveBody,
   type UploadedLeadDocument,
 } from "./api-types";
+import type { LeadDocumentKind } from "@/lib/data/types";
 import type { LeadCompleteData, LeadCreateData, LeadPatchData } from "./schemas";
 
 export type { LeadCompleteData, LeadCreateData, LeadPatchData } from "./schemas";
@@ -113,15 +115,21 @@ function uploadFallbackCode(status: number): LeadApiErrorCode {
  * when the request fails. Returns the stored document's metadata (keep `id` in the flow
  * state to show the uploaded file).
  */
-export async function uploadLeadDocument(file: File): Promise<UploadedLeadDocument> {
+export async function uploadLeadDocument(
+  file: File,
+  kind: LeadDocumentKind = "id_document",
+): Promise<UploadedLeadDocument> {
   if (!file || file.size === 0) throw new LeadApiError(422, "file_missing");
   if (!(DOCUMENT_ALLOWED_MIMES as readonly string[]).includes(file.type.toLowerCase())) {
     throw new LeadApiError(415, "file_type");
   }
+  // A bill is a PDF only (server: "file_type"); a second bill gives "too_many_bills".
+  if (kind === "bill" && file.type.toLowerCase() !== "application/pdf") throw new LeadApiError(415, "file_type");
   if (file.size > DOCUMENT_MAX_BYTES) throw new LeadApiError(413, "file_size");
 
   const form = new FormData();
   form.append(LEAD_DOCUMENT_FIELD, file, file.name || "documento");
+  if (kind === "bill") form.append(LEAD_DOCUMENT_KIND_FIELD, kind);
   let res: Response;
   try {
     // No Content-Type header: the browser sets the multipart boundary.
@@ -143,7 +151,7 @@ export async function uploadLeadDocument(file: File): Promise<UploadedLeadDocume
   }
   if (res.ok && payload?.ok && "document" in payload) {
     const { id, mime_type, size_bytes } = payload.document;
-    return { id, mime_type, size_bytes };
+    return { id, kind: payload.document.kind ?? kind, mime_type, size_bytes };
   }
   const failure = payload && payload.ok === false ? (payload as LeadApiFailure) : null;
   const retry = Number(res.headers.get("Retry-After"));

@@ -5,7 +5,7 @@
  */
 import type { GasUseId } from "@/config/consumption";
 import type { Commodity, Supplier } from "@/lib/data/types";
-import { toLeadCompleteData, serviceTypeFor, type FlowState } from "@/lib/lead/flow-state";
+import { toLeadCompleteData, serviceTypeFor, type FlowPatch, type FlowState } from "@/lib/lead/flow-state";
 import {
   DEFAULT_POWER_KW,
   includesGas,
@@ -105,6 +105,7 @@ const FIELD_REQUIRED_MESSAGES: Record<string, string> = {
   gas_uses: "Seleziona almeno un uso del gas.",
   current_supplier_luce: "Seleziona il fornitore attuale.",
   current_supplier_gas: "Seleziona il fornitore attuale.",
+  iban: "Inserisci l'IBAN: per questa offerta il pagamento con IBAN è obbligatorio.",
   iban_holder_first_name: "Inserisci il nome dell'intestatario.",
   iban_holder_last_name: "Inserisci il cognome dell'intestatario.",
   iban_holder_tax_code: CODICE_FISCALE_MESSAGES.empty,
@@ -323,11 +324,20 @@ export function validateStepB(state: FlowState): FieldErrors {
   return errors;
 }
 
-/** Optional IBAN (+ different holder) and identity document data of Step B. */
+/** True when any chosen offer (luce or gas) can only be activated with IBAN payment. */
+export function ibanRequired(state: FlowState): boolean {
+  const { luce, gas } = state.chosenOffers;
+  return luce?.iban_required === true || gas?.iban_required === true;
+}
+
+/** IBAN (required for IBAN-only offers, otherwise optional) + different holder and identity document data of Step B. */
 export function validatePaymentAndDocument(state: FlowState, today: string = italianToday()): FieldErrors {
   const errors: FieldErrors = {};
   const a = state.activation;
 
+  if (!filled(a.iban) && ibanRequired(state)) {
+    errors.iban = FIELD_REQUIRED_MESSAGES.iban;
+  }
   if (filled(a.iban)) {
     const m = codeMessage("iban", validateIban(a.iban));
     if (m) errors.iban = m;
@@ -474,4 +484,14 @@ export function activationRedirect(state: FlowState): string | null {
   if (includesLuce(state.commodity) && !state.chosenOffers.luce) return "/offerte";
   if (includesGas(state.commodity) && !state.chosenOffers.gas) return "/offerte";
   return null;
+}
+
+/** Adds a document to the list in the latest state (safe against overlapping async uploads). */
+export function addDocumentPatch(state: FlowState, doc: FlowState["activation"]["documents"][number]): FlowPatch {
+  return { activation: { documents: [...state.activation.documents, doc] } };
+}
+
+/** Removes a document from the list in the latest state (safe against overlapping async actions). */
+export function removeDocumentPatch(state: FlowState, id: string): FlowPatch {
+  return { activation: { documents: state.activation.documents.filter((d) => d.id !== id) } };
 }

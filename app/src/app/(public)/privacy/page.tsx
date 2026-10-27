@@ -32,6 +32,7 @@ const DATA_COLLECTED = [
   "offerta scelta e relativa spesa mensile mostrata",
   "IBAN ed eventuali dati dell’intestatario del conto, se diverso dal titolare (facoltativi)",
   "dati del documento d’identità (tipo, numero, scadenza, ente di rilascio) e copia del documento caricata (facoltativi)",
+  "copia della bolletta in PDF (facoltativa), conservata come il documento d’identità; i dati che contiene (POD, PDR, codice fiscale, fornitore) sono letti solo nel tuo browser per precompilare il modulo, senza servizi esterni",
 ];
 
 const COOKIES = [
@@ -114,7 +115,7 @@ export default function PrivacyPage() {
                 <p>
                   L&apos;accesso a questi dati è consentito solo al personale autorizzato. Per
                   completare l&apos;attivazione dell&apos;offerta scelta, i dati necessari possono essere
-                  comunicati al fornitore che hai selezionato. Il documento caricato è cancellato
+                  comunicati al fornitore che hai selezionato. I file caricati sono cancellati
                   insieme alla tua richiesta.
                 </p>
                 <p>Periodo di conservazione: [DA COMPLETARE].</p>

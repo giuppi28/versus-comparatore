@@ -95,55 +95,77 @@ test.describe("admin settings and go-live checklist", () => {
     await expect(page.getByTestId("notifications-disabled")).toBeVisible();
   });
 
-  test("go-live checklist lists the 8 unverified offers and is not ready", async ({ page }, testInfo) => {
+  test("go-live checklist lists active unverified offers (E2E fixture) and is not ready", async ({ page }, testInfo) => {
     await login(page);
-    await page.goto("/admin/impostazioni");
-    await expect(page.getByTestId("golive-status")).toHaveText("Non pronto");
+    // Aldo's 42 offers are all price_verified, so the list only shows offers that other specs (or this
+    // one) create unverified. Create one through the admin form and always deactivate it afterwards.
+    const name = `E2E Verifica ${testInfo.project.name} ${Date.now()}`;
+    await page.goto("/admin/offerte/nuova");
+    await page.locator("[name=supplier_id]").selectOption("iren");
+    await page.locator("[name=name]").fill(name);
+    await page.locator("[name=commodity]").selectOption("gas");
+    await page.locator("[name=customer_type]").selectOption("business");
+    await page.locator("[name=energy_price]").fill("0,4500");
+    await page.locator("[name=other_variable_costs]").fill("0");
+    await page.locator("[name=fixed_fee]").fill("1");
+    await page.locator("[name=fixed_fee_period]").selectOption("month");
+    await page.locator("[name=locked_months]").fill("12");
+    await page.getByRole("button", { name: "Crea offerta" }).click();
+    await page.waitForURL(/\/admin\/offerte\/[^/]+\?esito=creata$/);
+    const id = new URL(page.url()).pathname.split("/").pop()!;
+    try {
+      await page.goto("/admin/impostazioni");
+      await expect(page.getByTestId("golive-status")).toHaveText("Non pronto");
 
-    // Other specs may temporarily add active unverified offers to the shared mock repository,
-    // so assert on the seed offers (all 8 are active and unverified) instead of an exact count.
-    const seed = MOCK_OFFERS.filter((o) => o.active && !o.price_verified);
-    expect(seed).toHaveLength(8);
-    const list = page.getByTestId("unverified-offers");
-    for (const offer of seed) {
-      const link = list.getByRole("link").filter({ hasText: offer.name });
+      // Every seed offer is verified (decision #23): none of them is listed; the fixture is.
+      expect(MOCK_OFFERS.filter((o) => o.active && !o.price_verified)).toHaveLength(0);
+      const list = page.getByTestId("unverified-offers");
+      const link = list.getByRole("link").filter({ hasText: name });
       await expect(link).toHaveCount(1);
-      await expect(link).toHaveAttribute("href", `/admin/offerte/${offer.id}`);
+      await expect(link).toHaveAttribute("href", `/admin/offerte/${id}`);
+      for (const offer of MOCK_OFFERS) {
+        await expect(list.locator(`a[href="/admin/offerte/${offer.id}"]`)).toHaveCount(0);
+      }
+      for (const href of await list.getByRole("link").evaluateAll((els) => els.map((e) => e.getAttribute("href")))) {
+        expect(href).toMatch(/^\/admin\/offerte\/[^/]+$/);
+      }
+      const check = page.locator('[data-check="offers-verified"]');
+      await expect(check).toContainText(/\d+ offert[ae] attiv[ae] da verificare/);
+      await expect(check).toHaveAttribute("data-ok", "false");
+      // Mock data source never counts as ready.
+      await expect(page.locator('[data-check="data-source"]')).toHaveAttribute("data-ok", "false");
+      // Manual items: shown prominently, never auto-checked, never part of the automatic status.
+      const manual = page.getByTestId("manual-checks");
+      await expect(manual.getByRole("heading", { name: "Verifiche manuali" })).toBeVisible();
+      await expect(manual.locator("[data-manual]")).toHaveCount(4);
+      await expect(manual.getByText("Da verificare manualmente")).toHaveCount(3);
+      await expect(manual.locator('[data-manual]:not([data-done])')).toHaveCount(3);
+      await expect(manual).toContainText("Registrazione pubblica disattivata in Supabase Auth");
+      await expect(manual).toContainText("Authentication → Sign In / Providers");
+      await expect(manual).toContainText("Allow new users to sign up");
+      await expect(manual).toContainText("Account amministratore di Aldo creato e inserito in public.admins");
+      await expect(manual).toContainText("Informativa privacy: sostituire i segnaposto");
+      await expect(manual).toContainText("[Ragione sociale del titolare]");
+      await expect(manual).toContainText("[Data di aggiornamento]");
+      const done = page.locator('[data-check="manual-bootstrap-dropped"]');
+      await expect(done).toHaveAttribute("data-done", "true");
+      await expect(done).toContainText("public.bootstrap_load_comuni");
+      await expect(done).toContainText(
+        "Completato dal revisore il 15/10/2026: funzione disattivata e spostata nello schema private",
+      );
+      await expect(done.getByText("Da verificare manualmente")).toHaveCount(0);
+      await expect(page.locator('[data-check="manual-signup-disabled"][data-ok]')).toHaveCount(0);
+      await expectNoHorizontalOverflow(page);
+      await page.screenshot({
+        path: `${SHOTS}/admin-settings-golive-${testInfo.project.name}.png`,
+        fullPage: true,
+      });
+    } finally {
+      await page.goto("/admin/offerte");
+      const row = page.locator(`[data-testid="offer-row"][data-offer-id="${id}"]`);
+      await row.getByTestId("toggle-active").click();
+      await expect(row).toHaveCount(0);
     }
-    for (const href of await list.getByRole("link").evaluateAll((els) => els.map((e) => e.getAttribute("href")))) {
-      expect(href).toMatch(/^\/admin\/offerte\/[^/]+$/);
-    }
-    const check = page.locator('[data-check="offers-verified"]');
-    await expect(check).toContainText(/\d+ offerte attive da verificare/);
-    await expect(check).toHaveAttribute("data-ok", "false");
-    // Mock data source never counts as ready.
-    await expect(page.locator('[data-check="data-source"]')).toHaveAttribute("data-ok", "false");
-    // Manual items: shown prominently, never auto-checked, never part of the automatic status.
-    const manual = page.getByTestId("manual-checks");
-    await expect(manual.getByRole("heading", { name: "Verifiche manuali" })).toBeVisible();
-    await expect(manual.locator("[data-manual]")).toHaveCount(4);
-    await expect(manual.getByText("Da verificare manualmente")).toHaveCount(3);
-    await expect(manual.locator('[data-manual]:not([data-done])')).toHaveCount(3);
-    await expect(manual).toContainText("Registrazione pubblica disattivata in Supabase Auth");
-    await expect(manual).toContainText("Authentication → Sign In / Providers");
-    await expect(manual).toContainText("Allow new users to sign up");
-    await expect(manual).toContainText("Account amministratore di Aldo creato e inserito in public.admins");
-    await expect(manual).toContainText("Informativa privacy: sostituire i segnaposto");
-    await expect(manual).toContainText("[Ragione sociale del titolare]");
-    await expect(manual).toContainText("[Data di aggiornamento]");
-    const done = page.locator('[data-check="manual-bootstrap-dropped"]');
-    await expect(done).toHaveAttribute("data-done", "true");
-    await expect(done).toContainText("public.bootstrap_load_comuni");
-    await expect(done).toContainText(
-      "Completato dal revisore il 15/10/2026: funzione disattivata e spostata nello schema private",
-    );
-    await expect(done.getByText("Da verificare manualmente")).toHaveCount(0);
-    await expect(page.locator('[data-check="manual-signup-disabled"][data-ok]')).toHaveCount(0);
-    await expectNoHorizontalOverflow(page);
-    await page.screenshot({
-      path: `${SHOTS}/admin-settings-golive-${testInfo.project.name}.png`,
-      fullPage: true,
-    });
   });
 });
 

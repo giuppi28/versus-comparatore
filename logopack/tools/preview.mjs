@@ -16,6 +16,7 @@ const SUPPLIERS = [
   ["enel-energia", "Enel Energia"], ["eni-plenitude", "Eni Plenitude"], ["edison-energia", "Edison Energia"],
   ["a2a-energia", "A2A Energia"], ["hera-comm", "Hera Comm"], ["iren", "Iren"], ["acea-energia", "Acea Energia"],
   ["sorgenia", "Sorgenia"], ["engie", "Engie"], ["eon-energia", "E.ON Energia"], ["iberdrola", "Iberdrola"],
+  ["sentra-energia", "Sentra Energia"], ["estra-energia", "Estra Energia"], ["enegan", "Enegan"], ["asti-energia", "Asti Energy"],
 ];
 const VARIANTS = ["color", "black", "white"];
 

@@ -540,8 +540,8 @@ begin
   if l.chosen_offer_luce is not null or l.chosen_offer_gas is not null then raise exception 'FAIL: chosen offers not cleared'; end if;
   if snap is null then raise exception 'FAIL: no luce snapshot on lead e1'; end if;
   if (select array_agg(k order by k) from jsonb_object_keys(snap) k) <> array[
-       'commodity', 'deleted_at', 'energy_price', 'fixed_fee_monthly', 'locked_months', 'offer_id',
-       'offer_name', 'other_fixed_costs_monthly', 'other_variable_costs', 'supplier_name'] then
+       'commodity', 'deleted_at', 'energy_price', 'fixed_fee_monthly', 'iban_required', 'locked_months', 'offer_id',
+       'offer_name', 'other_fixed_costs_monthly', 'other_variable_costs', 'price_type', 'supplier_name'] then
     raise exception 'FAIL: snapshot keys %', snap;
   end if;
   if snap ->> 'offer_id' <> '00000000-0000-4000-8000-00000000d101'
@@ -554,6 +554,8 @@ begin
      or (snap ->> 'fixed_fee_monthly')::numeric <> 9.5
      or (snap ->> 'other_fixed_costs_monthly')::numeric <> 1.25
      or (snap -> 'locked_months') <> '24'::jsonb
+     or snap ->> 'price_type' <> 'fixed'
+     or (snap -> 'iban_required') <> 'false'::jsonb
      or (snap ->> 'deleted_at')::timestamptz is null then
     raise exception 'FAIL: luce snapshot values %', snap;
   end if;
@@ -1124,6 +1126,94 @@ begin
     raise exception 'FAIL: admin does not see exactly the 2 remaining documents of lead F';
   end if;
   raise notice 'ok: phase 12b admin sees only remaining documents';
+end $$;
+
+-- =====================================================================================
+-- PHASE 14 (T14.3): document kind (id_document | bill)
+-- =====================================================================================
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  v   jsonb;
+  d   jsonb;
+  b   jsonb;
+  ok  boolean;
+  err text;
+  s   text := 'rls-test-secret-not-the-real-one';
+  t   text;
+begin
+  v := public.create_lead(s, '{"privacy_consent":true,"commodity":"luce","customer_type":"casa","first_name":"Kim","last_name":"Conti","phone":"3330001111","comune_istat":"999999","service_type":"subentro","tax_code":"NRELNE80A41H501X","housing_title":"inquilino","cap":"99999","address":"Via Po","street_number":"4","is_resident":true,"chosen_offer_luce":"00000000-0000-4000-8000-00000000c001"}');
+  t := v ->> 'token';
+  perform set_config('rls.k_id', v ->> 'id', true);
+  perform set_config('rls.k_token', t, true);
+
+  -- old-signature call (4 arguments, as the production app does) still works and means id_document
+  d := public.register_lead_document(s, t, 'image/jpeg', 100);
+  if d ->> 'kind' <> 'id_document' then raise exception 'FAIL: 4-arg call kind %', d; end if;
+  d := public.confirm_lead_document(s, t, (d ->> 'id')::uuid);
+  if d ->> 'kind' <> 'id_document' then raise exception 'FAIL: confirm kind %', d; end if;
+
+  -- bill rules: PDF only, <= 4 MiB, kind validated
+  ok := false; begin perform public.register_lead_document(s, t, 'image/jpeg', 100, 'bill'); exception when others then ok := sqlerrm = 'invalid_document'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: JPEG bill accepted (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(s, t, 'application/pdf', 4194305, 'bill'); exception when others then ok := sqlerrm = 'invalid_document'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: bill > 4 MiB accepted (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document(s, t, 'application/pdf', 100, 'selfie'); exception when others then ok := sqlerrm = 'invalid_document'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: unknown kind accepted (got %)', err; end if;
+  ok := false; begin perform public.register_lead_document('wrong-secret', t, 'application/pdf', 100, 'bill'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: bill with wrong secret (got %)', err; end if;
+  -- null kind behaves as the default
+  d := public.register_lead_document(s, t, 'image/jpeg', 100, null);
+  if d ->> 'kind' <> 'id_document' then raise exception 'FAIL: null kind %', d; end if;
+  perform public.confirm_lead_document(s, t, (d ->> 'id')::uuid);
+
+  -- 2 id documents uploaded: a third id document is refused, but the bill still fits
+  ok := false; begin perform public.register_lead_document(s, t, 'image/jpeg', 100); exception when others then ok := sqlerrm = 'document_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: third id document accepted (got %)', err; end if;
+  b := public.register_lead_document(s, t, 'application/pdf', 4194304, 'bill');
+  if b ->> 'kind' <> 'bill' or b ->> 'path' !~ '\.pdf$' then raise exception 'FAIL: bill slot %', b; end if;
+  -- a second bill is refused while the first is pending
+  ok := false; begin perform public.register_lead_document(s, t, 'application/pdf', 100, 'bill'); exception when others then ok := sqlerrm = 'bill_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: second pending bill accepted (got %)', err; end if;
+  d := public.confirm_lead_document(s, t, (b ->> 'id')::uuid);
+  if d ->> 'kind' <> 'bill' then raise exception 'FAIL: confirm bill %', d; end if;
+  -- ... and while it is uploaded
+  ok := false; begin perform public.register_lead_document(s, t, 'application/pdf', 100, 'bill'); exception when others then ok := sqlerrm = 'bill_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: second uploaded bill accepted (got %)', err; end if;
+  -- the id limit is unaffected by the bill
+  ok := false; begin perform public.register_lead_document(s, t, 'application/pdf', 100); exception when others then ok := sqlerrm = 'document_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: id limit after bill (got %)', err; end if;
+  -- token-bound: another lead's token cannot confirm this lead's pending bill slot
+  v := public.create_lead(s, '{"privacy_consent":true,"commodity":"luce","customer_type":"casa","first_name":"Lia","last_name":"Conti","phone":"3330002222","comune_istat":"999999","service_type":"subentro","tax_code":"NRELNE80A41H501X","housing_title":"inquilino","cap":"99999","address":"Via Po","street_number":"5","is_resident":true,"chosen_offer_luce":"00000000-0000-4000-8000-00000000c001"}');
+  b := public.register_lead_document(s, v ->> 'token', 'application/pdf', 100, 'bill');
+  ok := false; begin perform public.confirm_lead_document(s, t, (b ->> 'id')::uuid); exception when others then ok := sqlerrm = 'document_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: bill confirm with another lead''s token (got %)', err; end if;
+  raise notice 'ok: phase 14 document kind (anon)';
+end $$;
+
+reset role;
+do $$
+declare n integer;
+begin
+  select count(*) into n from public.lead_documents where lead_id = current_setting('rls.k_id')::uuid and kind = 'id_document' and status = 'uploaded';
+  if n <> 2 then raise exception 'FAIL: % id documents stored for lead K (2 expected)', n; end if;
+  select count(*) into n from public.lead_documents where lead_id = current_setting('rls.k_id')::uuid and kind = 'bill' and status = 'uploaded';
+  if n <> 1 then raise exception 'FAIL: % bills stored for lead K (1 expected)', n; end if;
+  -- a second bill slot that slipped in (e.g. issued after the first expired) pending for lead K
+  insert into public.lead_documents (lead_id, object_path, mime_type, size_bytes, status, expires_at, kind)
+  values (current_setting('rls.k_id')::uuid, current_setting('rls.k_id') || '/' || repeat('a', 32) || '.pdf', 'application/pdf', 100, 'pending', now() + interval '5 minutes', 'bill');
+  perform set_config('rls.k_late_bill', (select id::text from public.lead_documents where object_path = current_setting('rls.k_id') || '/' || repeat('a', 32) || '.pdf'), true);
+end $$;
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare ok boolean; err text;
+begin
+  -- confirming it would exceed the one-bill limit: bill_limit_reached (API: too_many_bills)
+  ok := false; begin perform public.confirm_lead_document('rls-test-secret-not-the-real-one', current_setting('rls.k_token'), current_setting('rls.k_late_bill')::uuid); exception when others then ok := sqlerrm = 'bill_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: confirm of a second bill (got %)', err; end if;
 end $$;
 
 reset role;

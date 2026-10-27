@@ -40,8 +40,8 @@ export interface Offer {
   name: string;
   commodity: Commodity;
   customer_type: OfferCustomerType;
-  /** v1: fixed price only. */
-  price_type: "fixed";
+  /** fixed = final price; variable (luce only) = energy_price is the spread over PUN (€/kWh). */
+  price_type: "fixed" | "variable";
   /** €/kWh (luce) or €/Smc (gas). */
   energy_price: number;
   /** Other variable costs, €/kWh or €/Smc. */
@@ -49,13 +49,19 @@ export interface Offer {
   /** Always stored monthly (the admin UI converts from yearly). */
   fixed_fee_monthly: number;
   other_fixed_costs_monthly: number;
-  locked_months: number;
+  /** Null for variable offers. */
+  locked_months: number | null;
   activation_cost: number;
   promo_text: string | null;
   /** Ordered bullets; `**word**` renders bold. */
   advantages: string[];
   details: string | null;
+  /** Always `featured_audience !== null` (the DB trigger keeps them in sync). */
   featured: boolean;
+  /** Payment by IBAN is mandatory for this offer. */
+  iban_required: boolean;
+  /** Forced-featured audience; null = not featured. */
+  featured_audience: "casa" | "business" | "both" | null;
   active: boolean;
   /** Internal: Aldo verified the prices. Go-live blocked until all active offers are verified. */
   price_verified: boolean;
@@ -100,7 +106,10 @@ export interface LeadOfferSnapshot {
   other_variable_costs: number;
   fixed_fee_monthly: number;
   other_fixed_costs_monthly: number;
-  locked_months: number;
+  locked_months: number | null;
+  /** Present on snapshots taken after migration 20261027100000. */
+  price_type?: "fixed" | "variable";
+  iban_required?: boolean;
   /** ISO timestamp of the deletion. */
   deleted_at: string;
 }
@@ -254,16 +263,27 @@ export const LEAD_DOCUMENT_URL_MAX_SECONDS = 300;
 /** Private Supabase Storage bucket holding the documents. */
 export const LEAD_DOCUMENT_BUCKET = "lead-documents";
 
+/** What a lead document is: an identity document (max 2, JPEG/PDF) or a bill (max 1, PDF only). */
+export type LeadDocumentKind = "id_document" | "bill";
+export const LEAD_DOCUMENT_KINDS: readonly LeadDocumentKind[] = ["id_document", "bill"];
+/** Max bills per lead (removed bills free the slot). */
+export const MAX_LEAD_BILLS = 1;
+/** Max size of a bill (PDF), aligned with the server upload limit of 4 MiB. */
+export const MAX_LEAD_BILL_BYTES = 4 * 1024 * 1024;
+
 /** File handed to Repository.uploadLeadDocument (bytes already read by the server route). */
 export interface LeadDocumentFile {
   mime: LeadDocumentMime;
   bytes: Uint8Array;
+  /** Default "id_document". A bill must be a PDF of at most MAX_LEAD_BILL_BYTES. */
+  kind?: LeadDocumentKind;
 }
 
 /** An uploaded identity document (metadata only; the bytes stay in private storage). */
 export interface LeadDocument {
   id: string;
   lead_id: string;
+  kind: LeadDocumentKind;
   mime_type: LeadDocumentMime;
   size_bytes: number;
   created_at: string;
@@ -332,7 +352,13 @@ export type SupplierPatch = Partial<Omit<Supplier, "id">>;
 export type SupplierCreateInput = Pick<Supplier, "name" | "slug"> &
   Partial<Omit<Supplier, "id" | "name" | "slug">>;
 
-export type OfferCreateInput = Omit<Offer, "id" | "updated_at">;
+/**
+ * iban_required and featured_audience are optional: the admin form does not send them
+ * (T14.9 adds the real fields). On the DB the trigger offers_sync_featured derives
+ * featured_audience from featured; the mock repository does the same.
+ */
+export type OfferCreateInput = Omit<Offer, "id" | "updated_at" | "iban_required" | "featured_audience"> &
+  Partial<Pick<Offer, "iban_required" | "featured_audience">>;
 export type OfferPatch = Partial<OfferCreateInput>;
 /** Result of Repository.deleteSupplier. */
 export interface SupplierDeletion {

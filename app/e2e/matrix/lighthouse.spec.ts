@@ -103,7 +103,7 @@ test.describe("Lighthouse accessibility >= 90", () => {
       const d = derive(c);
       const id = newIdentity();
       await fillPage1(page, c, d, id);
-      await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 25_000 });
       await a("/offerte (Luce step)");
       await page.getByTestId("offer-card").first().getByTestId("offer-cta").click();
       await expect(page.getByRole("dialog")).toBeVisible();

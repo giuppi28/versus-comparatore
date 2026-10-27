@@ -235,6 +235,9 @@ test.describe("Page 1: invalid values", () => {
 
 const CASA_DUAL: MatrixCase = {
   ...(MATRIX.find((c) => c.commodity === "dual" && c.customer === "casa" && c.service === "cambio_fornitore" && c.hasGas === true && !c.manual && c.zone === "E")!),
+  // These suites submit step B without an IBAN: choose offers that do not require one.
+  pickLuceId: "plain",
+  pickGasId: "plain",
 };
 const BUSINESS_DUAL: MatrixCase = MATRIX.find((c) => c.commodity === "dual" && c.customer === "business" && c.service === "cambio_fornitore")!;
 const BUSINESS_LUCE: MatrixCase = MATRIX.find((c) => c.commodity === "luce" && c.customer === "business" && c.service === "primo_allaccio")!;
@@ -451,7 +454,7 @@ test.describe("server-side validation of /api/lead/complete", () => {
     await expectReject({ power_kw: 7 }, "power_kw", "invalid");
     await expectReject({ chosen_offer_luce: "offer-inesistente" }, "chosen_offer_luce", "not_available");
     await expectReject({ customer_type: "business", company_name: "Acme", vat_number: "12345678900" }, "vat_number", "checksum");
-    await expectReject({ commodity: "gas", pdr: "123", chosen_offer_gas: "offer-plenitude-gas-fisso-12" }, "pdr", "length");
+    await expectReject({ commodity: "gas", pdr: "123", chosen_offer_gas: "offer-aldo-26" }, "pdr", "length");
     await expectReject({ comune_istat: "999999" }, "comune_istat", "not_found");
 
     // Unknown fields (mass assignment) are refused; so is a request without the lead cookie.
@@ -596,7 +599,7 @@ test.describe("back buttons and refresh", () => {
     const cards = page.getByTestId("offer-card");
     await expect(cards.first()).toBeVisible({ timeout: 20_000 });
     const luceIds = await cards.evaluateAll((els) => els.map((e) => e.getAttribute("data-offer-id")));
-    expect(luceIds).toHaveLength(3); // Edison (current supplier) excluded
+    expect(luceIds).toHaveLength(12); // 13 luce casa offers, Edison (current supplier) excluded
     await page.reload();
     await expect(cards.first()).toBeVisible();
     await expect(page.getByTestId("loading-screen")).toHaveCount(0);
@@ -614,7 +617,8 @@ test.describe("back buttons and refresh", () => {
     await cards.nth(1).getByTestId("offer-cta").click();
     await page.getByTestId("offer-modal-cta").click();
     await expect(page.getByTestId("dual-step-indicator")).toHaveAttribute("data-active", "gas");
-    await cards.first().getByTestId("offer-cta").click();
+    // nth(1): the first gas card (Iren, 0,34) requires an IBAN and this flow submits without one.
+    await cards.nth(1).getByTestId("offer-cta").click();
     await page.getByTestId("offer-modal-cta").click();
     await page.waitForURL(/\/attivazione$/);
 

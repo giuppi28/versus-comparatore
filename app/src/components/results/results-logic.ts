@@ -4,13 +4,14 @@
  */
 import { isRealSupplier, type Commodity, type OfferWithSupplier, type Supplier } from "@/lib/data/types";
 import { annualKwh, annualSmc, serviceTypeFor, type FlowState } from "@/lib/lead/flow-state";
+import type { Audience } from "@/lib/logic/pricing";
 import { commoditiesOf, needsCurrentSupplier } from "@/lib/lead/rules";
 
 /** Upper bound of the editable monthly consumption (same bound as the lead API). */
 export const MAX_MONTHLY_CONSUMPTION = 1_000_000;
 
-/** Default duration of the loading screen (PRD §7: ~4 s). */
-export const DEFAULT_LOADING_MS = 4000;
+/** Default duration of the loading screen (decision #19: ~7.5 s). */
+export const DEFAULT_LOADING_MS = 7500;
 /** Duration used by `?fast=1` (kept above 0 so the screen is still mounted once). */
 export const FAST_LOADING_MS = 250;
 
@@ -45,6 +46,14 @@ export function currentSupplierFor(state: FlowState, commodity: Commodity): stri
   return id || null;
 }
 
+/**
+ * Audience used by the ranking and the "In evidenza" badge (SPEC decision #18): the customer
+ * type from Page 1; "casa" while it is not chosen yet (the page redirects away in that case).
+ */
+export function audienceFor(state: FlowState): Audience {
+  return state.customerType === "business" ? "business" : "casa";
+}
+
 /** All current suppliers of the comparison (never shown on the loading screen). */
 export function currentSupplierIds(state: FlowState): string[] {
   return stepsFor(state)
@@ -65,7 +74,7 @@ export function parseMonthlyConsumption(raw: string): number | null {
 
 /**
  * Loading screen duration. Priority: `?fast=1` → FAST_LOADING_MS, then
- * NEXT_PUBLIC_LOADING_MS (a non-negative number of ms; used by tests), else 4000.
+ * NEXT_PUBLIC_LOADING_MS (a non-negative number of ms; used by tests), else 7500.
  */
 export function resolveLoadingMs(opts: { fast?: string | null; envMs?: string | null }): number {
   if (opts.fast === "1") return FAST_LOADING_MS;

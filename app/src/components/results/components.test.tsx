@@ -14,23 +14,23 @@ function withSupplier(offerId: string): OfferWithSupplier {
 }
 
 describe("OfferCard", () => {
-  const edison = withSupplier("offer-edison-luce-fissa-12");
-  const cost = monthlyCost(edison, 2700);
+  const edison = withSupplier("offer-aldo-14");
+  const cost = monthlyCost(edison, 2700)!;
 
   it("shows the PRD §8 elements and exposes the data attributes", () => {
     const onActivate = vi.fn();
-    render(<OfferCard offer={edison} commodity="luce" monthlyCost={cost} onActivate={onActivate} />);
+    render(<OfferCard offer={edison} commodity="luce" monthlyCost={cost} featured onActivate={onActivate} />);
     const card = screen.getByTestId("offer-card");
     expect(card).toHaveAttribute("data-offer-id", edison.id);
-    expect(card).toHaveAttribute("data-supplier-id", "edison-energia");
+    expect(card).toHaveAttribute("data-supplier-id", "sentra-energia");
     expect(card).toHaveAttribute("data-featured", "true");
     expect(card).toHaveAttribute("data-monthly-cost", String(Math.round(cost * 100)));
     expect(screen.getByText("In evidenza")).toBeInTheDocument();
-    expect(screen.getByText("Edison Luce Fissa 12")).toBeInTheDocument();
+    expect(screen.getByText("Offerta Sentra Energia")).toBeInTheDocument();
     expect(screen.getByTestId("offer-locked")).toHaveTextContent("Bloccato 12 mesi");
     expect(screen.getByTestId("offer-price")).toHaveTextContent("€/kWh");
-    expect(screen.getByTestId("offer-fixed-fee")).toHaveTextContent("9,00");
-    expect(screen.getByTestId("offer-promo")).toHaveTextContent("Fino a 60€ di sconto il primo anno");
+    expect(screen.getByTestId("offer-fixed-fee")).toHaveTextContent("0,00");
+    expect(screen.queryByTestId("offer-promo")).toBeNull();
     expect(screen.getByText("stima")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("offer-cta"));
     expect(onActivate).toHaveBeenCalledTimes(1);
@@ -38,7 +38,7 @@ describe("OfferCard", () => {
   });
 
   it("hides band and promo when the offer has none, expands the details", () => {
-    const sorgenia = withSupplier("offer-sorgenia-luce-sicura-24");
+    const sorgenia = withSupplier("offer-aldo-01");
     render(<OfferCard offer={sorgenia} commodity="luce" monthlyCost={50} onActivate={() => {}} />);
     expect(screen.queryByTestId("offer-featured-band")).toBeNull();
     expect(screen.queryByTestId("offer-promo")).toBeNull();
@@ -48,8 +48,42 @@ describe("OfferCard", () => {
     expect(screen.getByTestId("offer-details-toggle")).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("badge follows the featured prop, not offer.featured", () => {
+    const forced = { ...edison, featured: true };
+    const { unmount } = render(<OfferCard offer={forced} commodity="luce" monthlyCost={cost} onActivate={() => {}} />);
+    expect(screen.queryByTestId("offer-featured-band")).toBeNull();
+    expect(screen.getByTestId("offer-card")).toHaveAttribute("data-featured", "false");
+    unmount();
+    render(<OfferCard offer={{ ...edison, featured: false }} commodity="luce" monthlyCost={cost} featured onActivate={() => {}} />);
+    expect(screen.getByTestId("offer-featured-band")).toHaveTextContent("In evidenza");
+    expect(screen.getByTestId("offer-card")).toHaveAttribute("data-featured", "true");
+  });
+
+  it("variable offer: PUN spread, 'Varia con il PUN', no lock line, IBAN notice", () => {
+    const trend = withSupplier("offer-aldo-05");
+    expect(trend.price_type).toBe("variable");
+    expect(trend.iban_required).toBe(true);
+    render(<OfferCard offer={trend} commodity="luce" monthlyCost={null} onActivate={() => {}} />);
+    expect(screen.getByTestId("offer-price")).toHaveTextContent("PUN + 0,02 €/kWh");
+    expect(screen.getByTestId("offer-monthly")).toHaveTextContent("Varia con il PUN");
+    expect(screen.queryByTestId("offer-locked")).toBeNull();
+    expect(screen.queryByText(/Bloccato/)).toBeNull();
+    expect(screen.queryByText("stima")).toBeNull();
+    expect(screen.getByTestId("offer-iban-notice")).toHaveTextContent(
+      "Per attivare questa offerta è obbligatorio il pagamento con IBAN: ti servirà al passo successivo.",
+    );
+    fireEvent.click(screen.getByTestId("offer-details-toggle"));
+    expect(screen.queryByText("Prezzo bloccato")).toBeNull();
+  });
+
+  it("no IBAN notice for offers that do not require it", () => {
+    const iren = withSupplier("offer-aldo-03");
+    render(<OfferCard offer={iren} commodity="luce" monthlyCost={null} onActivate={() => {}} />);
+    expect(screen.queryByTestId("offer-iban-notice")).toBeNull();
+  });
+
   it("uses Smc for gas and marks a chosen offer", () => {
-    const hera = withSupplier("offer-hera-gas-sereno");
+    const hera = withSupplier("offer-aldo-27");
     render(<OfferCard offer={hera} commodity="gas" monthlyCost={40} chosen onActivate={() => {}} />);
     expect(screen.getByTestId("offer-price")).toHaveTextContent("€/Smc");
     expect(screen.getByTestId("offer-chosen-badge")).toBeInTheDocument();

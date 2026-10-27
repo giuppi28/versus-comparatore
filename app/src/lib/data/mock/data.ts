@@ -1,7 +1,7 @@
 /**
  * MOCK data. Used while NEXT_PUBLIC_DATA_SOURCE=mock.
  * - Suppliers: PRD §6 Block E dropdown list (+ special options).
- * - Offers: the 8 test offers of TASKS.md T1.4 (invented names, price_verified = false).
+ * - Offers: Aldo's 42 offers of 2026-10-27 (T14.4), same as the offers data migration.
  * - Comuni: a SMALL SAMPLE (not the full ISTAT dataset) covering climate zones A-F (+ one comune with an unknown zone, null).
  */
 import type { Comune, Offer, Supplier } from "../types";
@@ -39,6 +39,10 @@ export const MOCK_SUPPLIERS: Supplier[] = [
   supplier("engie", "Engie", 9),
   supplier("eon-energia", "E.ON Energia", 10),
   supplier("iberdrola", "Iberdrola", 11),
+  supplier("sentra-energia", "Sentra Energia", 12),
+  supplier("estra-energia", "Estra Energia", 13),
+  supplier("enegan", "Enegan", 14),
+  supplier("asti-energia", "Asti Energy", 15),
   // Special dropdown options: no offers, never excluded from results.
   supplier("tutela", "Servizio di Tutela / Tutele Graduali", 100, { is_placeholder: true }),
   supplier("altro-fornitore", "Altro fornitore", 101, { is_placeholder: true }),
@@ -47,57 +51,101 @@ export const MOCK_SUPPLIERS: Supplier[] = [
 
 const MOCK_UPDATED_AT = "2026-10-15T00:00:00.000Z";
 
-interface OfferSpec {
-  supplier: string;
-  name: string;
-  commodity: "luce" | "gas";
-  price: number;
-  fee: number;
-  months: number;
-  featured: boolean;
-  promo: string | null;
+type AudienceSpec = "casa" | "business" | "both" | null;
+
+/** Advantages are true facts only (decision #23): same text as the offers data migration. */
+function advantagesFor(commodity: "luce" | "gas", priceType: "fixed" | "variable"): string[] {
+  const common = ["Attivala online con noi, gratis e in 1 minuto", "Puoi revocare il contratto entro 14 giorni"];
+  if (priceType === "variable") return common;
+  return [
+    "Prezzo bloccato per **12 mesi**",
+    ...(commodity === "luce" ? ["Tariffa **monoraria**"] : []),
+    ...common,
+  ];
 }
 
-function offer(spec: OfferSpec): Offer {
-  const advantages = [
-    `Prezzo **bloccato** ${spec.months} mesi`,
-    spec.commodity === "gas" ? "Prezzo **fisso** per tutta la durata del blocco" : "Tariffa **monoraria**",
-    ...(spec.promo ? [spec.promo] : []),
-    "Attivala **online** con noi, **gratis** e in **1 minuto**",
-    "Puoi **revocare** il contratto entro 14 giorni",
-  ];
+let mockOfferSeq = 0;
+
+function o(
+  commodity: "luce" | "gas",
+  customer_type: "casa" | "business",
+  supplier: string,
+  name: string,
+  price_type: "fixed" | "variable",
+  price: number,
+  iban_required: boolean,
+  featured_audience: AudienceSpec,
+): Offer {
+  mockOfferSeq += 1;
   return {
-    id: `offer-${spec.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-    supplier_id: spec.supplier,
-    name: spec.name,
-    commodity: spec.commodity,
-    customer_type: "both",
-    price_type: "fixed",
-    energy_price: spec.price,
-    other_variable_costs: spec.commodity === "luce" ? 0.06 : 0.26,
-    fixed_fee_monthly: spec.fee,
+    id: `offer-aldo-${String(mockOfferSeq).padStart(2, "0")}`,
+    supplier_id: supplier,
+    name,
+    commodity,
+    customer_type,
+    price_type,
+    energy_price: price,
+    other_variable_costs: 0,
+    fixed_fee_monthly: 0,
     other_fixed_costs_monthly: 0,
-    locked_months: spec.months,
+    locked_months: price_type === "fixed" ? 12 : null,
     activation_cost: 0,
-    promo_text: spec.promo,
-    advantages,
+    promo_text: null,
+    advantages: advantagesFor(commodity, price_type),
     details: null,
-    featured: spec.featured,
+    featured: featured_audience !== null,
+    iban_required,
+    featured_audience,
     active: true,
-    price_verified: false,
+    price_verified: true,
     updated_at: MOCK_UPDATED_AT,
   };
 }
 
+/** Aldo's 42 offers (2026-10-27, docs/source/offers-2026-10-27.csv): 13 luce casa, 9 luce business, 11 gas casa, 9 gas business. */
 export const MOCK_OFFERS: Offer[] = [
-  offer({ supplier: "edison-energia", name: "Edison Luce Fissa 12", commodity: "luce", price: 0.129, fee: 9, months: 12, featured: true, promo: "Fino a 60€ di sconto il primo anno" }),
-  offer({ supplier: "sorgenia", name: "Sorgenia Luce Sicura 24", commodity: "luce", price: 0.135, fee: 8, months: 24, featured: false, promo: null }),
-  offer({ supplier: "a2a-energia", name: "A2A Luce Smart", commodity: "luce", price: 0.125, fee: 12, months: 12, featured: false, promo: null }),
-  offer({ supplier: "iberdrola", name: "Iberdrola Luce Stabile", commodity: "luce", price: 0.139, fee: 7.5, months: 12, featured: false, promo: null }),
-  offer({ supplier: "eni-plenitude", name: "Plenitude Gas Fisso 12", commodity: "gas", price: 0.49, fee: 9, months: 12, featured: true, promo: "Fino a 50€ di sconto il primo anno" }),
-  offer({ supplier: "hera-comm", name: "Hera Gas Sereno", commodity: "gas", price: 0.51, fee: 8, months: 24, featured: false, promo: null }),
-  offer({ supplier: "engie", name: "Engie Gas Facile", commodity: "gas", price: 0.475, fee: 11, months: 12, featured: false, promo: null }),
-  offer({ supplier: "iren", name: "Iren Gas Chiaro", commodity: "gas", price: 0.52, fee: 7, months: 12, featured: false, promo: null }),
+  o("luce", "casa", "iren", "Prezzo Fisso Revolution", "fixed", 0.13, true, null),
+  o("luce", "casa", "iren", "Prezzo Fisso Revolution", "fixed", 0.14, false, null),
+  o("luce", "casa", "iren", "Prezzo Variabile Revolution", "variable", 0.01, false, null),
+  o("luce", "casa", "eni-plenitude", "Fixa Time", "fixed", 0.13, false, null),
+  o("luce", "casa", "eni-plenitude", "Trend", "variable", 0.02, true, null),
+  o("luce", "casa", "sentra-energia", "Anno Sicuro", "fixed", 0.11, false, null),
+  o("luce", "casa", "sentra-energia", "Energia Anno Sicuro", "fixed", 0.15, false, null),
+  o("luce", "casa", "enel-energia", "Offerta Enel Energia", "fixed", 0.19, false, null),
+  o("luce", "casa", "a2a-energia", "Offerta A2A Energia", "fixed", 0.19, false, null),
+  o("luce", "casa", "edison-energia", "Offerta Edison Energia", "fixed", 0.20, false, null),
+  o("luce", "casa", "estra-energia", "Offerta Estra Energia", "fixed", 0.16, false, null),
+  o("luce", "casa", "enegan", "Offerta Enegan", "fixed", 0.19, false, null),
+  o("luce", "casa", "asti-energia", "Offerta Asti Energy", "fixed", 0.14, false, null),
+  o("luce", "business", "sentra-energia", "Offerta Sentra Energia", "fixed", 0.13, false, "business"),
+  o("luce", "business", "enel-energia", "Offerta Enel Energia", "fixed", 0.14, false, "business"),
+  o("luce", "business", "asti-energia", "Offerta Asti Energy", "fixed", 0.16, false, null),
+  o("luce", "business", "iren", "Offerta Iren", "fixed", 0.17, false, null),
+  o("luce", "business", "eni-plenitude", "Offerta Eni Plenitude", "fixed", 0.18, false, null),
+  o("luce", "business", "estra-energia", "Offerta Estra Energia", "fixed", 0.19, false, null),
+  o("luce", "business", "a2a-energia", "Offerta A2A Energia", "fixed", 0.20, false, null),
+  o("luce", "business", "edison-energia", "Offerta Edison Energia", "fixed", 0.21, false, null),
+  o("luce", "business", "enegan", "Offerta Enegan", "fixed", 0.21, false, null),
+  o("gas", "casa", "iren", "Gas Revolution Prezzo Fisso", "fixed", 0.34, true, null),
+  o("gas", "casa", "iren", "Gas Revolution Prezzo Fisso", "fixed", 0.45, false, null),
+  o("gas", "casa", "eni-plenitude", "Trend", "fixed", 0.36, true, null),
+  o("gas", "casa", "eni-plenitude", "Fixa Time", "fixed", 0.45, false, null),
+  o("gas", "casa", "sentra-energia", "Offerta Sentra Energia", "fixed", 0.34, false, null),
+  o("gas", "casa", "enegan", "Offerta Enegan", "fixed", 0.40, false, null),
+  o("gas", "casa", "asti-energia", "Offerta Asti Energy", "fixed", 0.36, false, null),
+  o("gas", "casa", "enel-energia", "Offerta Enel Energia", "fixed", 0.76, false, null),
+  o("gas", "casa", "a2a-energia", "Offerta A2A Energia", "fixed", 0.70, false, null),
+  o("gas", "casa", "edison-energia", "Offerta Edison Energia", "fixed", 0.78, false, null),
+  o("gas", "casa", "estra-energia", "Offerta Estra Energia", "fixed", 0.76, false, null),
+  o("gas", "business", "sentra-energia", "Offerta Sentra Energia", "fixed", 0.39, false, "business"),
+  o("gas", "business", "enegan", "Offerta Enegan", "fixed", 0.40, false, "business"),
+  o("gas", "business", "iren", "Offerta Iren", "fixed", 0.77, false, null),
+  o("gas", "business", "eni-plenitude", "Offerta Eni Plenitude", "fixed", 0.80, false, null),
+  o("gas", "business", "asti-energia", "Offerta Asti Energy", "fixed", 0.70, false, null),
+  o("gas", "business", "enel-energia", "Offerta Enel Energia", "fixed", 0.88, false, null),
+  o("gas", "business", "a2a-energia", "Offerta A2A Energia", "fixed", 0.78, false, null),
+  o("gas", "business", "edison-energia", "Offerta Edison Energia", "fixed", 0.80, false, null),
+  o("gas", "business", "estra-energia", "Offerta Estra Energia", "fixed", 0.76, false, null),
 ];
 
 function comune(

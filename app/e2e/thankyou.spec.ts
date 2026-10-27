@@ -99,6 +99,30 @@ test.describe("thank-you page /grazie", () => {
     await page.screenshot({ path: `e2e/screenshots/${screenshotName(page.viewportSize()?.width ?? 1440, "single")}`, fullPage: true });
   });
 
+  test("vCard: save-number link is visible and /api/vcard serves a vCard 3.0", async ({ page }) => {
+    await seedFlow(page, seededFlow({ luce: luceOffer, gas: null }));
+    await page.goto("/grazie");
+
+    const link = page.getByRole("link", { name: "Salva il nostro numero" });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "/api/vcard");
+
+    const res = await page.request.get("/api/vcard");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toContain("text/vcard");
+    expect(res.headers()["content-disposition"]).toBe('attachment; filename="versus.vcf"');
+    expect(res.headers()["cache-control"]).toContain("no-store");
+    const body = await res.text();
+    expect(body.startsWith("BEGIN:VCARD\r\nVERSION:3.0\r\n")).toBe(true);
+    expect(body).toContain("TEL;TYPE=WORK,VOICE:+39 095 0000000");
+    expect(body.trimEnd().endsWith("END:VCARD")).toBe(true);
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
   test("dual luce + gas: both offers and the total monthly cost", async ({ page }) => {
     await seedFlow(page, seededFlow({ luce: luceOffer, gas: gasOffer }, "Anna"));
     await page.goto("/grazie");

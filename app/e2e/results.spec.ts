@@ -7,6 +7,12 @@ const SHOTS = "e2e/screenshots";
 
 const luceOffers = MOCK_OFFERS.filter((o) => o.commodity === "luce");
 const gasOffers = MOCK_OFFERS.filter((o) => o.commodity === "gas");
+// Offers shown to one audience (the data layer also keeps "both"; none in Aldo's 42 offers).
+const luceCasa42 = luceOffers.filter((o) => o.customer_type === "casa");
+const luceBusiness42 = luceOffers.filter((o) => o.customer_type === "business");
+const gasCasa42 = gasOffers.filter((o) => o.customer_type === "casa");
+const byName = (list: typeof MOCK_OFFERS, supplier: string, name: string, price?: number) =>
+  list.find((o) => o.supplier_id === supplier && o.name === name && (price === undefined || o.energy_price === price))!;
 
 type FlowSeed = Record<string, unknown>;
 
@@ -91,6 +97,49 @@ async function flowState(page: Page) {
   return page.evaluate((key) => JSON.parse(window.sessionStorage.getItem(key) ?? "null"), FLOW_KEY);
 }
 
+async function adminLogin(page: Page) {
+  await page.goto("/admin/login");
+  await page.getByLabel("Email").fill("admin@versus.test");
+  await page.getByLabel("Password").fill("Versus-Test-Password-2026!");
+  const submit = page.getByRole("button", { name: "Accedi" });
+  await expect(submit).toBeEnabled({ timeout: 20_000 });
+  await submit.click();
+  await page.waitForURL((url) => url.pathname === "/admin");
+}
+
+/** Creates an active business-gas fixture offer through the admin UI; returns its id. */
+async function createGasBusinessFixture(
+  page: Page,
+  o: { name: string; price: string; fee: string; featured?: "business" | "both" },
+): Promise<string> {
+  await page.goto("/admin/offerte/nuova");
+  await page.locator("[name=supplier_id]").selectOption("iren");
+  await page.locator("[name=name]").fill(o.name);
+  await page.locator("[name=commodity]").selectOption("gas");
+  await page.locator("[name=customer_type]").selectOption("business");
+  await page.locator("[name=energy_price]").fill(o.price);
+  await page.locator("[name=other_variable_costs]").fill("0");
+  await page.locator("[name=fixed_fee]").fill(o.fee);
+  await page.locator("[name=fixed_fee_period]").selectOption("month");
+  await page.locator("[name=locked_months]").fill("12");
+  if (o.featured) await page.locator("[name=featured_audience]").selectOption(o.featured);
+  await page.getByRole("button", { name: "Crea offerta" }).click();
+  await page.waitForURL(/\/admin\/offerte\/[^/]+\?esito=creata$/);
+  return new URL(page.url()).pathname.split("/").pop()!;
+}
+
+/** Cleanup: un-feature when needed, then deactivate (the default admin view hides inactive rows). */
+async function deactivateOffer(page: Page, id: string) {
+  await page.goto("/admin/offerte");
+  const row = page.locator(`[data-testid="offer-row"][data-offer-id="${id}"]`);
+  if ((await row.getAttribute("data-featured")) === "true") {
+    await row.getByTestId("toggle-featured").click();
+    await expect(row).toHaveAttribute("data-featured", "false");
+  }
+  await row.getByTestId("toggle-active").click();
+  await expect(row).toHaveCount(0);
+}
+
 test.describe("results page", () => {
   test("redirects to the start when Page 1 data are missing", async ({ page }) => {
     await setup(page, null);
@@ -127,17 +176,19 @@ test.describe("results page", () => {
     const loading = page.getByTestId("loading-screen");
     await expect(loading).toBeVisible();
     // The rotating message names the compared commodity (polls until that message shows).
-    await expect(loading).toContainText("offerte luce", { timeout: 10_000 });
+    await expect(loading).toContainText("offerte luce", { timeout: 15_000 });
+    // The key message takes over from ~3 s and stays until ~7 s.
+    await expect(loading).toContainText("offerta più bassa", { timeout: 15_000 });
     await expect(page.getByTestId("loading-supplier").first()).toBeVisible();
     await expect(page.locator('[data-testid="loading-supplier"][data-supplier-id="edison-energia"]')).toHaveCount(0);
-    // All active real suppliers with a logo are shown, not only those with luce offers (engie has none).
+    // All active real suppliers with a logo are shown, not only those with luce offers (engie has no offers).
     await expect(page.locator('[data-testid="loading-supplier"][data-supplier-id="engie"]')).toHaveCount(1);
     await expect(page.locator('[data-testid="loading-supplier"][data-supplier-id="enel-energia"]')).toHaveCount(1);
     // Placeholders (Tutela / Altro fornitore / Non lo so) never appear.
     for (const id of ["tutela", "altro-fornitore", "non-lo-so"]) {
       await expect(page.locator(`[data-testid="loading-supplier"][data-supplier-id="${id}"]`)).toHaveCount(0);
     }
-    // More logos than the few suppliers having a luce offer (3 in the mock data); no duplicate ids.
+    // More logos than the few suppliers having a luce offer (a few in the mock data); no duplicate ids.
     const shownIds = await ids(page.getByTestId("loading-supplier"), "data-supplier-id");
     expect(shownIds.length).toBeGreaterThan(5);
     expect(new Set(shownIds).size).toBe(shownIds.length);
@@ -145,8 +196,9 @@ test.describe("results page", () => {
     await shot(page, info, "loading");
     await noOverflow(page);
     const started = Date.now();
-    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 20_000 });
-    expect(Date.now() - started).toBeLessThan(9_000);
+    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 25_000 });
+    // ~7.5 s animation (decision #19): results only after it, never much later.
+    expect(Date.now() - started).toBeLessThan(12_000);
 
     // Lead updated during the animation: step "results" + final monthly consumption.
     const first = captured.patches[0]?.data;
@@ -167,19 +219,23 @@ test.describe("results page", () => {
     await expect(cards.first()).toBeVisible();
 
     const monthly = monthlyFromAnnual(2700);
-    const expected = rankOffers(luceOffers, annualFromMonthly(monthly), { excludeSupplierId: "edison-energia" });
-    expect(expected).toHaveLength(3);
+    const expected = rankOffers(luceCasa42, "casa", annualFromMonthly(monthly), { excludeSupplierId: "edison-energia" });
+    // 13 luce casa offers minus Edison's one; the 2 variable ones (Iren, Eni Trend) come last.
+    expect(expected).toHaveLength(12);
+    expect(expected.slice(-2).map((r) => r.offer.price_type)).toEqual(["variable", "variable"]);
     expect(await ids(cards, "data-supplier-id")).not.toContain("edison-energia");
     expect(await ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
-    expect(await ids(cards, "data-featured")).toEqual(["false", "false", "false"]);
+    // Nothing forced for casa: the badge goes to the cheapest fixed offer (Sentra "Anno Sicuro" 0,11).
+    expect(expected[0].offer.name).toBe("Anno Sicuro");
+    expect(await ids(cards, "data-featured")).toEqual(expected.map((_, i) => (i === 0 ? "true" : "false")));
 
     // Monthly cost of one card matches monthlyCost() and is shown with the tooltip.
-    const sorgenia = luceOffers.find((o) => o.supplier_id === "sorgenia")!;
-    const cost = monthlyCost(sorgenia, annualFromMonthly(monthly));
-    const card = page.locator(`[data-testid="offer-card"][data-offer-id="${sorgenia.id}"]`);
+    const sentra = byName(luceCasa42, "sentra-energia", "Anno Sicuro");
+    const cost = monthlyCost(sentra, annualFromMonthly(monthly))!;
+    const card = page.locator(`[data-testid="offer-card"][data-offer-id="${sentra.id}"]`);
     await expect(card).toHaveAttribute("data-monthly-cost", String(Math.round(cost * 100)));
     await expect(card.getByTestId("offer-monthly")).toHaveText(formatEuro(cost));
-    await expect(card.getByTestId("offer-locked")).toHaveText("Bloccato 24 mesi");
+    await expect(card.getByTestId("offer-locked")).toHaveText("Bloccato 12 mesi");
     await expect(card.getByTestId("offer-cta")).toHaveText("Attiva online in 1 minuto");
     await card.getByTestId("offer-estimate-tooltip").click();
     await expect(card.getByRole("tooltip")).toContainText("IVA esclusa");
@@ -229,35 +285,45 @@ test.describe("results page", () => {
     await noOverflow(page);
   });
 
-  test("luce without a current supplier: featured offer first, then by cost", async ({ page }) => {
+  test("luce without a current supplier: all casa offers, badge on the cheapest fixed one", async ({ page }) => {
     await setup(page, luceCasa({ serviceType: "primo_allaccio", currentSupplierLuce: "edison-energia" }));
     await page.goto("/offerte?fast=1");
     const cards = page.getByTestId("offer-card");
     await expect(cards.first()).toBeVisible();
     // A stale supplier left in the state is ignored for Primo allaccio.
-    const expected = rankOffers(luceOffers, annualFromMonthly(225));
+    const expected = rankOffers(luceCasa42, "casa", annualFromMonthly(225));
+    expect(expected).toHaveLength(13);
     expect(await ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
+    // Edison's offer is NOT hidden here (it is the 20 cent one, near the bottom of the fixed ones).
+    expect(await ids(cards, "data-supplier-id")).toContain("edison-energia");
     await expect(cards.first()).toHaveAttribute("data-featured", "true");
-    await expect(cards.first()).toHaveAttribute("data-supplier-id", "edison-energia");
+    await expect(cards.first()).toHaveAttribute("data-supplier-id", "sentra-energia");
     await expect(cards.first().getByTestId("offer-featured-band")).toHaveText("In evidenza");
-    await expect(cards.first().getByTestId("offer-promo")).toContainText("Fino a 60€");
+    // No promo in Aldo's offers (promo_text is null).
+    await expect(page.getByTestId("offer-promo")).toHaveCount(0);
+    expect(await ids(cards, "data-featured")).toEqual(expected.map((_, i) => (i === 0 ? "true" : "false")));
   });
 
-  test("editing the monthly kWh recalculates costs and reorders instantly", async ({ page }) => {
+  test("editing the monthly kWh recalculates costs instantly (no fees in Aldo's offers: order is price-only)", async ({
+    page,
+  }) => {
     await setup(page, luceCasa());
     await page.goto("/offerte?fast=1");
     const cards = page.getByTestId("offer-card");
     await expect(cards.first()).toBeVisible();
     const before = await ids(cards, "data-offer-id");
+    const costsBefore = await ids(cards, "data-monthly-cost");
 
     const input = page.getByTestId("results-consumption-kwh");
     await input.fill("20");
-    const expected = rankOffers(luceOffers, annualFromMonthly(20), { excludeSupplierId: "edison-energia" });
-    expect(expected.map((r) => r.offer.id)).not.toEqual(before);
-    await expect.poll(() => ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
-    expect(await ids(cards, "data-monthly-cost")).toEqual(
-      expected.map((r) => String(Math.round(r.monthlyCost * 100))),
-    );
+    const expected = rankOffers(luceCasa42, "casa", annualFromMonthly(20), { excludeSupplierId: "edison-energia" });
+    await expect
+      .poll(() => ids(cards, "data-monthly-cost"))
+      .toEqual(expected.map((r) => (r.monthlyCost === null ? "variable" : String(Math.round(r.monthlyCost * 100)))));
+    expect(await ids(cards, "data-monthly-cost")).not.toEqual(costsBefore);
+    // Without fees the ranking depends on the unit price only, so the order stays the same.
+    expect(await ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
+    expect(await ids(cards, "data-offer-id")).toEqual(before);
     expect((await flowState(page)).finalKwhMonth).toBe(20);
 
     // Invalid input: error, the last valid value stays in use.
@@ -268,15 +334,58 @@ test.describe("results page", () => {
     await expect(input).toHaveValue("20");
   });
 
+  test("editing the monthly Smc reorders instantly when an offer has a monthly fee (E2E fixture)", async ({
+    page,
+  }, info) => {
+    await setup(page, gasCasa({ customerType: "business", manualConsumption: true, manualSmcYear: 720 }));
+    const name = `E2E Gas riordino ${info.project.name} ${Date.now()}`;
+    await adminLogin(page);
+    // Business gas, 0,01 €/Smc + 2 €/month, not featured: cheaper than everyone at 60 Smc/month,
+    // more expensive than the 0,70 €/Smc offers at 1 Smc/month.
+    const id = await createGasBusinessFixture(page, { name, price: "0,0100", fee: "2" });
+    try {
+      await page.goto("/offerte?fast=1");
+      const cards = page.getByTestId("offer-card");
+      await expect(cards.first()).toBeVisible();
+      const asti = byName(gasOffers, "asti-energia", "Offerta Asti Energy", 0.7);
+      const position = async () => {
+        const order = await ids(cards, "data-offer-id");
+        return [order.indexOf(id), order.indexOf(asti.id)];
+      };
+      const [mine60, asti60] = await position();
+      expect(mine60).toBeGreaterThanOrEqual(0);
+      expect(mine60).toBeLessThan(asti60);
+
+      await page.getByTestId("results-consumption-smc").fill("1");
+      await expect
+        .poll(async () => {
+          const [m, a] = await position();
+          return m > a;
+        })
+        .toBe(true);
+      // Forced-featured offers (Sentra, Enegan) stay above the others whatever the consumption.
+      const order = await ids(cards, "data-offer-id");
+      for (const o of gasOffers.filter((x) => x.customer_type === "business" && x.featured_audience)) {
+        expect(order.indexOf(o.id)).toBeGreaterThanOrEqual(0);
+        expect(order.indexOf(o.id)).toBeLessThan(order.indexOf(asti.id));
+      }
+    } finally {
+      await deactivateOffer(page, id);
+    }
+  });
+
   test("gas: Eni Plenitude (current supplier) excluded, Smc consumption", async ({ page }) => {
     await setup(page, gasCasa());
     await page.goto("/offerte?fast=1");
     const cards = page.getByTestId("offer-card");
     await expect(cards.first()).toBeVisible();
-    const expected = rankOffers(gasOffers, annualFromMonthly(monthlyFromAnnual(720)), {
+    const expected = rankOffers(gasCasa42, "casa", annualFromMonthly(monthlyFromAnnual(720)), {
       excludeSupplierId: "eni-plenitude",
     });
+    // 11 gas casa offers minus Eni's two.
+    expect(expected).toHaveLength(9);
     expect(await ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
+    expect(await ids(cards, "data-featured")).toEqual(expected.map((_, i) => (i === 0 ? "true" : "false")));
     expect(await ids(cards, "data-supplier-id")).not.toContain("eni-plenitude");
     await expect(page.getByTestId("results-consumption-smc")).toHaveValue("60");
     await expect(page.getByTestId("results-consumption-kwh")).toHaveCount(0);
@@ -284,12 +393,27 @@ test.describe("results page", () => {
     await expect(cards.first().getByTestId("offer-price")).toContainText("€/Smc");
   });
 
-  test("business customer sees the offers for business (and 'both')", async ({ page }) => {
+  test("business customer sees the business offers only, the two forced ones on top with the badge", async ({
+    page,
+  }) => {
     await setup(page, luceCasa({ customerType: "business", manualConsumption: true, manualKwhYear: 12000 }));
     await page.goto("/offerte?fast=1");
-    await expect(page.getByTestId("offer-card").first()).toBeVisible();
+    const cards = page.getByTestId("offer-card");
+    await expect(cards.first()).toBeVisible();
     await expect(page.getByTestId("results-consumption-kwh")).toHaveValue("1000");
-    await expect(page.getByTestId("offer-card")).toHaveCount(3);
+    // 9 luce business offers minus Edison's (current supplier).
+    const expected = rankOffers(luceBusiness42, "business", 12000, { excludeSupplierId: "edison-energia" });
+    expect(expected).toHaveLength(8);
+    await expect(cards).toHaveCount(8);
+    expect(await ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
+    // Forced for Partita IVA: Sentra (0,13) then Enel (0,14); both carry the badge, nobody else does.
+    expect(await ids(cards, "data-supplier-id")).toEqual(
+      expect.arrayContaining(["sentra-energia", "enel-energia"]),
+    );
+    expect((await ids(cards, "data-supplier-id")).slice(0, 2)).toEqual(["sentra-energia", "enel-energia"]);
+    expect(await ids(cards, "data-featured")).toEqual(expected.map((_, i) => (i < 2 ? "true" : "false")));
+    // No casa offer leaks in.
+    for (const o of luceCasa42) await expect(page.locator(`[data-offer-id="${o.id}"]`)).toHaveCount(0);
   });
 
   test("single commodity: choice opens the modal with advantages, then goes to activation", async ({
@@ -297,15 +421,15 @@ test.describe("results page", () => {
   }, info) => {
     const captured = await setup(page, luceCasa());
     await page.goto("/offerte?fast=1");
-    const sorgenia = luceOffers.find((o) => o.supplier_id === "sorgenia")!;
-    const card = page.locator(`[data-testid="offer-card"][data-offer-id="${sorgenia.id}"]`);
+    const enelOffer = byName(luceCasa42, "enel-energia", "Offerta Enel Energia");
+    const card = page.locator(`[data-testid="offer-card"][data-offer-id="${enelOffer.id}"]`);
     await card.getByTestId("offer-cta").click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText("I vantaggi dell'offerta")).toBeVisible();
     await expect(dialog.getByTestId("offer-modal-advantages").locator("li").first()).toContainText(
-      "bloccato 24 mesi",
+      "Prezzo bloccato per 12 mesi",
     );
     await expect(dialog.getByText("Puoi revocare il contratto entro 14 giorni")).toBeVisible();
     await shot(page, info, "modal");
@@ -320,13 +444,58 @@ test.describe("results page", () => {
     await page.waitForURL(/\/attivazione$/);
 
     const flow = await flowState(page);
-    expect(flow.chosenOffers.luce.offer_id).toBe(sorgenia.id);
-    expect(flow.chosenOffers.luce.monthly_cost).toBeCloseTo(monthlyCost(sorgenia, annualFromMonthly(225)), 6);
+    expect(flow.chosenOffers.luce.offer_id).toBe(enelOffer.id);
+    expect(flow.chosenOffers.luce.monthly_cost).toBeCloseTo(monthlyCost(enelOffer, annualFromMonthly(225))!, 6);
     expect(flow.chosenOffers.gas).toBeNull();
     const last = captured.patches.at(-1)!.data;
     expect(last.step_reached).toBe("offer_chosen");
-    expect(last.chosen_offer_luce).toBe(sorgenia.id);
-    expectCents(last.monthly_cost_shown, monthlyCost(sorgenia, annualFromMonthly(225)));
+    expect(last.chosen_offer_luce).toBe(enelOffer.id);
+    expectCents(last.monthly_cost_shown, monthlyCost(enelOffer, annualFromMonthly(225))!);
+  });
+
+  test("variable offer: PUN price, 'Varia con il PUN', no lock, IBAN notice, badge on cheapest fixed; choice sends null cost", async ({
+    page,
+  }, info) => {
+    const captured = await setup(page, luceCasa({ currentSupplierLuce: "edison-energia" }));
+    await page.goto("/offerte?fast=1");
+    const cards = page.getByTestId("offer-card");
+    await expect(cards.first()).toBeVisible();
+    const IBAN = "Per attivare questa offerta è obbligatorio il pagamento con IBAN: ti servirà al passo successivo.";
+
+    // Variable offers are last; exactly one badge (cheapest fixed, none forced for casa).
+    const order = await ids(cards, "data-offer-id");
+    const variableIds = luceOffers.filter((o) => o.customer_type === "casa" && o.price_type === "variable").map((o) => o.id);
+    expect(order.slice(-variableIds.length).sort()).toEqual([...variableIds].sort());
+    expect(await ids(cards, "data-featured")).toEqual(order.map((_, i) => (i === 0 ? "true" : "false")));
+
+    const iren = luceOffers.find((o) => o.name === "Prezzo Variabile Revolution")!;
+    const irenCard = page.locator(`[data-testid="offer-card"][data-offer-id="${iren.id}"]`);
+    await expect(irenCard.getByTestId("offer-price")).toHaveText(/^PUN \+ 0,01\s€\/kWh$/);
+    await expect(irenCard.getByTestId("offer-monthly")).toHaveText("Varia con il PUN");
+    await expect(irenCard.getByTestId("offer-locked")).toHaveCount(0);
+    await expect(irenCard).not.toContainText("Bloccato");
+    await expect(irenCard.getByTestId("offer-iban-notice")).toHaveCount(0);
+
+    const trend = luceOffers.find((o) => o.name === "Trend")!;
+    const trendCard = page.locator(`[data-testid="offer-card"][data-offer-id="${trend.id}"]`);
+    await expect(trendCard.getByTestId("offer-iban-notice")).toHaveText(IBAN);
+    await noOverflow(page);
+    await shot(page, info, "variable");
+
+    await trendCard.getByTestId("offer-cta").click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByTestId("offer-modal-iban-notice")).toHaveText(IBAN);
+    await expect(dialog.getByTestId("offer-modal-monthly")).toContainText("Varia con il PUN");
+    await expect(dialog.getByTestId("offer-modal-features")).not.toContainText("Prezzo bloccato");
+    await noOverflow(page);
+    await page.getByTestId("offer-modal-cta").click();
+    await page.waitForURL(/\/attivazione$/);
+
+    expect((await flowState(page)).chosenOffers.luce.monthly_cost).toBeNull();
+    const last = captured.patches.at(-1)!.data;
+    expect(last.chosen_offer_luce).toBe(trend.id);
+    expect(last.monthly_cost_shown).toBeNull();
+    await noOverflow(page);
   });
 
   test("details can be expanded on the card", async ({ page }) => {
@@ -355,46 +524,46 @@ test.describe("results page", () => {
 
     // Choose a luce offer -> gas step (same document, no reload).
     await page.evaluate(() => ((window as unknown as { __noReload: boolean }).__noReload = true));
-    const iberdrola = luceOffers.find((o) => o.supplier_id === "iberdrola")!;
-    await page.locator(`[data-testid="offer-card"][data-offer-id="${iberdrola.id}"]`).getByTestId("offer-cta").click();
+    const sentraLuce = byName(luceCasa42, "sentra-energia", "Anno Sicuro");
+    await page.locator(`[data-testid="offer-card"][data-offer-id="${sentraLuce.id}"]`).getByTestId("offer-cta").click();
     await expect(page.getByTestId("offer-modal-step")).toHaveText("Offerta Luce");
     await page.getByTestId("offer-modal-cta").click();
 
     await expect(indicator).toHaveAttribute("data-active", "gas");
     await expect(page.getByTestId("results-consumption-smc")).toHaveValue("60");
-    const expectedGas = rankOffers(gasOffers, annualFromMonthly(60), { excludeSupplierId: "eni-plenitude" });
+    const expectedGas = rankOffers(gasCasa42, "casa", annualFromMonthly(60), { excludeSupplierId: "eni-plenitude" });
     await expect.poll(() => ids(cards, "data-offer-id")).toEqual(expectedGas.map((r) => r.offer.id));
     expect(await ids(cards, "data-supplier-id")).not.toContain("eni-plenitude");
     expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
-    await expect(page.getByTestId("dual-luce-summary")).toContainText(iberdrola.name);
+    await expect(page.getByTestId("dual-luce-summary")).toContainText(sentraLuce.name);
     await shot(page, info, "dual-gas");
     await noOverflow(page);
 
     // Back to luce: the choice is kept and highlighted.
     await page.getByTestId("dual-back").click();
     await expect(indicator).toHaveAttribute("data-active", "luce");
-    await expect(page.locator(`[data-offer-id="${iberdrola.id}"]`)).toHaveAttribute("data-chosen", "true");
-    expect((await flowState(page)).chosenOffers.luce.offer_id).toBe(iberdrola.id);
+    await expect(page.locator(`[data-offer-id="${sentraLuce.id}"]`)).toHaveAttribute("data-chosen", "true");
+    expect((await flowState(page)).chosenOffers.luce.offer_id).toBe(sentraLuce.id);
 
     // Forward again (re-confirm luce), then choose a gas offer -> activation.
-    await page.locator(`[data-offer-id="${iberdrola.id}"]`).getByTestId("offer-cta").click();
+    await page.locator(`[data-offer-id="${sentraLuce.id}"]`).getByTestId("offer-cta").click();
     await page.getByTestId("offer-modal-cta").click();
     await expect(indicator).toHaveAttribute("data-active", "gas");
-    const engie = gasOffers.find((o) => o.supplier_id === "engie")!;
-    await page.locator(`[data-offer-id="${engie.id}"]`).getByTestId("offer-cta").click();
+    const sentraGas = byName(gasCasa42, "sentra-energia", "Offerta Sentra Energia");
+    await page.locator(`[data-offer-id="${sentraGas.id}"]`).getByTestId("offer-cta").click();
     await expect(page.getByTestId("offer-modal-step")).toHaveText("Offerta Gas");
     await page.getByTestId("offer-modal-cta").click();
     await page.waitForURL(/\/attivazione$/);
 
     const flow = await flowState(page);
-    expect(flow.chosenOffers.luce.offer_id).toBe(iberdrola.id);
-    expect(flow.chosenOffers.gas.offer_id).toBe(engie.id);
+    expect(flow.chosenOffers.luce.offer_id).toBe(sentraLuce.id);
+    expect(flow.chosenOffers.gas.offer_id).toBe(sentraGas.id);
     const last = captured.patches.at(-1)!.data;
     expect(last.step_reached).toBe("offer_chosen");
-    expect(last.chosen_offer_luce).toBe(iberdrola.id);
-    expect(last.chosen_offer_gas).toBe(engie.id);
+    expect(last.chosen_offer_luce).toBe(sentraLuce.id);
+    expect(last.chosen_offer_gas).toBe(sentraGas.id);
     const total =
-      monthlyCost(iberdrola, annualFromMonthly(225)) + monthlyCost(engie, annualFromMonthly(60));
+      monthlyCost(sentraLuce, annualFromMonthly(225))! + monthlyCost(sentraGas, annualFromMonthly(60))!;
     expectCents(last.monthly_cost_shown, total);
   });
 
@@ -405,28 +574,8 @@ test.describe("results page", () => {
     await setup(page, gasCasa({ customerType: "business", manualConsumption: true, manualSmcYear: 720 }));
     const name = `E2E Gas risultati ${info.project.name} ${Date.now()}`;
 
-    await page.goto("/admin/login");
-    await page.getByLabel("Email").fill("admin@versus.test");
-    await page.getByLabel("Password").fill("Versus-Test-Password-2026!");
-    const submit = page.getByRole("button", { name: "Accedi" });
-    await expect(submit).toBeEnabled({ timeout: 20_000 });
-    await submit.click();
-    await page.waitForURL((url) => url.pathname === "/admin");
-
-    await page.goto("/admin/offerte/nuova");
-    await page.locator("[name=supplier_id]").selectOption("iren");
-    await page.locator("[name=name]").fill(name);
-    await page.locator("[name=commodity]").selectOption("gas");
-    await page.locator("[name=customer_type]").selectOption("business");
-    await page.locator("[name=energy_price]").fill("0,0100");
-    await page.locator("[name=other_variable_costs]").fill("0");
-    await page.locator("[name=fixed_fee]").fill("1");
-    await page.locator("[name=fixed_fee_period]").selectOption("month");
-    await page.locator("[name=locked_months]").fill("12");
-    await page.locator("[name=featured]").check();
-    await page.getByRole("button", { name: "Crea offerta" }).click();
-    await page.waitForURL(/\/admin\/offerte\/[^/]+\?esito=creata$/);
-    const id = new URL(page.url()).pathname.split("/").pop()!;
+    await adminLogin(page);
+    const id = await createGasBusinessFixture(page, { name, price: "0,0100", fee: "1", featured: "both" });
 
     try {
       await page.goto("/offerte?fast=1");
@@ -449,13 +598,8 @@ test.describe("results page", () => {
         window.sessionStorage.setItem(key, JSON.stringify({ ...raw, customerType: "business" }));
       }, FLOW_KEY);
     } finally {
-      // Always restore: un-feature, then deactivate (the default admin view hides inactive rows).
-      await page.goto("/admin/offerte");
-      const row = page.locator(`[data-testid="offer-row"][data-offer-id="${id}"]`);
-      await row.getByTestId("toggle-featured").click();
-      await expect(row).toHaveAttribute("data-featured", "false");
-      await row.getByTestId("toggle-active").click();
-      await expect(row).toHaveCount(0);
+      // Always restore: un-feature, then deactivate.
+      await deactivateOffer(page, id);
     }
 
     // Deactivated on the server: gone from the results.

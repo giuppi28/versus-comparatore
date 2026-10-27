@@ -21,10 +21,12 @@ import { serviceTypeFor } from "@/lib/lead/flow-state";
 import { includesGas, includesLuce, needsCurrentSupplier, needsMeterCode } from "@/lib/lead/rules";
 import { normalizePdr, normalizePod, validatePdr, validatePod } from "@/lib/logic/validators";
 import { GroupError, GroupLabel } from "./FieldError";
+import { BillFields } from "./BillSection";
 import { DocumentFields, PaymentFields } from "./PaymentDocumentSections";
 import {
   effectiveCap,
   effectiveGasUses,
+  ibanRequired,
   powerFromSelectValue,
   powerOptions,
   podWarning,
@@ -360,12 +362,23 @@ export function StepB({
         </Section>
       )}
 
-      <Section title="Pagamento (facoltativo)" testId="activation-payment">
+      <Section title={ibanRequired(state) ? "Pagamento" : "Pagamento (facoltativo)"} testId="activation-payment">
         <PaymentFields {...extraProps} />
       </Section>
 
       <Section title="Documento d'identità (facoltativo)" testId="activation-document">
         <DocumentFields {...extraProps} />
+      </Section>
+
+      <Section title="Bolletta (facoltativa)" testId="activation-bill">
+        <BillFields
+          state={state}
+          update={update}
+          touch={touch}
+          edited={edited}
+          suppliers={suppliers}
+          avail={{ pod: luce, pdr: gas, supplierLuce: luceSupplierShown, supplierGas: gasSupplierShown }}
+        />
       </Section>
 
       {beforeActions}

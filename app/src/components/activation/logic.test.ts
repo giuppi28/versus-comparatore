@@ -8,6 +8,8 @@ import {
   VALID_POD,
 } from "@/lib/lead/test-fixtures";
 import {
+  addDocumentPatch,
+  removeDocumentPatch,
   activationRedirect,
   buildSubmitPayload,
   effectiveCap,
@@ -27,6 +29,7 @@ import {
   stepOfField,
   supplierOptions,
   validateStepA,
+  ibanRequired,
   validateStepB,
 } from "./logic";
 
@@ -372,6 +375,22 @@ describe("IBAN, holder and document validation (step B extras)", () => {
     expect(validatePaymentAndDocument(withAct({ ...full, documentExpiry: "2020-01-01" }), TODAY).document_expiry).toMatch(/scaduto/);
     expect(validatePaymentAndDocument(withAct({ ...full, documentNumber: "12" }), TODAY).document_number).toBeDefined();
   });
+  it("IBAN is required when any chosen offer has iban_required (single + dual); optional otherwise", () => {
+    const req = (c: "luce" | "gas") => ({ ...offer(c), iban_required: true });
+    expect(validateStepB(flow(filledB)).iban).toBeUndefined();
+    expect(ibanRequired(flow(filledB))).toBe(false);
+    const luceOnly = flow({ ...filledB, chosenOffers: { luce: req("luce"), gas: null } });
+    expect(validateStepB(luceOnly).iban).toMatch(/obbligatorio/);
+    const withIban = applyFlowPatch(luceOnly, { activation: { iban: "IT60X0542811101000000123456" } });
+    expect(validateStepB(withIban).iban).toBeUndefined();
+    const gasReq = flow({ ...filledB, commodity: "dual", chosenOffers: { luce: offer("luce"), gas: req("gas") } });
+    expect(ibanRequired(gasReq)).toBe(true);
+    expect(validateStepB(gasReq).iban).toBeDefined();
+    expect(messageForFieldCode("iban", "required")).toMatch(/obbligatorio/);
+    // holder rules unchanged once an IBAN is present
+    const holder = applyFlowPatch(withIban, { activation: { ibanHolderDifferent: true } });
+    expect(validateStepB(holder).iban_holder_first_name).toBeDefined();
+  });
   it("validateStepB includes the extras and server codes map to messages", () => {
     const st = flow({ ...filledB, activation: { ...filledB.activation, iban: "IT00" } });
     expect(validateStepB(st).iban).toBeDefined();
@@ -412,5 +431,19 @@ describe("upload helpers and POD warning", () => {
     expect(podWarning(flow({ comune: roma, activation: { pod: "IT001E12345678" } }))).toMatch(/Controlla il POD/);
     expect(podWarning(flow({ comune: roma, activation: { pod: "IT002E12345678" } }))).toBeNull();
     expect(podWarning(flow({ activation: { pod: "" } }))).toBeNull();
+  });
+});
+
+describe("document list patches (overlapping uploads)", () => {
+  const doc = (id: string, kind: string) =>
+    ({ id, kind, name: id, size_bytes: 1 }) as unknown as FlowState["activation"]["documents"][number];
+  it("a bill and an ID resolving out of order both survive, and a removal keeps the other", () => {
+    let state = INITIAL_FLOW_STATE;
+    // Both async actions started from the same (empty) list; each applies on the latest state.
+    state = applyFlowPatch(state, addDocumentPatch(state, doc("id-1", "id_card")));
+    state = applyFlowPatch(state, addDocumentPatch(state, doc("bill-1", "bill")));
+    expect(state.activation.documents.map((d) => d.id)).toEqual(["id-1", "bill-1"]);
+    state = applyFlowPatch(state, removeDocumentPatch(state, "id-1"));
+    expect(state.activation.documents.map((d) => d.id)).toEqual(["bill-1"]);
   });
 });

@@ -27,7 +27,7 @@ describe("suppliers", () => {
   it("flags only tutela / altro-fornitore / non-lo-so as placeholders", async () => {
     const list = await repo.listActiveSuppliers();
     expect(list.filter((s) => s.is_placeholder).map((s) => s.slug)).toEqual(["tutela", "altro-fornitore", "non-lo-so"]);
-    expect(list.filter(isRealSupplier)).toHaveLength(11);
+    expect(list.filter(isRealSupplier)).toHaveLength(15);
     // Placeholders stay in the Page 1 dropdown list.
     expect(list.map((s) => s.slug)).toContain("non-lo-so");
   });
@@ -58,43 +58,68 @@ describe("offers", () => {
   it("returns only luce offers for luce, only gas for gas", async () => {
     const luce = await repo.listActiveOffers("luce", "casa");
     const gas = await repo.listActiveOffers("gas", "casa");
-    expect(luce).toHaveLength(4);
-    expect(gas).toHaveLength(4);
+    expect(luce).toHaveLength(13);
+    expect(gas).toHaveLength(11);
     expect(luce.every((o) => o.commodity === "luce")).toBe(true);
     expect(gas.every((o) => o.commodity === "gas")).toBe(true);
   });
 
   it("joins the supplier and exposes the PRD fields", async () => {
-    const [edison] = (await repo.listActiveOffers("luce", "casa")).filter((o) => o.featured);
-    expect(edison.supplier.name).toBe("Edison Energia");
-    expect(edison).toMatchObject({
-      price_type: "fixed", energy_price: 0.129, other_variable_costs: 0.06,
-      fixed_fee_monthly: 9, locked_months: 12, activation_cost: 0, price_verified: false,
+    const [sentra] = (await repo.listActiveOffers("luce", "business")).filter((o) => o.featured && o.supplier_id === "sentra-energia");
+    expect(sentra.supplier.name).toBe("Sentra Energia");
+    expect(sentra).toMatchObject({
+      price_type: "fixed", energy_price: 0.13, other_variable_costs: 0, customer_type: "business",
+      fixed_fee_monthly: 0, locked_months: 12, activation_cost: 0, price_verified: true,
+      featured_audience: "business", iban_required: false,
     });
-    expect(edison.advantages).toEqual([
-      "Prezzo **bloccato** 12 mesi",
+    expect(sentra.advantages).toEqual([
+      "Prezzo bloccato per **12 mesi**",
       "Tariffa **monoraria**",
-      "Fino a 60€ di sconto il primo anno",
-      "Attivala **online** con noi, **gratis** e in **1 minuto**",
-      "Puoi **revocare** il contratto entro 14 giorni",
+      "Attivala online con noi, gratis e in 1 minuto",
+      "Puoi revocare il contratto entro 14 giorni",
     ]);
   });
 
-  it("uses the gas / luce advantage wording of seed.sql (Q4)", () => {
-    const seed = readFileSync(join(process.cwd(), "supabase/seed.sql"), "utf8");
-    const gasLine = "Prezzo **fisso** per tutta la durata del blocco";
-    const luceLine = "Tariffa **monoraria**";
-    expect(seed).toContain(`'${gasLine}'`);
-    expect(seed).toContain(`'${luceLine}'`);
+  it("holds Aldo's 42 offers: 13 luce casa, 9 luce business, 11 gas casa, 9 gas business", () => {
+    const count = (c: string, t: string) => MOCK_OFFERS.filter((o) => o.commodity === c && o.customer_type === t).length;
+    expect([count("luce", "casa"), count("luce", "business"), count("gas", "casa"), count("gas", "business")]).toEqual([13, 9, 11, 9]);
+    expect(MOCK_OFFERS).toHaveLength(42);
+    expect(new Set(MOCK_OFFERS.map((o) => o.id)).size).toBe(42);
+    expect(MOCK_OFFERS.every((o) => o.active && o.price_verified)).toBe(true);
+    expect(MOCK_OFFERS.filter((o) => o.price_type === "variable").map((o) => [o.name, o.energy_price, o.iban_required])).toEqual([
+      ["Prezzo Variabile Revolution", 0.01, false],
+      ["Trend", 0.02, true],
+    ]);
+    expect(MOCK_OFFERS.filter((o) => o.price_type === "variable").every((o) => o.commodity === "luce" && o.locked_months === null)).toBe(true);
+    expect(MOCK_OFFERS.filter((o) => o.iban_required)).toHaveLength(4);
+  });
+
+  it("uses the advantage wording of the offers data migration (decision #23)", () => {
+    const migration = readFileSync(join(process.cwd(), "supabase/migrations/20261027120000_offers_aldo_2026_10_27.sql"), "utf8");
+    for (const line of [
+      "Prezzo bloccato per **12 mesi**",
+      "Tariffa **monoraria**",
+      "Attivala online con noi, gratis e in 1 minuto",
+      "Puoi revocare il contratto entro 14 giorni",
+    ]) expect(migration).toContain(`'${line}'`);
     for (const o of MOCK_OFFERS) {
-      expect(o.advantages[1]).toBe(o.commodity === "gas" ? gasLine : luceLine);
-      expect(o.advantages.join(" ")).not.toContain(o.commodity === "gas" ? "monoraria" : "per tutta la durata");
+      if (o.price_type === "variable") {
+        expect(o.advantages).toEqual(["Attivala online con noi, gratis e in 1 minuto", "Puoi revocare il contratto entro 14 giorni"]);
+      } else {
+        expect(o.advantages).toHaveLength(o.commodity === "luce" ? 4 : 3);
+        expect(o.advantages[0]).toBe("Prezzo bloccato per **12 mesi**");
+        expect(o.advantages.includes("Tariffa **monoraria**")).toBe(o.commodity === "luce");
+      }
     }
   });
 
-  it("has exactly one featured offer per commodity in the seed", () => {
-    expect(MOCK_OFFERS.filter((o) => o.featured && o.commodity === "luce")).toHaveLength(1);
-    expect(MOCK_OFFERS.filter((o) => o.featured && o.commodity === "gas")).toHaveLength(1);
+  it("forces only 4 offers as featured, all for business, with featured in sync", () => {
+    const featured = MOCK_OFFERS.filter((o) => o.featured);
+    expect(featured.map((o) => [o.commodity, o.supplier_id])).toEqual([
+      ["luce", "sentra-energia"], ["luce", "enel-energia"], ["gas", "sentra-energia"], ["gas", "enegan"],
+    ]);
+    expect(MOCK_OFFERS.every((o) => o.featured === (o.featured_audience !== null))).toBe(true);
+    expect(featured.every((o) => o.featured_audience === "business" && o.customer_type === "business")).toBe(true);
   });
 
   it("filters by customer type, keeping 'both'", async () => {
@@ -125,10 +150,10 @@ describe("offers", () => {
     const { supplier: _s, ...raw } = first;
     void _s;
     await repo.saveOffer({ ...raw, active: false });
-    expect(await repo.listActiveOffers("gas", "casa")).toHaveLength(3);
+    expect(await repo.listActiveOffers("gas", "casa")).toHaveLength(10);
     const created = await repo.saveOffer({ ...raw, id: undefined, name: "Nuova", active: true });
     expect(created.id).toBeTruthy();
-    expect(await repo.listActiveOffers("gas", "casa")).toHaveLength(4);
+    expect(await repo.listActiveOffers("gas", "casa")).toHaveLength(11);
   });
 });
 

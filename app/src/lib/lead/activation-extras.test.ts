@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockRepository, type Repository } from "@/lib/data";
 import { LEAD_COOKIE, LEAD_STEP_COOKIE } from "./api-types";
-import { checkCompletion, checkPatchActivation, italianToday } from "./completion";
+import { checkCompletion, checkCompletionReferences, checkPatchActivation, italianToday } from "./completion";
 import { INITIAL_FLOW_STATE, applyFlowPatch, loadFlowState, toLeadCompleteData, FLOW_STORAGE_KEY } from "./flow-state";
 import { createLeadHandlers, createRateLimiters, type LeadHandlers } from "./handlers";
 import { completeBodySchema, patchBodySchema, zodFieldErrors } from "./schemas";
@@ -284,6 +284,55 @@ describe("handlers (mock repository)", () => {
       ok: false,
       error: "validation",
       fields: { iban: "checksum", pod: "looksLikePdr" },
+    });
+  });
+
+  describe("IBAN-only offers (SPEC #16)", () => {
+    async function ids(commodity: "luce" | "gas") {
+      const offers = await repo.listActiveOffers(commodity, "casa");
+      return {
+        required: offers.find((o) => o.iban_required)!.id,
+        free: offers.find((o) => !o.iban_required)!.id,
+      };
+    }
+
+    it("complete without IBAN is rejected when the chosen offer requires it; with IBAN it passes", async () => {
+      const { required, free } = await ids("luce");
+      const c = await cookie();
+      const res = await handlers.complete(
+        json("POST", "/api/lead/complete", { data: completeData({ chosen_offer_luce: required }) }, c),
+      );
+      expect(res.status).toBe(422);
+      expect(await res.json()).toEqual({ ok: false, error: "validation", fields: { iban: "required" } });
+      expect((await repo.listLeads())[0].step_reached).toBe("page1");
+
+      const ok = await handlers.complete(
+        json("POST", "/api/lead/complete", { data: completeData({ chosen_offer_luce: required, iban: IBAN }) }, c),
+      );
+      expect(ok.status).toBe(200);
+
+      const c2 = await cookie();
+      const noIban = await handlers.complete(
+        json("POST", "/api/lead/complete", { data: completeData({ chosen_offer_luce: free }) }, c2),
+      );
+      expect(noIban.status).toBe(200);
+    });
+
+    it("dual: either offer requiring IBAN is enough; neither requiring it is not", async () => {
+      const luce = await ids("luce");
+      const gas = await ids("gas");
+      const check = (l: string, g: string, iban?: string) =>
+        checkCompletionReferences(repo, {
+          customer_type: "casa",
+          chosen_offer_luce: l,
+          chosen_offer_gas: g,
+          iban: iban ?? null,
+        });
+      expect(await check(luce.required, gas.free)).toEqual({ iban: "required" });
+      expect(await check(luce.free, gas.required)).toEqual({ iban: "required" });
+      expect(await check(luce.required, gas.required)).toEqual({ iban: "required" });
+      expect(await check(luce.free, gas.free)).toEqual({});
+      expect(await check(luce.required, gas.required, IBAN)).toEqual({});
     });
   });
 

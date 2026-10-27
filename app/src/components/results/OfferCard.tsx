@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { Button, CheckIcon, ChevronDownIcon, cn } from "@/components/ui";
-import { formatEuro, formatPrice } from "@/lib/logic";
+import { IBAN_REQUIRED_NOTICE, formatEuro, formatPrice, formatVariablePrice, isVariableOffer } from "@/lib/logic";
 import type { Commodity, OfferWithSupplier } from "@/lib/data/types";
 import { supplierLogoSrc } from "./logo-src";
 import { toCents, unitFor } from "./results-logic";
@@ -10,14 +10,17 @@ import { toCents, unitFor } from "./results-logic";
 export interface OfferCardProps {
   offer: OfferWithSupplier;
   commodity: Commodity;
-  /** Unrounded monthly cost (VAT excluded) for the current consumption. */
-  monthlyCost: number;
+  /** Unrounded monthly cost (VAT excluded) for the current consumption; null for variable offers. */
+  monthlyCost: number | null;
+  /** "In evidenza" badge, decided by featuredBadgeIds (not by offer.featured). */
+  featured?: boolean;
   /** The customer already picked this offer (Luce+Gas: coming back to a step). */
   chosen?: boolean;
   onActivate: () => void;
 }
 
-function monthsLabel(n: number): string {
+function monthsLabel(n: number | null): string {
+  if (n === null) return "—";
   return n === 1 ? "1 mese" : `${n} mesi`;
 }
 
@@ -53,29 +56,31 @@ function EstimateTooltip() {
   );
 }
 
-export function OfferCard({ offer, commodity, monthlyCost, chosen = false, onActivate }: OfferCardProps) {
+export function OfferCard({ offer, commodity, monthlyCost, featured = false, chosen = false, onActivate }: OfferCardProps) {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
   const unit = unitFor(commodity);
   const logo = supplierLogoSrc(offer.supplier);
   const promo = offer.promo_text?.trim();
   const details = offer.details?.trim();
+  const variable = isVariableOffer(offer);
   const hasOtherVariable = offer.other_variable_costs > 0;
+  const priceText = variable ? formatVariablePrice(offer.energy_price) : formatPrice(offer.energy_price, unit);
 
   return (
     <article
       data-testid="offer-card"
       data-offer-id={offer.id}
       data-supplier-id={offer.supplier_id}
-      data-featured={offer.featured ? "true" : "false"}
-      data-monthly-cost={toCents(monthlyCost)}
+      data-featured={featured ? "true" : "false"}
+      data-monthly-cost={monthlyCost === null ? "variable" : toCents(monthlyCost)}
       data-chosen={chosen ? "true" : "false"}
       className={cn(
         "overflow-hidden rounded-card border bg-surface shadow-card",
-        offer.featured ? "border-brand-600 ring-1 ring-brand-600" : "border-line",
+        featured ? "border-brand-600 ring-1 ring-brand-600" : "border-line",
       )}
     >
-      {offer.featured && (
+      {featured && (
         <div
           data-testid="offer-featured-band"
           className="bg-brand-600 px-5 py-1.5 text-sm font-semibold text-white"
@@ -106,7 +111,9 @@ export function OfferCard({ offer, commodity, monthlyCost, chosen = false, onAct
                 {offer.name}
               </h3>
               <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-muted">
-                <span data-testid="offer-locked">Bloccato {monthsLabel(offer.locked_months)}</span>
+                {!variable && offer.locked_months !== null && (
+                  <span data-testid="offer-locked">Bloccato {monthsLabel(offer.locked_months)}</span>
+                )}
                 {chosen && (
                   <span
                     data-testid="offer-chosen-badge"
@@ -122,8 +129,8 @@ export function OfferCard({ offer, commodity, monthlyCost, chosen = false, onAct
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <dt className="text-ink-muted">Prezzo {commodity === "luce" ? "luce" : "gas"}</dt>
-              <dd data-testid="offer-price" className="text-base font-semibold text-ink">
-                {formatPrice(offer.energy_price, unit)}
+              <dd data-testid="offer-price" className="text-base font-semibold text-ink [overflow-wrap:anywhere]">
+                {priceText}
               </dd>
               {hasOtherVariable && (
                 <dd className="text-xs text-ink-subtle">
@@ -160,18 +167,37 @@ export function OfferCard({ offer, commodity, monthlyCost, chosen = false, onAct
             Vedi dettagli
             <ChevronDownIcon className={cn("transition-transform", expanded && "rotate-180")} />
           </button>
+
+          {offer.iban_required && (
+            <p
+              data-testid="offer-iban-notice"
+              className="rounded-control bg-surface-muted px-3 py-2 text-sm text-ink-muted"
+            >
+              {IBAN_REQUIRED_NOTICE}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 border-t border-line pt-4 lg:w-72 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-          <div>
-            <p className="flex items-center gap-2 text-sm text-ink-muted">
-              Spesa mensile <EstimateTooltip />
-            </p>
-            <p data-testid="offer-monthly" className="text-4xl font-bold tracking-tight text-ink">
-              {formatEuro(monthlyCost)}
-            </p>
-            <p className="text-xs text-ink-subtle">al mese, IVA esclusa</p>
-          </div>
+          {monthlyCost === null ? (
+            <div>
+              <p className="text-sm text-ink-muted">Spesa mensile</p>
+              <p data-testid="offer-monthly" className="text-2xl font-bold tracking-tight text-ink">
+                Varia con il PUN
+              </p>
+              <p className="text-xs text-ink-subtle">{priceText}</p>
+            </div>
+          ) : (
+            <div>
+              <p className="flex items-center gap-2 text-sm text-ink-muted">
+                Spesa mensile <EstimateTooltip />
+              </p>
+              <p data-testid="offer-monthly" className="text-4xl font-bold tracking-tight text-ink">
+                {formatEuro(monthlyCost)}
+              </p>
+              <p className="text-xs text-ink-subtle">al mese, IVA esclusa</p>
+            </div>
+          )}
           <Button size="lg" fullWidth onClick={onActivate} data-testid="offer-cta">
             Attiva online in 1 minuto
           </Button>
@@ -181,8 +207,8 @@ export function OfferCard({ offer, commodity, monthlyCost, chosen = false, onAct
       {expanded && (
         <div id={detailsId} data-testid="offer-details" className="border-t border-line bg-surface-muted px-5 py-4">
           <dl className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
-            <Row label="Prezzo bloccato" value={monthsLabel(offer.locked_months)} />
-            <Row label="Prezzo energia" value={formatPrice(offer.energy_price, unit)} />
+            {!variable && <Row label="Prezzo bloccato" value={monthsLabel(offer.locked_months)} />}
+            <Row label={variable ? "Prezzo" : "Prezzo energia"} value={priceText} />
             <Row label="Altri costi variabili" value={formatPrice(offer.other_variable_costs, unit)} />
             <Row label="Quota fissa mensile" value={formatEuro(offer.fixed_fee_monthly)} />
             {offer.other_fixed_costs_monthly > 0 && (

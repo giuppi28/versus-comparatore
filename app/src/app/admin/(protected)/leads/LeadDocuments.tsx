@@ -9,7 +9,7 @@ import { DOCUMENT_MIME_LABELS, formatDateTime, formatFileSize } from "./labels";
 import { useHydrated } from "./use-hydrated";
 
 /**
- * Uploaded identity documents. Signed URLs are requested on demand (server action, <= 300 s)
+ * Uploaded files (identity documents and bill, labelled by kind). Signed URLs are requested on demand (server action, <= 300 s)
  * and never rendered in the page; "Anteprima" opens in a new tab, "Scarica" navigates to the
  * attachment URL. Images also get a small inline preview on request.
  */
@@ -56,6 +56,10 @@ export function LeadDocuments({ documents }: { documents: LeadDocument[] }) {
             className="flex flex-col gap-2 rounded-control border border-line p-3"
           >
             <div className="font-medium">
+              <span data-testid="lead-document-kind" className="font-semibold">
+                {doc.kind === "bill" ? "Bolletta" : "Documento d'identità"}
+              </span>
+              <span className="font-normal text-ink-muted"> · </span>
               {DOCUMENT_MIME_LABELS[doc.mime_type] ?? doc.mime_type}
               <span className="font-normal text-ink-muted">
                 {" "}

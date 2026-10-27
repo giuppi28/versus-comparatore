@@ -82,26 +82,53 @@ test.describe("admin offers", () => {
     await expect(rows.first()).toBeVisible();
     // The default view is exactly what customers see: every row is active and visible.
     const visibleFlags = await rows.evaluateAll((els) => els.map((e) => e.getAttribute("data-visible")));
-    expect(visibleFlags.length).toBeGreaterThanOrEqual(8);
+    expect(visibleFlags.length).toBeGreaterThanOrEqual(42);
     expect(new Set(visibleFlags)).toEqual(new Set(["true"]));
     // Other specs create and delete their own offers at the same time: compare SEEDED offers only.
     const seededVisible = (await rows.evaluateAll((els) => els.map((e) => e.getAttribute("data-offer-id") ?? ""))).filter(
-      (id) => id.startsWith("offer-"),
+      (id) => id.startsWith("offer-aldo-"),
     );
-    expect(seededVisible.length).toBeGreaterThanOrEqual(8);
+    expect(seededVisible).toHaveLength(42);
 
-    const edison = row(page, "offer-edison-luce-fissa-12");
-    await expect(edison).toContainText("Edison Energia");
-    await expect(edison).toContainText("Luce");
-    await expect(edison).toContainText("Casa e Partita IVA");
-    await expect(edison.getByTestId("offer-price")).toHaveText("0,1290 €/kWh");
-    await expect(edison.getByTestId("offer-fee")).toHaveText("9,00 €");
-    await expect(edison.getByTestId("badge-active")).toHaveText("Attiva");
-    await expect(edison.getByTestId("badge-featured")).toHaveText("In evidenza");
-    await expect(edison.getByTestId("badge-verified")).toHaveText(/Da verificare|Prezzo verificato/);
-    const sorgenia = row(page, "offer-sorgenia-luce-sicura-24");
-    await expect(sorgenia.getByTestId("badge-featured")).toHaveCount(0);
-    await expect(row(page, "offer-plenitude-gas-fisso-12").getByTestId("offer-price")).toContainText("€/Smc");
+    // Aldo's offers: 0 fee, verified, "Casa" / "Partita IVA" labels (no "both" offers).
+    const irenFixed = row(page, "offer-aldo-01");
+    await expect(irenFixed).toContainText("Iren");
+    await expect(irenFixed).toContainText("Luce");
+    await expect(irenFixed).toContainText("Casa");
+    await expect(irenFixed).not.toContainText("Partita IVA");
+    await expect(irenFixed.getByTestId("offer-price")).toHaveText("0,1300 €/kWh");
+    await expect(irenFixed.getByTestId("offer-fee")).toHaveText("0,00 €");
+    await expect(irenFixed.getByTestId("badge-active")).toHaveText("Attiva");
+    await expect(irenFixed.getByTestId("badge-verified")).toHaveText("Prezzo verificato");
+    await expect(irenFixed.getByTestId("badge-iban")).toHaveText("IBAN obbligatorio");
+    await expect(irenFixed.getByTestId("badge-featured")).toHaveCount(0);
+    await expect(irenFixed.getByTestId("badge-variable")).toHaveCount(0);
+    // Variable offers: "Variabile" badge, spread shown as the stored price; no IBAN badge when not required.
+    const irenVariable = row(page, "offer-aldo-03");
+    await expect(irenVariable).toContainText("Prezzo Variabile Revolution");
+    await expect(irenVariable.getByTestId("badge-variable")).toHaveText("Variabile");
+    await expect(irenVariable.getByTestId("offer-price")).toHaveText("0,0100 €/kWh");
+    await expect(irenVariable.getByTestId("badge-iban")).toHaveCount(0);
+    await expect(row(page, "offer-aldo-05").getByTestId("badge-variable")).toHaveText("Variabile");
+    await expect(row(page, "offer-aldo-05").getByTestId("badge-iban")).toHaveText("IBAN obbligatorio");
+    // Forced-featured per audience: Sentra / Enel luce business and Sentra / Enegan gas business.
+    for (const id of ["offer-aldo-14", "offer-aldo-15", "offer-aldo-34", "offer-aldo-35"]) {
+      await expect(row(page, id)).toHaveAttribute("data-featured", "true");
+      await expect(row(page, id).getByTestId("badge-featured")).toHaveText("In evidenza");
+      await expect(row(page, id).getByTestId("badge-audience")).toHaveText("Partita IVA");
+      await expect(row(page, id)).toContainText("Partita IVA");
+    }
+    const sentraBiz = row(page, "offer-aldo-14");
+    await expect(sentraBiz).toContainText("Sentra Energia");
+    await expect(sentraBiz.getByTestId("offer-price")).toHaveText("0,1300 €/kWh");
+    const featuredSeeded = await rows.evaluateAll((els) =>
+      els.filter((e) => e.getAttribute("data-featured") === "true").map((e) => e.getAttribute("data-offer-id") ?? ""),
+    );
+    expect(featuredSeeded.filter((id) => id.startsWith("offer-aldo-")).sort()).toEqual(
+      ["offer-aldo-14", "offer-aldo-15", "offer-aldo-34", "offer-aldo-35"],
+    );
+    await expect(row(page, "offer-aldo-02").getByTestId("badge-featured")).toHaveCount(0);
+    await expect(row(page, "offer-aldo-23").getByTestId("offer-price")).toContainText("€/Smc");
 
     // "Tutte" is a superset of "Visibili ai clienti".
     await page.getByTestId("filter-all").click();
@@ -121,7 +148,9 @@ test.describe("admin offers", () => {
     await login(page);
     const name = uniqueName("Gas annuale", info);
     await page.goto("/admin/offerte/nuova");
-    await expect(page.getByTestId("price-type-info")).toContainText("Prezzo fisso monorario");
+    await expect(page.locator("[name=price_type]")).toHaveValue("fixed");
+    await expect(page.locator("[name=iban_required]")).not.toBeChecked();
+    await expect(page.locator("[name=featured_audience]")).toHaveValue("");
 
     // Live preview: 1.400 Smc/anno, IVA esclusa.
     await page.locator("[name=supplier_id]").selectOption("iren");
@@ -292,6 +321,56 @@ test.describe("admin offers", () => {
     await expect(r).toHaveAttribute("data-featured", "false");
     await expect(r.getByTestId("badge-featured")).toHaveCount(0);
     await noOverflow(page);
+  });
+
+  test("variable luce offer with IBAN and audience Casa: values are saved and shown on edit", async ({ page }, info) => {
+    await login(page);
+    const name = uniqueName("Variabile", info);
+    let id: string | null = null;
+    try {
+      await page.goto("/admin/offerte/nuova");
+      await page.locator("[name=supplier_id]").selectOption("iren");
+      await page.locator("[name=name]").fill(name);
+      await page.locator("[name=commodity]").selectOption("luce");
+      await page.locator("[name=customer_type]").selectOption("casa");
+      await page.locator("[name=price_type]").selectOption("variable");
+      await expect(page.locator("label", { hasText: "Spread sul PUN (€/kWh)" })).toBeVisible();
+      await expect(page.locator("[name=locked_months]")).toHaveCount(0);
+      await page.locator("[name=energy_price]").fill("0,0150");
+      await page.locator("[name=fixed_fee]").fill("8");
+      await page.locator("[name=iban_required]").check();
+      await page.locator("[name=featured_audience]").selectOption("casa");
+      await page.locator("[name=active]").uncheck(); // never visible to customers
+      await noOverflow(page);
+      await page.getByRole("button", { name: "Crea offerta" }).click();
+      await page.waitForURL(/\/admin\/offerte\/[^/]+\?esito=creata$/);
+      id = new URL(page.url()).pathname.split("/").pop()!;
+
+      await expect(page.locator("[name=price_type]")).toHaveValue("variable");
+      await expect(page.locator("[name=energy_price]")).toHaveValue("0,0150");
+      await expect(page.locator("label", { hasText: "Spread sul PUN (€/kWh)" })).toBeVisible();
+      await expect(page.locator("[name=locked_months]")).toHaveCount(0);
+      await expect(page.locator("[name=iban_required]")).toBeChecked();
+      await expect(page.locator("[name=featured_audience]")).toHaveValue("casa");
+
+      // Switching to gas forces a fixed price and brings the lock months back.
+      await page.locator("[name=commodity]").selectOption("gas");
+      await expect(page.locator("[name=price_type]")).toHaveValue("fixed");
+      await expect(page.locator("[name=locked_months]")).toBeVisible();
+
+      await page.goto("/admin/offerte?vista=tutte");
+      const r = row(page, id);
+      await expect(r.getByTestId("badge-variable")).toHaveText("Variabile");
+      await expect(r.getByTestId("badge-iban")).toHaveText("IBAN obbligatorio");
+      await expect(r.getByTestId("badge-audience")).toHaveText("Casa");
+    } finally {
+      if (id) {
+        await page.goto(`/admin/offerte/${id}`);
+        await page.getByTestId("delete-offer").click();
+        await page.getByTestId("confirm-dialog-confirm").click();
+        await page.waitForURL(/\/admin\/offerte\?esito=eliminata$/);
+      }
+    }
   });
 
   test("validation errors are shown inline and nothing is saved", async ({ page }, info) => {

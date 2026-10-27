@@ -1,6 +1,6 @@
 # VERSUS logo pack
 
-Normalized supplier logos for the 11 real suppliers (the placeholders `tutela`, `altro-fornitore`, `non-lo-so` have no logo by design; the UI shows the text chip).
+Normalized supplier logos for the 11 real suppliers plus 4 new ones added on 2026-10-27 (the placeholders `tutela`, `altro-fornitore`, `non-lo-so` have no logo by design; the UI shows the text chip).
 
 ```
 logopack/
@@ -19,7 +19,7 @@ Files are named after `suppliers.slug`. Rebuild needs Node >= 22 and `app/node_m
 ## Sources
 
 All logos are the `*-logo.svg` file of the "originali" pack (see its MANIFEST.md for the original URLs; kinds: Original = byte-for-byte as published).
-No raster (PNG) fallback was needed and no symbol-only variant is used.
+No raster (PNG) file is shipped and no symbol-only variant is used. Two of the 2026-10-27 logos (Sentra, Asti) are vector traces of official raster files (see MANIFEST.md).
 
 | slug | Source file (originali/) | Kind (MANIFEST) | Notes |
 |---|---|---|---|
@@ -34,6 +34,10 @@ No raster (PNG) fallback was needed and no symbol-only variant is used.
 | engie | engie/engie-logo.svg | Original (Wikimedia, 2026 flat logo) | |
 | eon-energia | eon/eon-logo.svg | Original (Wikimedia) | |
 | iberdrola | iberdrola/iberdrola-logo.svg | Original (Wikimedia, 2023) | |
+| sentra-energia | sentra/sentra-logo.svg | **Traced** (vectorised from the official 1200 px logo on sentra.it; no SVG exists) | added 2026-10-27; edges slightly softer than a native vector |
+| estra-energia | estra/estra-logo.svg | Original (inline SVG of corporate.estra.it) | added 2026-10-27; estra.it now redirects to aliaestra.it (Alia + Estra / Plures) |
+| enegan | enegan/enegan-logo.svg | Original (enegan.it) | added 2026-10-27; includes the "Energy partner" tagline |
+| asti-energia | asti-energy/asti-energy-logo.svg | **Traced** (vectorised from the official 1862 px PNG on aenergy.it; no SVG exists) | added 2026-10-27; the brand shown is "Aenergy" |
 
 Alternates exist in the source pack if a tagline-free version is preferred later (not used): `a2a-symbol.svg` (a2a wordmark without tagline), `sorgenia-symbol.svg` (star only), `*-symbol.svg` for Enel (traced), Plenitude, Edison, Hera, Iren, Iberdrola.
 
@@ -46,8 +50,8 @@ Alternates exist in the source pack if a tagline-free version is preferred later
 
 ## Verification (run by `tools/build.mjs`, repeated by `app/src/lib/svg/logopack.test.ts`)
 
-- Sanitizer fixed point for all 33 files; `app/public/logos/*` byte-identical to `color/*`.
-- Silhouette check: the alpha mask of `black/` and `white/` equals the one of `color/` (0 % differing pixels at 2400 px for all 11 logos), i.e. no shape changed.
+- Sanitizer fixed point for all 45 files; `app/public/logos/*` byte-identical to `color/*`.
+- Silhouette check: the alpha mask of `black/` and `white/` equals the one of `color/` (0 % differing pixels at 2400 px for all 15 logos), i.e. no shape changed.
 - No artwork touches the edge of the viewBox (nothing clipped).
 - Visual check of `preview-light.png` / `preview-dark.png`.
 
@@ -55,4 +59,4 @@ Note: the color variants of Iren (black wordmark), Hera and Edison (dark ink) ar
 
 ## Missing
 
-Nothing: all 11 real suppliers have a usable vector logo. Not covered: logos of suppliers that may be added later through the admin area (uploaded as SVG and sanitized by the same function).
+Nothing: all 15 suppliers have a usable vector logo. The 4 suppliers added on 2026-10-27 (`sentra-energia`, `estra-energia`, `enegan`, `asti-energia`) do **not** exist in the `suppliers` table yet: when they are created (admin or migration) use exactly these slugs and set `logo_path = '/logos/<slug>.svg'`. `logopack.test.ts` lists them in `EXTRA_PACK_SLUGS` until they are in the mock data. Not covered: logos of suppliers that may be added later through the admin area (uploaded as SVG and sanitized by the same function).

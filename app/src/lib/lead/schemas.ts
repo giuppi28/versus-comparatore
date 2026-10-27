@@ -26,7 +26,7 @@ import {
   validatePod,
   type ValidationResult,
 } from "@/lib/logic/validators";
-import { DOCUMENT_TYPES, type DocumentType, type LeadData } from "@/lib/data/types";
+import { DOCUMENT_TYPES, LEAD_DOCUMENT_KINDS, type DocumentType, type LeadData, type LeadDocumentKind } from "@/lib/data/types";
 import { POWER_KW_OPTIONS } from "./rules";
 
 export type FieldErrors = Record<string, string>;
@@ -249,3 +249,6 @@ type AssertLeadData<T extends LeadData> = T;
 export type _CreateIsLeadData = AssertLeadData<ParsedCreateData>;
 export type _PatchIsLeadData = AssertLeadData<ParsedPatchData>;
 export type _CompleteIsLeadData = AssertLeadData<ParsedCompleteData>;
+
+/** Upload form field `kind`: identity document (default) or bill. */
+export const leadDocumentKindSchema = z.enum(LEAD_DOCUMENT_KINDS as [LeadDocumentKind, ...LeadDocumentKind[]]).default("id_document");

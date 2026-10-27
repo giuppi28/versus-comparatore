@@ -79,6 +79,13 @@ describe("thankYouSummary", () => {
     expect(summary?.totalMonthly).toBeCloseTo(totalMonthlyCost(state) ?? NaN, 2);
   });
 
+  it("dual with a variable offer: no total can be computed", () => {
+    const variable = { ...luceOffer, price_type: "variable" as const, monthly_cost: null, locked_months: null };
+    const state = withState({ firstName: "Anna", chosenOffers: { luce: variable, gas: gasOffer } });
+    expect(thankYouSummary(state)?.totalMonthly).toBeNull();
+    expect(thankYouSummary(state)?.offers).toHaveLength(2);
+  });
+
   it("keeps a gas-only offer", () => {
     const state = withState({ firstName: "Anna", chosenOffers: { luce: null, gas: gasOffer } });
     expect(thankYouSummary(state)?.offers).toEqual([gasOffer]);

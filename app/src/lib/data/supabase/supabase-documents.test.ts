@@ -59,14 +59,14 @@ function setup(opts: { rpc?: Result[]; from?: Result[]; upload?: Result; signed?
 const withSecret = { leadSecret: () => SECRET };
 const slot = { data: { id: DOC, lead_id: LEAD, path: PATH, bucket: "lead-documents", expires_at: "2026-10-23T10:05:00Z" } };
 const confirmed = {
-  data: { id: DOC, lead_id: LEAD, mime_type: "image/jpeg", size_bytes: JPEG.length, created_at: "2026-10-23T10:00:00Z" },
+  data: { id: DOC, lead_id: LEAD, kind: "id_document", mime_type: "image/jpeg", size_bytes: JPEG.length, created_at: "2026-10-23T10:00:00Z" },
 };
 
 describe("uploadLeadDocument (register -> upload -> confirm)", () => {
   it("calls the RPCs with the secret + token and uploads exactly the issued path", async () => {
     const t = setup({ rpc: [slot, confirmed] });
     const doc = await createSupabaseRepository(t.client, withSecret).uploadLeadDocument("tok", { mime: "image/jpeg", bytes: JPEG });
-    expect(doc).toEqual({ id: DOC, lead_id: LEAD, mime_type: "image/jpeg", size_bytes: JPEG.length, created_at: "2026-10-23T10:00:00Z" });
+    expect(doc).toEqual({ id: DOC, lead_id: LEAD, kind: "id_document", mime_type: "image/jpeg", size_bytes: JPEG.length, created_at: "2026-10-23T10:00:00Z" });
     expect(t.rpc).toHaveBeenNthCalledWith(1, "register_lead_document", {
       p_secret: SECRET,
       p_token: "tok",
@@ -76,6 +76,46 @@ describe("uploadLeadDocument (register -> upload -> confirm)", () => {
     expect(t.fromBucket).toHaveBeenCalledWith("lead-documents");
     expect(t.upload).toHaveBeenCalledWith(PATH, JPEG, { contentType: "image/jpeg", upsert: false });
     expect(t.rpc).toHaveBeenNthCalledWith(2, "confirm_lead_document", { p_secret: SECRET, p_token: "tok", p_document_id: DOC });
+  });
+
+  it("bill: sends p_kind, returns kind bill; id documents never send p_kind", async () => {
+    const t = setup({ rpc: [{ data: { ...slot.data, kind: "bill" } }, { data: { ...confirmed.data, kind: "bill", mime_type: "application/pdf" } }] });
+    const doc = await createSupabaseRepository(t.client, withSecret).uploadLeadDocument("tok", { mime: "application/pdf", bytes: PDF, kind: "bill" });
+    expect(doc.kind).toBe("bill");
+    expect(t.rpc).toHaveBeenNthCalledWith(1, "register_lead_document", {
+      p_secret: SECRET,
+      p_token: "tok",
+      p_mime_type: "application/pdf",
+      p_size_bytes: PDF.length,
+      p_kind: "bill",
+    });
+    const id = setup({ rpc: [slot, confirmed] });
+    await createSupabaseRepository(id.client, withSecret).uploadLeadDocument("tok", { mime: "image/jpeg", bytes: JPEG, kind: "id_document" });
+    expect((id.rpc.mock.calls[0] as unknown[])[1]).not.toHaveProperty("p_kind");
+  });
+
+  it("bill rules are checked before any call (PDF only, 4 MiB); bill_limit_reached maps to a bill limit error", async () => {
+    const t = setup();
+    const repo = createSupabaseRepository(t.client, withSecret);
+    await expect(repo.uploadLeadDocument("tok", { mime: "image/jpeg", bytes: JPEG, kind: "bill" })).rejects.toMatchObject({ reason: "type" });
+    const big = new Uint8Array(4 * 1024 * 1024 + 1);
+    big.set(PDF);
+    await expect(repo.uploadLeadDocument("tok", { mime: "application/pdf", bytes: big, kind: "bill" })).rejects.toMatchObject({ reason: "size" });
+    expect(t.rpc).not.toHaveBeenCalled();
+    const full = setup({ rpc: [{ data: null, error: { message: "bill_limit_reached", code: "22023" } }] });
+    await expect(
+      createSupabaseRepository(full.client, withSecret).uploadLeadDocument("tok", { mime: "application/pdf", bytes: PDF, kind: "bill" }),
+    ).rejects.toMatchObject({ code: "document_limit_reached", kind: "bill" });
+    const idFull = setup({ rpc: [{ data: null, error: { message: "document_limit_reached", code: "22023" } }] });
+    await expect(
+      createSupabaseRepository(idFull.client, withSecret).uploadLeadDocument("tok", { mime: "image/jpeg", bytes: JPEG }),
+    ).rejects.toMatchObject({ kind: "id_document" });
+  });
+
+  it("listLeadDocuments falls back to the legacy columns when `kind` does not exist yet", async () => {
+    const legacy = { id: DOC, lead_id: LEAD, mime_type: "image/jpeg", size_bytes: 7, created_at: "2026-10-23T10:00:00Z" };
+    const t = setup({ from: [{ data: null, error: { message: "column lead_documents.kind does not exist", code: "42703" } }, { data: [legacy] }] });
+    expect(await createSupabaseRepository(t.client).listLeadDocuments(LEAD)).toEqual([{ ...legacy, kind: "id_document" }]);
   });
 
   it("validates the file before any call (type, size, magic bytes)", async () => {
@@ -138,7 +178,7 @@ describe("admin document access", () => {
     expect(await createSupabaseRepository(t.client).listLeadDocuments(LEAD)).toEqual([confirmed.data]);
     expect(t.builders[0].table).toBe("lead_documents");
     expect(t.builders[0].calls).toEqual([
-      ["select", ["id, lead_id, mime_type, size_bytes, created_at"]],
+      ["select", ["id, lead_id, kind, mime_type, size_bytes, created_at"]],
       ["eq", ["lead_id", LEAD]],
       ["eq", ["status", "uploaded"]],
       ["order", ["created_at"]],

@@ -7,7 +7,7 @@ import { Button, Card, CheckIcon } from "@/components/ui";
 import { useFlow } from "@/lib/lead/flow-context";
 import type { ChosenOfferSnapshot } from "@/lib/lead/flow-state";
 import { resolveLogoUrl } from "@/lib/data/logo";
-import { formatEuro, formatPrice } from "@/lib/logic";
+import { formatEuro, formatPrice, formatVariablePrice, isVariableOffer } from "@/lib/logic";
 import { ThankYouDecor } from "./ThankYouDecor";
 import { thankYouSummary, type ThankYouSummary } from "./summary";
 
@@ -65,6 +65,14 @@ export default function GrazieClient({ callbackPhone }: { callbackPhone: string 
               </a>{" "}
               da un nostro consulente per confermare l&apos;attivazione.
             </p>
+            <a
+              href="/api/vcard"
+              download="versus.vcf"
+              data-testid="thankyou-vcard"
+              className="inline-flex min-h-11 items-center justify-center rounded-control border border-control bg-surface px-5 text-base font-semibold text-ink transition-colors hover:border-ink"
+            >
+              Salva il nostro numero
+            </a>
           </div>
 
           <section
@@ -77,13 +85,15 @@ export default function GrazieClient({ callbackPhone }: { callbackPhone: string 
             ))}
           </section>
 
-          {dual && view.totalMonthly !== null && (
+          {dual && (
             <div
               data-testid="thankyou-total"
               className="mt-4 flex items-center justify-between rounded-control bg-brand-50 px-5 py-4"
             >
               <span className="font-semibold">Spesa mensile totale stimata</span>
-              <span className="text-xl font-bold text-brand-700">{formatEuro(view.totalMonthly)}</span>
+              <span className="text-xl font-bold text-brand-700">
+                {view.totalMonthly === null ? "Varia con il PUN" : formatEuro(view.totalMonthly)}
+              </span>
             </div>
           )}
 
@@ -110,6 +120,7 @@ function OfferSummary({ offer }: { offer: ChosenOfferSnapshot }) {
   const isLuce = offer.commodity === "luce";
   const commodityLabel = isLuce ? "Luce" : "Gas";
   const unit = isLuce ? "kWh" : "Smc";
+  const variable = isVariableOffer(offer);
   const logo = resolveLogoUrl(offer.supplier_logo_path);
   return (
     <article
@@ -137,19 +148,25 @@ function OfferSummary({ offer }: { offer: ChosenOfferSnapshot }) {
 
       <div className="mt-3 flex items-baseline justify-between gap-4 border-b border-line pb-3">
         <span className="text-ink-muted">Spesa mensile stimata</span>
-        <span className="text-2xl font-bold">{formatEuro(offer.monthly_cost)}</span>
+        <span className="text-2xl font-bold">
+          {offer.monthly_cost === null ? "Varia con il PUN" : formatEuro(offer.monthly_cost)}
+        </span>
       </div>
 
       <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-        <div>
-          <dt className="text-ink-subtle">Bloccato</dt>
-          <dd className="font-semibold">
-            {offer.locked_months} {offer.locked_months === 1 ? "mese" : "mesi"}
-          </dd>
-        </div>
+        {!variable && offer.locked_months !== null && (
+          <div>
+            <dt className="text-ink-subtle">Bloccato</dt>
+            <dd className="font-semibold">
+              {offer.locked_months} {offer.locked_months === 1 ? "mese" : "mesi"}
+            </dd>
+          </div>
+        )}
         <div>
           <dt className="text-ink-subtle">Prezzo</dt>
-          <dd className="font-semibold">{formatPrice(offer.energy_price, unit)}</dd>
+          <dd className="font-semibold">
+            {variable ? formatVariablePrice(offer.energy_price) : formatPrice(offer.energy_price, unit)}
+          </dd>
         </div>
         <div>
           <dt className="text-ink-subtle">Quota fissa</dt>

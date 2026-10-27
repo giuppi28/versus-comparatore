@@ -27,8 +27,8 @@ function offerWithSupplier(id: string): OfferWithSupplier {
   return { ...o, supplier: MOCK_SUPPLIERS.find((s) => s.id === o.supplier_id)! };
 }
 
-const LUCE = offerWithSupplier("offer-edison-luce-fissa-12");
-const GAS = offerWithSupplier("offer-plenitude-gas-fisso-12");
+const LUCE = offerWithSupplier("offer-aldo-10");
+const GAS = offerWithSupplier("offer-aldo-26");
 
 function filledState(overrides: Partial<FlowState> = {}): FlowState {
   return applyFlowPatch(INITIAL_FLOW_STATE, {
@@ -196,9 +196,21 @@ describe("selectors", () => {
     const s = filledState();
     const luce = s.chosenOffers.luce!;
     expect(luce).toMatchObject({ offer_id: LUCE.id, supplier_name: "Edison Energia", locked_months: 12 });
-    expect(luce.monthly_cost).toBeCloseTo((1800 / 12) * (0.129 + 0.06) + 9, 6);
-    expect(totalMonthlyCost(s)).toBeCloseTo(luce.monthly_cost + s.chosenOffers.gas!.monthly_cost, 6);
+    expect(luce.monthly_cost).toBeCloseTo((1800 / 12) * 0.2, 6);
+    expect(totalMonthlyCost(s)).toBeCloseTo(luce.monthly_cost! + s.chosenOffers.gas!.monthly_cost!, 6);
     expect(totalMonthlyCost(INITIAL_FLOW_STATE)).toBeNull();
+  });
+
+  it("variable chosen offer: null monthly cost, no total, monthly_cost_shown = null", () => {
+    const variable = { ...LUCE, price_type: "variable" as const, locked_months: null };
+    const snap = snapshotOffer(variable, 1800);
+    expect(snap).toMatchObject({ monthly_cost: null, price_type: "variable", locked_months: null });
+    const s = filledState();
+    const v = applyFlowPatch(s, { chosenOffers: { luce: snap } });
+    expect(totalMonthlyCost(v)).toBeNull();
+    expect(toLeadPatchData(v).monthly_cost_shown).toBeNull();
+    // nothing chosen: the field is omitted rather than nulled
+    expect("monthly_cost_shown" in toLeadPatchData(INITIAL_FLOW_STATE)).toBe(false);
   });
 });
 

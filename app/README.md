@@ -28,7 +28,7 @@ overwrite each other's results.
 so admin changes reach customers immediately. In mock mode admin and public pages share the same
 server-side mock singleton.
 
-The loading screen lasts 4000 ms by default; `NEXT_PUBLIC_LOADING_MS` overrides it and `?fast=1`
+The loading screen lasts 7500 ms by default; `NEXT_PUBLIC_LOADING_MS` overrides it and `?fast=1`
 forces 250 ms. Browser storage keys: `sessionStorage` `versus.results.loaded.v1` (loading already
 shown for the current results) and `versus.activation.step.v1` (current activation step).
 

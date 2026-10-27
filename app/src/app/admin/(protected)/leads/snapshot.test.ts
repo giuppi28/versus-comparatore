@@ -65,10 +65,28 @@ describe("currentSupplierLabel", () => {
 
 describe("chosenOfferView", () => {
   it("live offer wins", () => {
-    expect(chosenOfferView("Edison — X", snap())).toEqual({
+    expect(chosenOfferView({ label: "Edison — X", energy_price: 0.1 }, snap())).toEqual({
       kind: "live",
       label: "Edison — X",
+      lines: [],
     });
+  });
+  it("live offer: IBAN-only and variable show the notice and PUN spread", () => {
+    const v = chosenOfferView(
+      { label: "Iren — V", energy_price: 0.01, price_type: "variable", iban_required: true },
+      null,
+    );
+    expect(v).toEqual({
+      kind: "live",
+      label: "Iren — V",
+      lines: ["Prezzo energia: PUN + 0,01\u00a0€/kWh", "Pagamento con IBAN obbligatorio"],
+    });
+  });
+  it("snapshot: variable shows PUN + spread without the lock line; IBAN notice", () => {
+    const lines = snapshotPriceLines(snap({ price_type: "variable", energy_price: 0.0125, locked_months: 12, iban_required: true }));
+    expect(lines[0]).toBe("Prezzo energia: PUN + 0,0125\u00a0€/kWh");
+    expect(lines.some((l) => l.startsWith("Vincolo"))).toBe(false);
+    expect(lines.at(-1)).toBe("Pagamento con IBAN obbligatorio");
   });
   it("falls back to the snapshot when the offer is gone", () => {
     const v = chosenOfferView(null, snap());
@@ -82,6 +100,7 @@ describe("chosenOfferView", () => {
     expect(chosenOfferView(null, null, true)).toEqual({
       kind: "live",
       label: "Offerta non più disponibile",
+      lines: [],
     });
   });
 });

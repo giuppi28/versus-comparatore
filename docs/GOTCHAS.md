@@ -42,6 +42,11 @@ Known traps. Read the section relevant to your task before starting. Add new one
 - **HEIC** decodes only in browsers that support it (Safari); Chromium tests can't cover it.
 - **Parallel e2e share one mock repository.** Test rows use E2E/QA names and are removed in `finally`; never assert on rows you did not create. Long specs need `test.slow()` or longer expect timeouts; specs touching global settings must restore them and not run in parallel.
 - **Cookies = technical only.** `/privacy` says so, so there is no consent banner. Any analytics (incl. Vercel Analytics), pixel or non-technical cookie needs a consent banner and an update of the `/privacy` "Cookie" section (SPEC decision #13).
-- **IBAN 15% line is fixed copy** (activation step B), valid only while the 15% IBAN discount applies to all offers (SPEC decision #12).
+- **IBAN 20% box is fixed copy** (activation step B, all offers incl. IBAN-required), valid only while the 20% IBAN discount applies to all offers (SPEC decision #15; supersedes #12).
+- **Migration order (Phase 14).** Schema migrations `20261027100000` and `20261027110000` are additive and can be applied any time; data migration `20261027120000` deletes all offers and must be applied only together with the merge of `dev` into `main`.
+- **pdf.js worker is served from the package, not a CDN, and loaded lazily.** No third-party script for bill reading; loading it eagerly slows every page.
+- **vCard needs a raster PHOTO to show one.** Only SVG icons exist, so the "Salva il nostro numero" contact has no PHOTO until a PNG is added.
 - **No Prettier config.** Never `prettier --write` existing files (reflows to 80 cols, buries the real diff; happened in T13.4, T13.8). Match formatting by hand.
 - **UI copy rules:** Italian only; no "demo" wording; no phone/call-center/callback mention before the thank-you page; no Facile.it branding.
+- **Local `npm run build` with the mock data source fails on `/admin`** (`MockAuthInProductionError`, guard by design). Verify builds with `NEXT_PUBLIC_DATA_SOURCE=supabase npm run build`. PGlite checks: `PGLITE_DIR=<dir with @electric-sql/pglite@0.5> node supabase/tests/run_local.mjs` (PGlite is not an app dependency).
+- **Preview admin writes hit production data.** Until Phase 14 is merged, offers created on the preview that are variable, IBAN-required or audience-specific must stay `active = false` (the `main` code would show them wrongly); real-DB tests use inactive fixtures.

@@ -7,6 +7,7 @@
  *   3. seed.sql                  (run twice: must be idempotent)
  *   4. tests/data_checks.sql     (row counts, seed values, search, climate zones)
  *   5. tests/rls_test.sql        (RLS + lead functions; rolled back)
+ *   6. data migration 20261027120000 (twice) + tests/offers_aldo_checks.sql (the 42 offers)
  *
  * PGlite is not an app dependency. Install it anywhere and point PGLITE_DIR at the folder
  * containing node_modules/@electric-sql/pglite, e.g.:
@@ -45,11 +46,14 @@ const run = async (label, sql) => {
 
 await run("tests/supabase_stub.sql", readFileSync(path.join(here, "supabase_stub.sql"), "utf8"));
 const migDir = path.join(root, "migrations");
-for (const f of readdirSync(migDir).filter((f) => f.endsWith(".sql")).sort()) {
+// The offers DATA migration (T14.4: deletes all offers) is applied AFTER seed + tests, below,
+// so the schema tests keep their 8 seed offers; it is checked by tests/offers_aldo_checks.sql.
+const DATA_MIGRATIONS = ["20261027120000_offers_aldo_2026_10_27.sql"];
+for (const f of readdirSync(migDir).filter((f) => f.endsWith(".sql") && !DATA_MIGRATIONS.includes(f)).sort()) {
   await run(`migrations/${f}`, readFileSync(path.join(migDir, f), "utf8"));
 }
 // Additive migrations written to be re-runnable (Phase 11+): apply them a second time.
-for (const f of readdirSync(migDir).filter((f) => f.endsWith(".sql") && f >= "20261015170000").sort()) {
+for (const f of readdirSync(migDir).filter((f) => f.endsWith(".sql") && f >= "20261015170000" && !DATA_MIGRATIONS.includes(f)).sort()) {
   await run(`migrations/${f} (second run, idempotency)`, readFileSync(path.join(migDir, f), "utf8"));
 }
 const seed = readFileSync(path.join(root, "seed.sql"), "utf8");
@@ -57,13 +61,19 @@ await run("seed.sql", seed);
 await run("seed.sql (second run, idempotency)", seed);
 await run("tests/data_checks.sql", readFileSync(path.join(here, "data_checks.sql"), "utf8"));
 await run("tests/rls_test.sql", readFileSync(path.join(here, "rls_test.sql"), "utf8"));
+for (const f of DATA_MIGRATIONS) {
+  const sql = readFileSync(path.join(migDir, f), "utf8");
+  await run(`migrations/${f} (data migration)`, sql);
+  await run(`migrations/${f} (second run, idempotency)`, sql);
+}
+await run("tests/offers_aldo_checks.sql", readFileSync(path.join(here, "offers_aldo_checks.sql"), "utf8"));
 
 for (const n of notices) console.log(`  notice: ${n}`);
 const counts = await db.query(
   "select (select count(*) from public.comuni)::int as comuni, (select count(*) from public.comuni where climate_zone is null)::int as comuni_without_zone, (select count(*) from public.suppliers)::int as suppliers, (select count(*) from public.offers)::int as offers, (select count(*) from public.leads)::int as leads, (select count(*) from public.settings)::int as settings",
 );
 console.log("final row counts:", counts.rows[0]);
-if (!notices.includes("ALL RLS TESTS PASSED") || !notices.includes("ALL DATA CHECKS PASSED")) {
+if (!notices.includes("ALL RLS TESTS PASSED") || !notices.includes("ALL DATA CHECKS PASSED") || !notices.includes("ALL OFFERS ALDO CHECKS PASSED")) {
   console.error("missing success notice");
   process.exit(1);
 }

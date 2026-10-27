@@ -76,8 +76,8 @@ describe("POST /api/lead/document", () => {
     expect(res.headers.get("cache-control")).toBe("no-store");
     const body = await res.json();
     expect(Object.keys(body).sort()).toEqual(["document", "ok"]);
-    expect(Object.keys(body.document).sort()).toEqual(["id", "mime_type", "size_bytes"]);
-    expect(body.document).toMatchObject({ mime_type: "image/jpeg", size_bytes: JPEG.length });
+    expect(Object.keys(body.document).sort()).toEqual(["id", "kind", "mime_type", "size_bytes"]);
+    expect(body.document).toMatchObject({ kind: "id_document", mime_type: "image/jpeg", size_bytes: JPEG.length });
 
     const [lead] = await repo.listLeads();
     expect(JSON.stringify(body)).not.toContain(lead.id);
@@ -224,6 +224,79 @@ describe("POST /api/lead/document", () => {
     );
   });
 
+  describe("kind", () => {
+    const formKind = (file: File, kind?: string) => {
+      const f = formWith(file);
+      if (kind !== undefined) f.append("kind", kind);
+      return f;
+    };
+
+    it("defaults to id_document and accepts it explicitly", async () => {
+      const cookie = await leadCookie();
+      for (const kind of [undefined, "id_document"]) {
+        const res = await handlers.uploadDocument(upload(formKind(fileOf(JPEG, "image/jpeg"), kind), { cookie }));
+        expect(res.status).toBe(201);
+        expect((await res.json()).document.kind).toBe("id_document");
+      }
+    });
+
+    it("stores a PDF bill (201, kind bill) next to two identity documents", async () => {
+      const cookie = await leadCookie();
+      for (let i = 0; i < 2; i++) {
+        expect((await handlers.uploadDocument(upload(formWith(fileOf(JPEG, "image/jpeg")), { cookie }))).status).toBe(201);
+      }
+      const res = await handlers.uploadDocument(upload(formKind(fileOf(PDF, "application/pdf", "bolletta.pdf"), "bill"), { cookie }));
+      expect(res.status).toBe(201);
+      expect((await res.json()).document.kind).toBe("bill");
+      const [lead] = await repo.listLeads();
+      expect((await repo.listLeadDocuments(lead.id)).map((d) => d.kind)).toEqual(["id_document", "id_document", "bill"]);
+    });
+
+    it("415 file_type for a JPEG bill; 400 invalid_body for an unknown or repeated kind", async () => {
+      const cookie = await leadCookie();
+      await expectError(
+        await handlers.uploadDocument(upload(formKind(fileOf(JPEG, "image/jpeg"), "bill"), { cookie })),
+        415,
+        "file_type",
+      );
+      await expectError(
+        await handlers.uploadDocument(upload(formKind(fileOf(PDF, "application/pdf"), "selfie"), { cookie })),
+        400,
+        "invalid_body",
+      );
+      const twice = formKind(fileOf(PDF, "application/pdf"), "bill");
+      twice.append("kind", "bill");
+      await expectError(await handlers.uploadDocument(upload(twice, { cookie })), 400, "invalid_body");
+    });
+
+    it("409 too_many_bills for a second bill; identity documents are unaffected", async () => {
+      const cookie = await leadCookie();
+      const bill = () => upload(formKind(fileOf(PDF, "application/pdf"), "bill"), { cookie });
+      expect((await handlers.uploadDocument(bill())).status).toBe(201);
+      await expectError(await handlers.uploadDocument(bill()), 409, "too_many_bills");
+      expect((await handlers.uploadDocument(upload(formWith(fileOf(JPEG, "image/jpeg")), { cookie }))).status).toBe(201);
+    });
+
+    it("a removed bill frees the slot", async () => {
+      const cookie = await leadCookie();
+      const bill = () => upload(formKind(fileOf(PDF, "application/pdf"), "bill"), { cookie });
+      const { document } = await (await handlers.uploadDocument(bill())).json();
+      await repo.removeLeadDocument(cookie.split("=")[1], document.id);
+      expect((await handlers.uploadDocument(bill())).status).toBe(201);
+    });
+
+    it("413 file_size for a bill over 4 MiB", async () => {
+      const cookie = await leadCookie();
+      const big = new Uint8Array(DOCUMENT_MAX_BYTES + 1);
+      big.set(PDF);
+      await expectError(
+        await handlers.uploadDocument(upload(formKind(fileOf(big, "application/pdf"), "bill"), { cookie })),
+        413,
+        "file_size",
+      );
+    });
+  });
+
   it("403 forbidden_origin for cross-origin requests", async () => {
     const cookie = await leadCookie();
     await expectError(
@@ -331,12 +404,23 @@ describe("client uploadLeadDocument", () => {
   it("POSTs multipart field `file` same-origin and returns the metadata", async () => {
     const f = stubFetch(201, { ok: true, document: { id: "d1", mime_type: "image/jpeg", size_bytes: 10 } });
     const doc = await uploadLeadDocument(fileOf(JPEG, "image/jpeg"));
-    expect(doc).toEqual({ id: "d1", mime_type: "image/jpeg", size_bytes: 10 });
+    expect(doc).toEqual({ id: "d1", kind: "id_document", mime_type: "image/jpeg", size_bytes: 10 });
     const [url, init] = f.mock.calls[0];
     expect(url).toBe("/api/lead/document");
     expect(init).toMatchObject({ method: "POST", credentials: "same-origin" });
     expect(init?.headers).toBeUndefined();
     expect((init?.body as FormData).get("file")).toBeInstanceOf(File);
+  });
+
+  it("sends `kind` only for bills and refuses a non-PDF bill before sending", async () => {
+    const f = stubFetch(201, { ok: true, document: { id: "b1", kind: "bill", mime_type: "application/pdf", size_bytes: 10 } });
+    const doc = await uploadLeadDocument(fileOf(PDF, "application/pdf"), "bill");
+    expect(doc.kind).toBe("bill");
+    expect((f.mock.calls[0][1]?.body as FormData).get("kind")).toBe("bill");
+    await uploadLeadDocument(fileOf(PDF, "application/pdf"));
+    expect((f.mock.calls[1][1]?.body as FormData).has("kind")).toBe(false);
+    await expect(uploadLeadDocument(fileOf(JPEG, "image/jpeg"), "bill")).rejects.toMatchObject({ code: "file_type" });
+    expect(f).toHaveBeenCalledTimes(2);
   });
 
   it("throws LeadApiError with the server code", async () => {

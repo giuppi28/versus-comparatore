@@ -100,7 +100,7 @@ test.describe("screenshots: loading, results, modal", () => {
   test("results Luce, details open, modal", TAG, async ({ page }) => {
     const d = derive(LUCE);
     await fillPage1(page, LUCE, d, newIdentity());
-    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 25_000 });
     await shot(page, "results-luce");
     await page.getByTestId("offer-card").first().getByTestId("offer-details-toggle").click();
     await page.getByTestId("offer-card").first().getByTestId("offer-estimate-tooltip").click();
@@ -112,7 +112,7 @@ test.describe("screenshots: loading, results, modal", () => {
 
   test("results Gas", TAG, async ({ page }) => {
     await fillPage1(page, GAS, derive(GAS), newIdentity());
-    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 25_000 });
     await shot(page, "results-gas");
     await page.getByTestId("offer-card").nth(1).getByTestId("offer-cta").click();
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -122,7 +122,7 @@ test.describe("screenshots: loading, results, modal", () => {
   test("results Luce + Gas: step 1 (Luce), modal, step 2 (Gas)", TAG, async ({ page }) => {
     const d = derive(DUAL);
     await fillPage1(page, DUAL, d, newIdentity());
-    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 25_000 });
     await expect(page.getByTestId("dual-step-indicator")).toHaveAttribute("data-active", "luce");
     await shot(page, "results-dual-step1-luce");
     await page.getByTestId("offer-card").nth(1).getByTestId("offer-cta").click();
@@ -137,7 +137,7 @@ test.describe("screenshots: loading, results, modal", () => {
   test("results: consumption edited and the empty / error edge states", TAG, async ({ page }) => {
     const d = derive(LUCE);
     await fillPage1(page, LUCE, d, newIdentity());
-    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("offer-card").first()).toBeVisible({ timeout: 25_000 });
     await page.getByTestId("results-consumption-kwh").fill("abc");
     await expect(page.getByText(/consumo mensile valido/i)).toBeVisible();
     await shot(page, "results-luce-consumption-error");
@@ -225,7 +225,7 @@ test.describe("screenshots: admin login", () => {
     await shot(page, "admin-login");
     await page.getByLabel("Email").fill("nobody@versus.test");
     await page.getByLabel("Password").fill("sbagliata");
-    await expect(page.getByRole("button", { name: "Accedi" })).toBeEnabled({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "Accedi" })).toBeEnabled({ timeout: 25_000 });
     await page.getByRole("button", { name: "Accedi" }).click();
     await expect(page.getByTestId("form-error")).toBeVisible();
     await shot(page, "admin-login-error");
@@ -282,8 +282,8 @@ test.describe("screenshots: admin area", () => {
     await page.goto("/admin/offerte");
     await expect(page.getByRole("heading", { name: "Offerte", level: 1 })).toBeVisible();
     await shot(page, "admin-offers-list");
-    await page.goto("/admin/offerte/offer-edison-luce-fissa-12");
-    await expect(page.locator("[name=name]")).toHaveValue("Edison Luce Fissa 12");
+    await page.goto("/admin/offerte/offer-aldo-10");
+    await expect(page.locator("[name=name]")).toHaveValue("Offerta Edison Energia");
     await shot(page, "admin-offer-form");
     await page.goto("/admin/offerte/nuova");
     await page.getByRole("button", { name: "Crea offerta" }).click();

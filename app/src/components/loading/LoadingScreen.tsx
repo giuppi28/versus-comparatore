@@ -19,7 +19,7 @@ export interface LoadingScreenProps {
   excludeSupplierIds?: string[];
   /** Commodities being compared; only used to word the messages ("offerte luce", "offerte gas"...). */
   commodities?: Commodity[];
-  /** Total animation time in ms (~6 s). */
+  /** Total animation time in ms (~7.5 s). */
   durationMs?: number;
   /** Called once, when the animation ends. */
   onComplete: () => void;
@@ -28,21 +28,27 @@ export interface LoadingScreenProps {
   className?: string;
 }
 
-export const DEFAULT_DURATION_MS = 6000;
+export const DEFAULT_DURATION_MS = 7500;
 const TICK_MS = 50;
 
-/** Progress thresholds (0..1) at which each message starts. */
-const SHORT_MESSAGE_MS = 700;
-const LOWEST_OFFER_MS = 2500;
-/** Four short messages (0.7 s), then the lowest-offer message (2.5 s, the longest), then the final one (0.7 s). */
-const MESSAGE_STARTS = [
-  0,
-  SHORT_MESSAGE_MS / DEFAULT_DURATION_MS,
-  (2 * SHORT_MESSAGE_MS) / DEFAULT_DURATION_MS,
-  (3 * SHORT_MESSAGE_MS) / DEFAULT_DURATION_MS,
-  (4 * SHORT_MESSAGE_MS) / DEFAULT_DURATION_MS,
-  (4 * SHORT_MESSAGE_MS + LOWEST_OFFER_MS) / DEFAULT_DURATION_MS,
-] as const;
+/*
+ * Timeline at the default 7500 ms (decision #19), expressed as fractions of the total so a custom
+ * `durationMs` scales it: four short messages share 0-3000 ms (bar 0 -> 50 %), the key message
+ * "offerta più bassa" runs 3000-7000 ms (bar 50 -> 100 %), the final message flashes 7000-7500 ms.
+ */
+const BASE_MS = 7500;
+const EARLY_END = 3000 / BASE_MS;
+const KEY_END = 7000 / BASE_MS;
+// Integer ms divided once, so boundaries are exact (no float drift at 750/1500/2250 ms).
+const MESSAGE_STARTS = [0, 750 / BASE_MS, 1500 / BASE_MS, 2250 / BASE_MS, 3000 / BASE_MS, 7000 / BASE_MS] as const;
+
+/** Bar fill (0..1) for a time ratio (0..1): 0 -> 50 % by 3 s, 50 -> 100 % by 7 s, then full. */
+export function barFill(timeRatio: number): number {
+  if (timeRatio <= 0) return 0;
+  if (timeRatio < EARLY_END) return 0.5 * (timeRatio / EARLY_END);
+  if (timeRatio < KEY_END) return 0.5 + 0.5 * ((timeRatio - EARLY_END) / (KEY_END - EARLY_END));
+  return 1;
+}
 
 /** A message is a list of parts; `{ em }` parts are highlighted in VERSUS green. */
 export type MessagePart = string | { em: string };
@@ -299,7 +305,7 @@ export function LoadingScreen({
     return () => clearInterval(interval);
   }, [durationMs]);
 
-  const percent = Math.round(progress * 100);
+  const percent = Math.round(barFill(progress) * 100);
   const step = getMessageStep(progress);
   const parts = getLoadingMessageParts(progress, commodities);
 

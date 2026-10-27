@@ -43,6 +43,11 @@ export const LOGOS = [
   { slug: "engie", src: "engie/engie-logo.svg", prefix: "engi" },
   { slug: "eon-energia", src: "eon/eon-logo.svg", prefix: "eon" },
   { slug: "iberdrola", src: "iberdrola/iberdrola-logo.svg", prefix: "iber" },
+  // added 2026-10-27: new suppliers (not yet in the suppliers table; slug = name in kebab-case)
+  { slug: "sentra-energia", src: "sentra/sentra-logo.svg", prefix: "sent" },
+  { slug: "estra-energia", src: "estra/estra-logo.svg", prefix: "estr" },
+  { slug: "enegan", src: "enegan/enegan-logo.svg", prefix: "eneg" },
+  { slug: "asti-energia", src: "asti-energy/asti-energy-logo.svg", prefix: "asti" },
 ];
 
 /** Visual convention: every file has intrinsic height 48 and a uniform 5% (of artwork height) padding. */

@@ -5,6 +5,8 @@ export const LEAD_COMPLETE_API_PATH = "/api/lead/complete";
 export const LEAD_DOCUMENT_API_PATH = "/api/lead/document";
 /** multipart/form-data field holding the uploaded file. */
 export const LEAD_DOCUMENT_FIELD = "file";
+/** Optional text part of the upload form: "id_document" (default) | "bill". */
+export const LEAD_DOCUMENT_KIND_FIELD = "kind";
 
 /** httpOnly cookie holding the secret lead token (never readable by JS). */
 export const LEAD_COOKIE = "versus_lead";
@@ -29,7 +31,8 @@ export type LeadApiErrorCode =
   | "file_type" // 415: declared type not image/jpeg / application/pdf
   | "file_size" // 413: file > 5 MiB (or request body too large)
   | "file_content" // 422: magic bytes do not match the declared type
-  | "too_many_files" // 409: the lead already has the maximum number of documents
+  | "too_many_files" // 409: the lead already has the maximum number of identity documents
+  | "too_many_bills" // 409: the lead already has a bill (max 1)
   | "upload_failed" // 502: storage error, retry later
   // DELETE /api/lead/document only:
   | "document_not_found"; // 404: not a document of this lead, or already removed
@@ -41,6 +44,7 @@ export interface LeadApiSuccess {
 /** Metadata of an uploaded identity document (never the lead id or the storage path). */
 export interface UploadedLeadDocument {
   id: string;
+  kind: "id_document" | "bill";
   mime_type: "image/jpeg" | "application/pdf";
   size_bytes: number;
 }

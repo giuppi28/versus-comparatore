@@ -1,8 +1,8 @@
 /** Shared fixtures for the lead API tests (not imported by app code). */
 import type { LeadCompleteData, LeadCreateData } from "./schemas";
 
-export const LUCE_OFFER_ID = "offer-edison-luce-fissa-12";
-export const GAS_OFFER_ID = "offer-plenitude-gas-fisso-12";
+export const LUCE_OFFER_ID = "offer-aldo-10";
+export const GAS_OFFER_ID = "offer-aldo-26";
 export const MILANO_ISTAT = "015146";
 /** Mario Rossi, valid check character. */
 export const VALID_CF = "RSSMRA85T10A562S";

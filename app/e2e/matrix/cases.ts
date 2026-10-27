@@ -23,9 +23,9 @@
  *   R8  the current supplier exists only for Cambio fornitore and Voltura (and never for a gas part
  *       forced to Primo allaccio by hasGas=no).
  *
- * The first cambio/voltura case of every group uses Edison Energia (luce) / Eni Plenitude (gas), the
- * featured offers, so the "current supplier excluded" rule is always proven on the offer that would
- * otherwise be first.
+ * The first cambio/voltura case of every group uses Edison Energia (luce) / Eni Plenitude (gas), so the
+ * "current supplier excluded" rule is proven on a supplier that has offers. Variable, IBAN-required and
+ * forced-featured offers are pinned in offer-kinds.spec.ts.
  */
 import type { ApplianceId, GasUseId } from "../../src/config/consumption";
 import type { ClimateZone, HousingTitle, ServiceType, SqmRange, Voltage } from "../../src/lib/data/types";
@@ -71,6 +71,9 @@ export interface MatrixCase {
   /** Rotating index of the offer card chosen on each step. */
   pickLuce: number;
   pickGas: number;
+  /** Optional: choose this exact offer instead of the rotating position (variable / IBAN-required combos). */
+  pickLuceId?: string;
+  pickGasId?: string;
   person: Person;
   company: string | null;
   vat: string | null;
@@ -160,9 +163,12 @@ const HOUSING: HousingTitle[] = ["proprietario", "inquilino", "usufruttuario", "
 const POWERS: Array<number | null> = [3, 1.5, 4.5, 6, 3.5, 5, 10, 15, null, 4];
 const PHONE_FORMATS: MatrixCase["phoneFormat"][] = ["plain", "spaced", "intl"];
 
-/** Suppliers the customer may currently have (those with offers + two without). */
-const LUCE_CURRENT = ["edison-energia", "sorgenia", "a2a-energia", "iberdrola", "enel-energia", "tutela"];
-const GAS_CURRENT = ["eni-plenitude", "hera-comm", "engie", "iren", "enel-energia", "non-lo-so"];
+/**
+ * Suppliers the customer may currently have: those with offers (incl. the Phase 14 suppliers Sentra,
+ * Enegan, Asti, Estra), suppliers without any offer (Hera, Engie: nothing to exclude) and the special options.
+ */
+const LUCE_CURRENT = ["edison-energia", "sentra-energia", "a2a-energia", "hera-comm", "enel-energia", "tutela", "estra-energia", "asti-energia"];
+const GAS_CURRENT = ["eni-plenitude", "enegan", "engie", "iren", "enel-energia", "non-lo-so", "sentra-energia", "asti-energia"];
 
 // ---------------------------------------------------------------------------
 // profiles

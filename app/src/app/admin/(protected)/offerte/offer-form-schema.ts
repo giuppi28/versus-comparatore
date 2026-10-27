@@ -10,6 +10,8 @@ export interface OfferFormValues {
   name: string;
   commodity: Commodity;
   customer_type: OfferCustomerType;
+  /** "fixed" = prezzo fisso; "variable" = spread sul PUN (luce only, no lock months). */
+  price_type: PriceType;
   energy_price: string;
   other_variable_costs: string;
   fixed_fee: string;
@@ -21,10 +23,15 @@ export interface OfferFormValues {
   promo_text: string;
   advantages: string[];
   details: string;
-  featured: boolean;
+  iban_required: boolean;
+  /** "" = Nessuno. `featured` is derived from it (featured = audience !== ""). */
+  featured_audience: FeaturedAudienceValue;
   active: boolean;
   price_verified: boolean;
 }
+
+export type PriceType = "fixed" | "variable";
+export type FeaturedAudienceValue = "" | "casa" | "business" | "both";
 
 export const MAX_ADVANTAGES = 30;
 export const MAX_ADVANTAGE_LENGTH = 300;
@@ -46,6 +53,7 @@ export const DEFAULT_OFFER_VALUES: OfferFormValues = {
   name: "",
   commodity: "luce",
   customer_type: "both",
+  price_type: "fixed",
   energy_price: "",
   other_variable_costs: "0",
   fixed_fee: "",
@@ -57,7 +65,8 @@ export const DEFAULT_OFFER_VALUES: OfferFormValues = {
   promo_text: "",
   advantages: [],
   details: "",
-  featured: false,
+  iban_required: false,
+  featured_audience: "",
   active: true,
   price_verified: false,
 };
@@ -141,6 +150,7 @@ const offerSchema = z.object({
     .max(MAX_NAME_LENGTH, `Al massimo ${MAX_NAME_LENGTH} caratteri.`),
   commodity: z.enum(["luce", "gas"], { error: "Seleziona luce o gas." }),
   customer_type: z.enum(["casa", "business", "both"], { error: "Seleziona il tipo di cliente." }),
+  price_type: z.enum(["fixed", "variable"], { error: "Seleziona il tipo di prezzo." }),
   energy_price: decimalField("Prezzo energia", { decimals: PRICE_DECIMALS, max: PRICE_MAX }),
   other_variable_costs: decimalField("Altri costi variabili", {
     decimals: PRICE_DECIMALS,
@@ -150,22 +160,7 @@ const offerSchema = z.object({
   fixed_fee_period: z.enum(["month", "year"]),
   other_fixed_costs: decimalField("Altri costi fissi", { decimals: FEE_DECIMALS, max: FEE_MAX }),
   other_fixed_costs_period: z.enum(["month", "year"]),
-  locked_months: z.string().transform((raw, ctx): number => {
-    const text = raw.trim();
-    if (!/^\d+$/.test(text)) {
-      ctx.addIssue({ code: "custom", message: "Inserisci un numero intero di mesi." });
-      return z.NEVER;
-    }
-    const n = Number(text);
-    if (n < LOCK_MIN || n > LOCK_MAX) {
-      ctx.addIssue({
-        code: "custom",
-        message: `I mesi di blocco devono essere tra ${LOCK_MIN} e ${LOCK_MAX}.`,
-      });
-      return z.NEVER;
-    }
-    return n;
-  }),
+  locked_months: z.string(), // validated in parseOfferForm: depends on price_type
   activation_cost: decimalField("Costo di attivazione", {
     decimals: ACTIVATION_DECIMALS,
     max: FEE_MAX,
@@ -180,7 +175,8 @@ const offerSchema = z.object({
         .max(MAX_ADVANTAGES, `Al massimo ${MAX_ADVANTAGES} vantaggi.`),
     ),
   details: trimmedOptional(MAX_DETAILS_LENGTH, "Dettagli"),
-  featured: z.boolean(),
+  iban_required: z.boolean(),
+  featured_audience: z.enum(["", "casa", "business", "both"], { error: "Seleziona il tipo di evidenza." }),
   active: z.boolean(),
   price_verified: z.boolean(),
 });
@@ -194,15 +190,33 @@ export type OfferParseResult =
 /** Validates the raw form values and builds the repository input (fees stored monthly). */
 export function parseOfferForm(values: OfferFormValues): OfferParseResult {
   const result = offerSchema.safeParse(values);
+  const errors: OfferFieldErrors = {};
   if (!result.success) {
-    const errors: OfferFieldErrors = {};
     for (const issue of result.error.issues) {
       const key = String(issue.path[0] ?? "") as keyof OfferFormValues;
       if (key && !errors[key]) errors[key] = issue.message;
     }
-    return { ok: false, errors };
   }
+  // Mirrors the DB constraints: variable => luce + no lock months; fixed => 1..120 months.
+  let lockedMonths: number | null = null;
+  if (values.price_type === "variable") {
+    if (values.commodity !== "luce") {
+      errors.price_type = "Il prezzo variabile è disponibile solo per la luce.";
+    }
+  } else {
+    const text = values.locked_months.trim();
+    const n = Number(text);
+    if (!/^\d+$/.test(text)) {
+      errors.locked_months = "Inserisci un numero intero di mesi.";
+    } else if (n < LOCK_MIN || n > LOCK_MAX) {
+      errors.locked_months = `I mesi di blocco devono essere tra ${LOCK_MIN} e ${LOCK_MAX}.`;
+    } else {
+      lockedMonths = n;
+    }
+  }
+  if (!result.success || Object.keys(errors).length > 0) return { ok: false, errors };
   const v = result.data;
+  const audience = v.featured_audience === "" ? null : v.featured_audience;
   const monthly = (amount: number, period: FeePeriod) =>
     period === "year" ? yearlyToMonthly(amount) : roundTo(amount, FEE_DECIMALS);
   return {
@@ -212,17 +226,19 @@ export function parseOfferForm(values: OfferFormValues): OfferParseResult {
       name: v.name,
       commodity: v.commodity,
       customer_type: v.customer_type,
-      price_type: "fixed",
+      price_type: v.price_type,
       energy_price: v.energy_price,
       other_variable_costs: v.other_variable_costs,
       fixed_fee_monthly: monthly(v.fixed_fee, v.fixed_fee_period),
       other_fixed_costs_monthly: monthly(v.other_fixed_costs, v.other_fixed_costs_period),
-      locked_months: v.locked_months,
+      locked_months: v.price_type === "variable" ? null : lockedMonths,
       activation_cost: v.activation_cost,
       promo_text: v.promo_text,
       advantages: v.advantages,
       details: v.details,
-      featured: v.featured,
+      iban_required: v.iban_required,
+      featured_audience: audience,
+      featured: audience !== null,
       active: v.active,
       price_verified: v.price_verified,
     },
@@ -236,18 +252,20 @@ export function offerToFormValues(offer: Offer): OfferFormValues {
     name: offer.name,
     commodity: offer.commodity,
     customer_type: offer.customer_type,
+    price_type: offer.price_type,
     energy_price: toInputDecimal(offer.energy_price, 4),
     other_variable_costs: toInputDecimal(offer.other_variable_costs, 4),
     fixed_fee: toInputDecimal(offer.fixed_fee_monthly),
     fixed_fee_period: "month",
     other_fixed_costs: toInputDecimal(offer.other_fixed_costs_monthly),
     other_fixed_costs_period: "month",
-    locked_months: String(offer.locked_months),
+    locked_months: offer.locked_months === null ? DEFAULT_OFFER_VALUES.locked_months : String(offer.locked_months),
     activation_cost: toInputDecimal(offer.activation_cost, 2, 2),
     promo_text: offer.promo_text ?? "",
     advantages: [...offer.advantages],
     details: offer.details ?? "",
-    featured: offer.featured,
+    iban_required: offer.iban_required,
+    featured_audience: offer.featured_audience ?? "",
     active: offer.active,
     price_verified: offer.price_verified,
   };
@@ -265,6 +283,7 @@ export function formDataToValues(formData: FormData): OfferFormValues {
     name: str("name"),
     commodity: str("commodity") as Commodity,
     customer_type: str("customer_type") as OfferCustomerType,
+    price_type: str("price_type") as PriceType,
     energy_price: str("energy_price"),
     other_variable_costs: str("other_variable_costs"),
     fixed_fee: str("fixed_fee"),
@@ -276,7 +295,8 @@ export function formDataToValues(formData: FormData): OfferFormValues {
     promo_text: str("promo_text"),
     advantages: formData.getAll("advantages").filter((v): v is string => typeof v === "string"),
     details: str("details"),
-    featured: formData.get("featured") === "on",
+    iban_required: formData.get("iban_required") === "on",
+    featured_audience: str("featured_audience") as FeaturedAudienceValue,
     active: formData.get("active") === "on",
     price_verified: formData.get("price_verified") === "on",
   };

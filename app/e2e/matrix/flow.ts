@@ -9,8 +9,13 @@ import type { Offer, ServiceType } from "../../src/lib/data/types";
 import { estimateGas, estimateLuce } from "../../src/lib/logic/consumption";
 import {
   annualFromMonthly,
+  featuredBadgeIds,
   formatEuro,
   formatPrice,
+  formatVariablePrice,
+  IBAN_REQUIRED_NOTICE,
+  isForcedFeatured,
+  isVariableOffer,
   monthlyCost,
   monthlyFromAnnual,
   rankOffers,
@@ -250,8 +255,29 @@ export async function fillPage1(page: Page, c: MatrixCase, d: Derived, id: Ident
 
 export interface Chosen {
   offer: Offer;
-  cost: number;
+  /** Monthly cost shown; null for a variable offer ("Varia con il PUN"). */
+  cost: number | null;
 }
+
+/** Sum of the chosen offers' costs; null as soon as one is variable. */
+export function totalOf(chosen: { luce: Chosen | null; gas: Chosen | null }): number | null {
+  let total = 0;
+  for (const ch of [chosen.luce, chosen.gas]) {
+    if (!ch) continue;
+    if (ch.cost === null) return null;
+    total += ch.cost;
+  }
+  return total;
+}
+
+const VARIABLE_TEXT = "Varia con il PUN";
+const costText = (cost: number | null) => (cost === null ? VARIABLE_TEXT : formatEuro(cost));
+const unitPriceText = (offer: Offer, unit: "kWh" | "Smc") =>
+  isVariableOffer(offer) ? formatVariablePrice(offer.energy_price) : formatPrice(offer.energy_price, unit);
+const needsIban = (chosen: { luce: Chosen | null; gas: Chosen | null }) =>
+  !!(chosen.luce?.offer.iban_required || chosen.gas?.offer.iban_required);
+export const MATRIX_IBAN = "IT60X0542811101000000123456";
+export const MATRIX_IBAN_SHOWN = "IT60 X054 2811 1010 0000 0123 456";
 
 async function ids(cards: Locator, attr: string): Promise<string[]> {
   return cards.evaluateAll((els, a) => els.map((e) => e.getAttribute(a) ?? ""), attr);
@@ -263,7 +289,7 @@ export async function resultsStep(
   commodity: "luce" | "gas",
   monthly: number,
   exclude: string | null,
-  pickIndex: number,
+  pick: number | string,
   isDual: boolean,
 ): Promise<Chosen> {
   const cards = page.getByTestId("offer-card");
@@ -273,25 +299,30 @@ export async function resultsStep(
   if (isDual) await expect(page.getByTestId("dual-step-indicator")).toHaveAttribute("data-active", commodity);
 
   const annual = annualFromMonthly(monthly);
-  const expected = rankOffers(offerPool(commodity, c.customer), annual, { excludeSupplierId: exclude });
+  const expected = rankOffers(offerPool(commodity, c.customer), c.customer, annual, { excludeSupplierId: exclude });
   expect(expected.length).toBeGreaterThan(0);
 
-  // (1) exactly the expected offers in the expected order: featured first, then cost ascending
+  // (1) exactly the expected offers in the expected order: forced-featured first, then fixed offers by
+  // monthly cost ascending, then variable offers by spread
   await expect.poll(() => ids(cards, "data-offer-id"), { message: `${commodity} offer order` }).toEqual(
     expected.map((r) => r.offer.id),
   );
   // (2) the current supplier's offers are excluded
   const suppliers = await ids(cards, "data-supplier-id");
   if (exclude) expect(suppliers, `current ${commodity} supplier ${exclude} must be excluded`).not.toContain(exclude);
-  // (3) featured block first, then ascending cents inside each block
-  const featured = (await ids(cards, "data-featured")).map((v) => v === "true");
-  const firstNonFeatured = featured.indexOf(false);
-  if (firstNonFeatured >= 0) expect(featured.slice(firstNonFeatured).some(Boolean), "featured offers come first").toBe(false);
-  const cents = (await ids(cards, "data-monthly-cost")).map(Number);
-  expect(cents).toEqual(expected.map((r) => Math.round(r.monthlyCost * 100)));
-  for (const [from, to] of [[0, firstNonFeatured < 0 ? cents.length : firstNonFeatured], [firstNonFeatured < 0 ? cents.length : firstNonFeatured, cents.length]]) {
-    const part = cents.slice(from, to);
-    expect(part, "ascending monthly cost within block").toEqual([...part].sort((a, b) => a - b));
+  // (3) badge: forced-featured offers of this audience; none forced -> the cheapest displayed fixed offer
+  const badgeIds = featuredBadgeIds(expected, c.customer);
+  expect((await ids(cards, "data-featured")).map((v) => v === "true")).toEqual(
+    expected.map((r) => badgeIds.has(r.offer.id)),
+  );
+  // Block structure: forced block, then fixed offers (cents ascending), then variable offers (last).
+  const cents = await ids(cards, "data-monthly-cost");
+  expect(cents).toEqual(expected.map((r) => (r.monthlyCost === null ? "variable" : String(Math.round(r.monthlyCost * 100)))));
+  const blocks = expected.map((r) => (isForcedFeatured(r.offer, c.customer) ? 0 : isVariableOffer(r.offer) ? 2 : 1));
+  expect(blocks, "forced block, fixed block, variable block in this order").toEqual([...blocks].sort((x, y) => x - y));
+  for (const block of [0, 1]) {
+    const part = expected.filter((_, i) => blocks[i] === block).map((r) => Math.round(r.monthlyCost! * 100));
+    expect(part, "ascending monthly cost within block").toEqual([...part].sort((x, y) => x - y));
   }
   // (4) the editable consumption is prefilled with annual / 12 and only the current commodity shows
   await expect(page.getByTestId(commodity === "luce" ? "results-consumption-kwh" : "results-consumption-smc")).toHaveValue(
@@ -299,18 +330,33 @@ export async function resultsStep(
   );
   await expect(page.getByTestId(commodity === "luce" ? "results-consumption-smc" : "results-consumption-kwh")).toHaveCount(0);
 
-  // (5) choose one card (rotating position), check its cost and the modal
-  const at = pickIndex % expected.length;
+  // (5) choose one card (rotating position or a given offer id), check its cost and the modal
+  // "plain" = the first fixed offer that does not need an IBAN (for suites that submit without one).
+  const at =
+    pick === "plain"
+      ? expected.findIndex((r) => !isVariableOffer(r.offer) && !r.offer.iban_required)
+      : typeof pick === "string"
+        ? expected.findIndex((r) => r.offer.id === pick)
+        : pick % expected.length;
+  expect(at, `offer ${String(pick)} is among the ${commodity} results`).toBeGreaterThanOrEqual(0);
   const chosen = expected[at];
+  const variable = isVariableOffer(chosen.offer);
   const chosenCard = cards.nth(at);
   await expect(chosenCard).toHaveAttribute("data-offer-id", chosen.offer.id);
-  await expect(chosenCard.getByTestId("offer-monthly")).toHaveText(formatEuro(chosen.monthlyCost));
+  await expect(chosenCard.getByTestId("offer-monthly")).toHaveText(variable ? VARIABLE_TEXT : formatEuro(chosen.monthlyCost!));
   await expect(chosenCard.getByTestId("offer-price")).toHaveText(
-    formatPrice(chosen.offer.energy_price, commodity === "luce" ? "kWh" : "Smc"),
+    unitPriceText(chosen.offer, commodity === "luce" ? "kWh" : "Smc"),
   );
-  await expect(chosenCard.getByTestId("offer-locked")).toHaveText(`Bloccato ${chosen.offer.locked_months} mesi`);
+  if (variable) {
+    await expect(chosenCard.getByTestId("offer-locked")).toHaveCount(0);
+  } else {
+    await expect(chosenCard.getByTestId("offer-locked")).toHaveText(`Bloccato ${chosen.offer.locked_months} mesi`);
+  }
   await expect(chosenCard.getByTestId("offer-cta")).toHaveText("Attiva online in 1 minuto");
-  if (chosen.offer.featured) await expect(chosenCard.getByTestId("offer-featured-band")).toHaveText("In evidenza");
+  if (badgeIds.has(chosen.offer.id)) await expect(chosenCard.getByTestId("offer-featured-band")).toHaveText("In evidenza");
+  else await expect(chosenCard.getByTestId("offer-featured-band")).toHaveCount(0);
+  if (chosen.offer.iban_required) await expect(chosenCard.getByTestId("offer-iban-notice")).toHaveText(IBAN_REQUIRED_NOTICE);
+  else await expect(chosenCard.getByTestId("offer-iban-notice")).toHaveCount(0);
   await chosenCard.getByTestId("offer-cta").click();
 
   const dialog = page.getByRole("dialog");
@@ -321,7 +367,9 @@ export async function resultsStep(
   for (const [i, adv] of chosen.offer.advantages.entries()) {
     await expect(items.nth(i)).toHaveText(adv.replace(/\*\*/g, ""));
   }
-  await expect(dialog.getByTestId("offer-modal-monthly")).toContainText(formatEuro(chosen.monthlyCost));
+  await expect(dialog.getByTestId("offer-modal-monthly")).toContainText(variable ? VARIABLE_TEXT : formatEuro(chosen.monthlyCost!));
+  if (chosen.offer.iban_required) await expect(dialog.getByTestId("offer-modal-iban-notice")).toHaveText(IBAN_REQUIRED_NOTICE);
+  else await expect(dialog.getByTestId("offer-modal-iban-notice")).toHaveCount(0);
   if (isDual) await expect(dialog.getByTestId("offer-modal-step")).toHaveText(`Offerta ${label}`);
   await dialog.getByTestId("offer-modal-cta").click();
   return { offer: chosen.offer, cost: chosen.monthlyCost };
@@ -338,11 +386,11 @@ export async function fillActivation(
   chosen: { luce: Chosen | null; gas: Chosen | null },
   hooks: { beforeNext?: () => Promise<void>; beforeSubmit?: () => Promise<void> } = {},
 ) {
-  const total = (chosen.luce?.cost ?? 0) + (chosen.gas?.cost ?? 0);
+  const total = totalOf(chosen);
   await expect(page.getByTestId("activation-step-a")).toBeVisible();
 
-  // Sticky summary: chosen offer(s) and the total monthly cost.
-  await expect(page.getByTestId("summary-total")).toHaveText(formatEuro(total));
+  // Sticky summary: chosen offer(s) and the total monthly cost ("Varia con il PUN" when any is variable).
+  await expect(page.getByTestId("summary-total")).toHaveText(costText(total));
   const summaryToggle = page.getByTestId("summary-toggle");
   if (await summaryToggle.isVisible()) await summaryToggle.click();
   for (const key of ["luce", "gas"] as const) {
@@ -353,11 +401,12 @@ export async function fillActivation(
     }
     const unit = key === "luce" ? "kWh" : "Smc";
     await expect(page.getByTestId(`summary-offer-${key}`)).toContainText(ch.offer.name);
-    await expect(page.getByTestId(`summary-price-${key}`)).toHaveText(formatPrice(ch.offer.energy_price, unit));
+    await expect(page.getByTestId(`summary-price-${key}`)).toHaveText(unitPriceText(ch.offer, unit));
     await expect(page.getByTestId(`summary-fixed-${key}`)).toHaveText(formatEuro(ch.offer.fixed_fee_monthly));
-    await expect(page.getByTestId(`summary-locked-${key}`)).toHaveText(`${ch.offer.locked_months} mesi`);
+    if (isVariableOffer(ch.offer)) await expect(page.getByTestId(`summary-locked-${key}`)).toHaveCount(0);
+    else await expect(page.getByTestId(`summary-locked-${key}`)).toHaveText(`${ch.offer.locked_months} mesi`);
     await expect(page.getByTestId(`summary-activation-${key}`)).toHaveText(formatEuro(ch.offer.activation_cost));
-    if (chosen.luce && chosen.gas) await expect(page.getByTestId(`summary-monthly-${key}`)).toContainText(formatEuro(ch.cost));
+    if (chosen.luce && chosen.gas) await expect(page.getByTestId(`summary-monthly-${key}`)).toContainText(costText(ch.cost));
   }
 
   // ---- Step A ----
@@ -441,13 +490,26 @@ export async function fillActivation(
   }
   await expect(page.getByText(/Codice (POD|PDR) \(facoltativo\)/)).toHaveCount(expectedOptional);
 
+  // ---- IBAN: optional, required when a chosen offer needs it (then the submit is blocked until filled) ----
+  const ibanNeeded = needsIban(chosen);
+  await expect(page.getByTestId("iban-discount")).toHaveText("Sconto del 20% se paghi con IBAN");
+  await expect(
+    page.getByText(ibanNeeded ? "Obbligatorio: l'offerta scelta si attiva solo con pagamento IBAN" : "Facoltativo, se vuoi pagare con addebito sul conto"),
+  ).toBeVisible();
+  if (ibanNeeded) {
+    await page.getByTestId("activation-submit").click();
+    await expect(page.getByText("Inserisci l'IBAN: per questa offerta il pagamento con IBAN è obbligatorio.")).toBeVisible();
+    await expect(page).toHaveURL(/\/attivazione$/);
+    await field(page, "iban").fill(MATRIX_IBAN);
+  }
+
   await hooks.beforeSubmit?.();
   const completed = page.waitForResponse((r) => r.url().endsWith("/api/lead/complete") && r.request().method() === "POST");
   await page.getByTestId("activation-submit").click();
   const response = await completed;
   expect(response.status(), `POST /api/lead/complete: ${await response.text()}`).toBe(200);
   await expect(page).toHaveURL(/\/grazie$/);
-  return { filledOptionalMeter: fillMeter, cap };
+  return { filledOptionalMeter: fillMeter, cap, ibanFilled: ibanNeeded };
 }
 
 // ---------------------------------------------------------------------------
@@ -471,13 +533,14 @@ export async function checkThankYou(page: Page, c: MatrixCase, chosen: { luce: C
     const asLogo = block.locator(`img[alt="${sName}"]`);
     await expect(asText.or(asLogo).first(), `thank-you supplier ${key}: ${sName}`).toBeVisible();
     await expect(block).toContainText(ch.offer.name);
-    await expect(block).toContainText(formatEuro(ch.cost));
-    await expect(block).toContainText(`${ch.offer.locked_months} mesi`);
-    await expect(block).toContainText(formatPrice(ch.offer.energy_price, key === "luce" ? "kWh" : "Smc"));
+    await expect(block).toContainText(costText(ch.cost));
+    if (isVariableOffer(ch.offer)) await expect(block).not.toContainText("Bloccato");
+    else await expect(block).toContainText(`${ch.offer.locked_months} mesi`);
+    await expect(block).toContainText(unitPriceText(ch.offer, key === "luce" ? "kWh" : "Smc"));
     await expect(block).toContainText(`${formatEuro(ch.offer.fixed_fee_monthly)}/mese`);
   }
   if (chosen.luce && chosen.gas) {
-    await expect(page.getByTestId("thankyou-total")).toContainText(formatEuro(chosen.luce.cost + chosen.gas.cost));
+    await expect(page.getByTestId("thankyou-total")).toContainText(costText(totalOf(chosen)));
   } else {
     await expect(page.getByTestId("thankyou-total")).toHaveCount(0);
   }
@@ -485,6 +548,14 @@ export async function checkThankYou(page: Page, c: MatrixCase, chosen: { luce: C
 
 // ---------------------------------------------------------------------------
 // Server-side lead (through the admin pages)
+
+/** Offer cell of the admin lead detail: "<supplier> — <offer>" plus the PUN spread line (variable) and the "Pagamento con IBAN obbligatorio" tag (required). */
+function adminOfferLabel(ch: Chosen | null): string | null {
+  if (!ch) return null;
+  const o = ch.offer;
+  const spread = isVariableOffer(o) ? `Prezzo energia: ${formatVariablePrice(o.energy_price)}` : "";
+  return `${supplierName(o.supplier_id)} — ${o.name}${spread}${o.iban_required ? "Pagamento con IBAN obbligatorio" : ""}`;
+}
 
 function same(actual: string | null | undefined, expected: string | null, label: string) {
   expect(norm(actual) || null, `admin lead field "${label}"`).toBe(expected === null ? null : norm(expected));
@@ -501,7 +572,7 @@ export function expectCompletedLead(
   d: Derived,
   id: Identity,
   chosen: { luce: Chosen | null; gas: Chosen | null },
-  extra: { cap: string; filledOptionalMeter: boolean },
+  extra: { cap: string; filledOptionalMeter: boolean; ibanFilled: boolean },
 ) {
   const f = lead.fields;
   expect(lead.step, "lead step_reached").toBe("completed");
@@ -543,11 +614,15 @@ export function expectCompletedLead(
   same(f["Consumo finale luce (kWh/mese)"], d.luce ? adminNum.format(d.monthlyKwh!) : null, "Consumo finale luce");
   same(f["Consumo finale gas (Smc/mese)"], d.gas ? adminNum.format(d.monthlySmc!) : null, "Consumo finale gas");
 
-  const offerLabel = (ch: Chosen | null) => (ch ? `${supplierName(ch.offer.supplier_id)} — ${ch.offer.name}` : null);
-  same(f["Offerta luce"], offerLabel(chosen.luce), "Offerta luce");
-  same(f["Offerta gas"], offerLabel(chosen.gas), "Offerta gas");
-  const total = (chosen.luce?.cost ?? 0) + (chosen.gas?.cost ?? 0);
-  same(f["Costo mensile mostrato"], adminEuro.format(Math.round(total * 100) / 100), "Costo mensile mostrato");
+  same(f["Offerta luce"], adminOfferLabel(chosen.luce), "Offerta luce");
+  same(f["Offerta gas"], adminOfferLabel(chosen.gas), "Offerta gas");
+  const total = totalOf(chosen);
+  same(
+    f["Costo mensile mostrato"],
+    total === null ? null : adminEuro.format(Math.round(total * 100) / 100),
+    "Costo mensile mostrato",
+  );
+  same(f["IBAN"], extra.ibanFilled ? MATRIX_IBAN_SHOWN : "Non indicato", "IBAN");
 
   const podStored = d.luce && (needsMeterCode(d.luceService!) || extra.filledOptionalMeter) ? id.pod : null;
   const pdrStored = d.gas && (needsMeterCode(d.gasService!) || extra.filledOptionalMeter) ? id.pdr : null;
@@ -580,19 +655,19 @@ export async function runCase(page: Page, admin: APIRequestContext, c: MatrixCas
 
   await test.step("results + offer modal", async () => {
     const dual = d.luce && d.gas;
-    if (d.luce) chosen.luce = await resultsStep(page, c, "luce", d.monthlyKwh!, d.excludeLuce, c.pickLuce, dual);
-    if (d.gas) chosen.gas = await resultsStep(page, c, "gas", d.monthlySmc!, d.excludeGas, c.pickGas, dual);
+    if (d.luce) chosen.luce = await resultsStep(page, c, "luce", d.monthlyKwh!, d.excludeLuce, c.pickLuceId ?? c.pickLuce, dual);
+    if (d.gas) chosen.gas = await resultsStep(page, c, "gas", d.monthlySmc!, d.excludeGas, c.pickGasId ?? c.pickGas, dual);
     await page.waitForURL(/\/attivazione$/);
   });
 
   await test.step("lead updated to offer_chosen", async () => {
     const lead = await waitForLead(admin, id.phone, (l) => l.step === "offer_chosen");
     expect(lead.step).toBe("offer_chosen");
-    same(lead.fields["Offerta luce"], chosen.luce ? `${supplierName(chosen.luce.offer.supplier_id)} — ${chosen.luce.offer.name}` : null, "Offerta luce");
-    same(lead.fields["Offerta gas"], chosen.gas ? `${supplierName(chosen.gas.offer.supplier_id)} — ${chosen.gas.offer.name}` : null, "Offerta gas");
+    same(lead.fields["Offerta luce"], adminOfferLabel(chosen.luce), "Offerta luce");
+    same(lead.fields["Offerta gas"], adminOfferLabel(chosen.gas), "Offerta gas");
   });
 
-  let extra!: { cap: string; filledOptionalMeter: boolean };
+  let extra!: { cap: string; filledOptionalMeter: boolean; ibanFilled: boolean };
   await test.step("activation A + B, submit", async () => {
     extra = await fillActivation(page, c, d, id, chosen);
   });
@@ -617,8 +692,8 @@ export async function reachActivation(page: Page, c: MatrixCase) {
   const chosen: { luce: Chosen | null; gas: Chosen | null } = { luce: null, gas: null };
   await fillPage1(page, c, d, id);
   const dual = d.luce && d.gas;
-  if (d.luce) chosen.luce = await resultsStep(page, c, "luce", d.monthlyKwh!, d.excludeLuce, c.pickLuce, dual);
-  if (d.gas) chosen.gas = await resultsStep(page, c, "gas", d.monthlySmc!, d.excludeGas, c.pickGas, dual);
+  if (d.luce) chosen.luce = await resultsStep(page, c, "luce", d.monthlyKwh!, d.excludeLuce, c.pickLuceId ?? c.pickLuce, dual);
+  if (d.gas) chosen.gas = await resultsStep(page, c, "gas", d.monthlySmc!, d.excludeGas, c.pickGasId ?? c.pickGas, dual);
   await page.waitForURL(/\/attivazione$/);
   await expect(page.getByTestId("activation-step-a")).toBeVisible();
   return { d, id, chosen };

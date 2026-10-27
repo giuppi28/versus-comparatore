@@ -10,7 +10,7 @@ import type { Commodity, LeadCustomerType, OfferWithSupplier, Supplier } from "@
 import { useFlow } from "@/lib/lead/flow-context";
 import { updateLead } from "@/lib/lead/client";
 import { annualKwh, annualSmc, applyFlowPatch, snapshotOffer, toLeadPatchData } from "@/lib/lead/flow-state";
-import { annualFromMonthly, monthlyCost, monthlyFromAnnual, rankOffers } from "@/lib/logic";
+import { annualFromMonthly, featuredBadgeIds, monthlyCost, monthlyFromAnnual, rankOffers } from "@/lib/logic";
 import { ConsumptionPanel } from "./ConsumptionPanel";
 import { EmptyState } from "./EmptyState";
 import { DualStepIndicator } from "./DualStepIndicator";
@@ -18,6 +18,7 @@ import { OfferCard } from "./OfferCard";
 import { supplierLogoSrc } from "./logo-src";
 import {
   LOADED_SIGNATURE_KEY,
+  audienceFor,
   buildLoadingSuppliers,
   buildOrbitSuppliers,
   commodityLabel,
@@ -129,11 +130,13 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
 
   const ranked = useMemo(
     () =>
-      rankOffers(offers?.[step] ?? [], annual, {
+      rankOffers(offers?.[step] ?? [], audienceFor(state), annual, {
         excludeSupplierId: currentSupplierFor(state, step),
       }),
     [offers, step, annual, state],
   );
+
+  const featuredIds = useMemo(() => featuredBadgeIds(ranked, audienceFor(state)), [ranked, state]);
 
   const handleConsumptionChange = (value: number) => {
     const chosen = state.chosenOffers[step];
@@ -306,6 +309,7 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
                 offer={offer}
                 commodity={step}
                 monthlyCost={cost}
+                featured={featuredIds.has(offer.id)}
                 chosen={state.chosenOffers[step]?.offer_id === offer.id}
                 onActivate={() => setModalOfferId(offer.id)}
               />

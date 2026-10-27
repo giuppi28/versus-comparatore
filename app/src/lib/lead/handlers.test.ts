@@ -411,7 +411,7 @@ describe("POST /api/lead/complete", () => {
     );
     expect((await res.json()).fields).toEqual({ vat_number: "checksum" });
     const ok = await complete(
-      completeData({ customer_type: "business", company_name: "Rossi Srl", vat_number: VALID_PIVA }),
+      completeData({ customer_type: "business", company_name: "Rossi Srl", vat_number: VALID_PIVA, chosen_offer_luce: "offer-aldo-15" }),
       cookie,
     );
     expect(ok.status).toBe(200);

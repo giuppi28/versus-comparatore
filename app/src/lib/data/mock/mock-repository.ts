@@ -33,6 +33,7 @@ import {
   LEAD_HISTORY_FIELDS,
   LEAD_PAGE_SIZE_DEFAULT,
   LEAD_PAGE_SIZE_MAX,
+  MAX_LEAD_BILLS,
   MAX_LEAD_DOCUMENT_SLOTS,
   MAX_LEAD_DOCUMENTS,
 } from "../types";
@@ -207,7 +208,9 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       other_variable_costs: o.other_variable_costs,
       fixed_fee_monthly: o.fixed_fee_monthly,
       other_fixed_costs_monthly: o.other_fixed_costs_monthly,
+      price_type: o.price_type,
       locked_months: o.locked_months,
+      iban_required: o.iban_required,
       deleted_at: new Date().toISOString(),
     };
     for (const lead of leads) {
@@ -331,14 +334,16 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       const lead = leadByToken(token);
       // Like lock_lead_by_token: completed leads are read-only.
       if (lead.step_reached === "completed") throw new LeadNotFoundError();
+      const kind = file.kind ?? "id_document";
       const issued = issuedSlots.get(lead.id) ?? 0;
-      if (documents.filter((d) => d.lead_id === lead.id).length >= MAX_LEAD_DOCUMENTS || issued >= MAX_LEAD_DOCUMENT_SLOTS) {
-        throw new LeadDocumentLimitError();
-      }
+      if (issued >= MAX_LEAD_DOCUMENT_SLOTS) throw new LeadDocumentLimitError(kind);
+      const ofKind = documents.filter((d) => d.lead_id === lead.id && d.kind === kind).length;
+      if (ofKind >= (kind === "bill" ? MAX_LEAD_BILLS : MAX_LEAD_DOCUMENTS)) throw new LeadDocumentLimitError(kind);
       issuedSlots.set(lead.id, issued + 1);
       const doc: MockDocument = {
         id: crypto.randomUUID(),
         lead_id: lead.id,
+        kind,
         mime_type: file.mime,
         size_bytes: file.bytes.length,
         created_at: new Date().toISOString(),
@@ -524,6 +529,10 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       if (!supplierById(input.supplier_id)) throw new SupplierNotFoundError();
       const created: Offer = {
         ...structuredClone(input),
+        iban_required: input.iban_required ?? false,
+        featured_audience: input.featured_audience !== undefined ? input.featured_audience : input.featured ? "both" : null,
+        // Mirrors the DB trigger: an explicit audience drives featured.
+        featured: input.featured_audience !== undefined ? input.featured_audience !== null : input.featured,
         id: crypto.randomUUID(),
         updated_at: new Date().toISOString(),
       };
@@ -537,7 +546,14 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       if (patch.supplier_id !== undefined && !supplierById(patch.supplier_id)) {
         throw new SupplierNotFoundError();
       }
-      Object.assign(existing, structuredClone(definedOnly(patch)), {
+      const changes = structuredClone(definedOnly(patch));
+      // Mirrors the DB trigger offers_sync_featured: featured drives featured_audience.
+      if (changes.featured_audience !== undefined) {
+        changes.featured = changes.featured_audience !== null;
+      } else if (changes.featured !== undefined) {
+        changes.featured_audience = changes.featured ? (existing.featured_audience ?? "both") : null;
+      }
+      Object.assign(existing, changes, {
         updated_at: new Date().toISOString(),
       });
       return withSupplier(existing)!;
