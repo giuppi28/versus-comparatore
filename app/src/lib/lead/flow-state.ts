@@ -367,7 +367,8 @@ export function snapshotOffer(offer: OfferWithSupplier, annualConsumption: numbe
     locked_months: offer.locked_months,
     activation_cost: offer.activation_cost,
     promo_text: offer.promo_text,
-    monthly_cost: monthlyCost(offer, annualConsumption),
+    // Variable offers have no monthly cost (0 until T14.7/T14.8 handle them in the UI).
+    monthly_cost: monthlyCost(offer, annualConsumption) ?? 0,
   };
 }
 

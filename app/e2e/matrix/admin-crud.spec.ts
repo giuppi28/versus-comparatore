@@ -237,7 +237,7 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
     });
     const luceOffers = MOCK_OFFERS.filter((o) => o.commodity === "luce");
     const expectedIds = (offer: Offer) =>
-      rankOffers([...luceOffers, offer], annualFromMonthly(225), { excludeSupplierId: "edison-energia" }).map((r) => r.offer.id);
+      rankOffers([...luceOffers, offer], "casa", annualFromMonthly(225), { excludeSupplierId: "edison-energia" }).map((r) => r.offer.id);
     const cleanup = async () => {
       await page.goto("/admin/offerte?vista=tutte");
       const r = page.locator(`[data-testid="offer-row"][data-offer-id="${offerId}"]`);
@@ -254,7 +254,7 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
       await expect(mine).toBeVisible();
       expect(await publicIds()).toEqual(expectedIds(made({})));
       expect((await publicIds()).at(-1)).toBe(offerId);
-      const cost = monthlyCost(made({}), annualFromMonthly(225));
+      const cost = monthlyCost(made({}), annualFromMonthly(225))!;
       await expect(mine.getByTestId("offer-monthly")).toHaveText(formatEuro(cost));
       await expect(mine.getByTestId("offer-name")).toHaveText(offerName);
       await expect(mine.getByTestId("offer-locked")).toHaveText("Bloccato 18 mesi");
@@ -281,7 +281,7 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
       const cheap = made({ energy_price: 0.05 });
       expect(await publicIds()).toEqual(expectedIds(cheap));
       expect((await publicIds())[0]).toBe(offerId);
-      await expect(mine.getByTestId("offer-monthly")).toHaveText(formatEuro(monthlyCost(cheap, annualFromMonthly(225))));
+      await expect(mine.getByTestId("offer-monthly")).toHaveText(formatEuro(monthlyCost(cheap, annualFromMonthly(225))!));
 
       // ---- back to expensive, then featured: first despite the cost, with the band ----
       await page.goto(`/admin/offerte/${offerId}`);
@@ -349,7 +349,7 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
     // Final state: nothing of ours is visible to customers.
     await openPublic();
     await expect(pub.locator(`[data-offer-id="${offerId}"]`)).toHaveCount(0);
-    expect(await publicIds()).toEqual(rankOffers(luceOffers, annualFromMonthly(225), { excludeSupplierId: "edison-energia" }).map((r) => r.offer.id));
+    expect(await publicIds()).toEqual(rankOffers(luceOffers, "casa", annualFromMonthly(225), { excludeSupplierId: "edison-energia" }).map((r) => r.offer.id));
   });
 
   test("deletions: an offer, then a supplier with offers, disappear for customers; placeholders are protected", TAG, async ({ page }, testInfo) => {

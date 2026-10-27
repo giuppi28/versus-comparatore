@@ -4,6 +4,7 @@
  */
 import { isRealSupplier, type Commodity, type OfferWithSupplier, type Supplier } from "@/lib/data/types";
 import { annualKwh, annualSmc, serviceTypeFor, type FlowState } from "@/lib/lead/flow-state";
+import type { Audience } from "@/lib/logic/pricing";
 import { commoditiesOf, needsCurrentSupplier } from "@/lib/lead/rules";
 
 /** Upper bound of the editable monthly consumption (same bound as the lead API). */
@@ -43,6 +44,14 @@ export function currentSupplierFor(state: FlowState, commodity: Commodity): stri
   if (!needsCurrentSupplier(serviceTypeFor(state, commodity))) return null;
   const id = commodity === "luce" ? state.currentSupplierLuce : state.currentSupplierGas;
   return id || null;
+}
+
+/**
+ * Audience used by the ranking and the "In evidenza" badge (SPEC decision #18): the customer
+ * type from Page 1; "casa" while it is not chosen yet (the page redirects away in that case).
+ */
+export function audienceFor(state: FlowState): Audience {
+  return state.customerType === "business" ? "business" : "casa";
 }
 
 /** All current suppliers of the comparison (never shown on the loading screen). */

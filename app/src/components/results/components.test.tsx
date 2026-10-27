@@ -15,7 +15,7 @@ function withSupplier(offerId: string): OfferWithSupplier {
 
 describe("OfferCard", () => {
   const edison = withSupplier("offer-aldo-14");
-  const cost = monthlyCost(edison, 2700);
+  const cost = monthlyCost(edison, 2700)!;
 
   it("shows the PRD §8 elements and exposes the data attributes", () => {
     const onActivate = vi.fn();

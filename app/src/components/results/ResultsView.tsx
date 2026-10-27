@@ -18,6 +18,7 @@ import { OfferCard } from "./OfferCard";
 import { supplierLogoSrc } from "./logo-src";
 import {
   LOADED_SIGNATURE_KEY,
+  audienceFor,
   buildLoadingSuppliers,
   buildOrbitSuppliers,
   commodityLabel,
@@ -129,7 +130,7 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
 
   const ranked = useMemo(
     () =>
-      rankOffers(offers?.[step] ?? [], annual, {
+      rankOffers(offers?.[step] ?? [], audienceFor(state), annual, {
         excludeSupplierId: currentSupplierFor(state, step),
       }),
     [offers, step, annual, state],
@@ -141,7 +142,7 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
       ...(step === "luce" ? { finalKwhMonth: value } : { finalSmcMonth: value }),
       // Keep an already chosen offer's cost in line with the consumption on screen.
       ...(chosen
-        ? { chosenOffers: { [step]: { ...chosen, monthly_cost: monthlyCost(chosen, annualFromMonthly(value)) } } }
+        ? { chosenOffers: { [step]: { ...chosen, monthly_cost: monthlyCost(chosen, annualFromMonthly(value)) ?? 0 } } }
         : {}),
     });
   };
@@ -305,7 +306,7 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
                 key={offer.id}
                 offer={offer}
                 commodity={step}
-                monthlyCost={cost}
+                monthlyCost={cost ?? 0}
                 chosen={state.chosenOffers[step]?.offer_id === offer.id}
                 onActivate={() => setModalOfferId(offer.id)}
               />
@@ -320,7 +321,7 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
           onClose={() => setModalOfferId(null)}
           offer={modalOffer}
           commodity={step}
-          monthlyCost={modalRanked.monthlyCost}
+          monthlyCost={modalRanked.monthlyCost ?? 0}
           onActivate={handleActivate}
           step={isDual ? `Offerta ${label}` : undefined}
         />

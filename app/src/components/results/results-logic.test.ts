@@ -4,6 +4,7 @@ import type { OfferWithSupplier } from "@/lib/data/types";
 import { INITIAL_FLOW_STATE, type FlowState } from "@/lib/lead/flow-state";
 import {
   DEFAULT_LOADING_MS,
+  audienceFor,
   buildLoadingSuppliers,
   buildOrbitSuppliers,
   FAST_LOADING_MS,
@@ -18,6 +19,14 @@ import {
 } from "./results-logic";
 
 const base = (patch: Partial<FlowState> = {}): FlowState => ({ ...INITIAL_FLOW_STATE, ...patch });
+
+describe("audienceFor", () => {
+  it("follows the customer type, casa by default", () => {
+    expect(audienceFor(base({ customerType: "business" }))).toBe("business");
+    expect(audienceFor(base({ customerType: "casa" }))).toBe("casa");
+    expect(audienceFor(base())).toBe("casa");
+  });
+});
 
 describe("stepsFor", () => {
   it("maps the commodity to the ordered steps", () => {

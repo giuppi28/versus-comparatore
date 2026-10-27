@@ -273,7 +273,7 @@ export async function resultsStep(
   if (isDual) await expect(page.getByTestId("dual-step-indicator")).toHaveAttribute("data-active", commodity);
 
   const annual = annualFromMonthly(monthly);
-  const expected = rankOffers(offerPool(commodity, c.customer), annual, { excludeSupplierId: exclude });
+  const expected = rankOffers(offerPool(commodity, c.customer), c.customer, annual, { excludeSupplierId: exclude });
   expect(expected.length).toBeGreaterThan(0);
 
   // (1) exactly the expected offers in the expected order: featured first, then cost ascending
@@ -288,7 +288,7 @@ export async function resultsStep(
   const firstNonFeatured = featured.indexOf(false);
   if (firstNonFeatured >= 0) expect(featured.slice(firstNonFeatured).some(Boolean), "featured offers come first").toBe(false);
   const cents = (await ids(cards, "data-monthly-cost")).map(Number);
-  expect(cents).toEqual(expected.map((r) => Math.round(r.monthlyCost * 100)));
+  expect(cents).toEqual(expected.map((r) => Math.round(r.monthlyCost! * 100)));
   for (const [from, to] of [[0, firstNonFeatured < 0 ? cents.length : firstNonFeatured], [firstNonFeatured < 0 ? cents.length : firstNonFeatured, cents.length]]) {
     const part = cents.slice(from, to);
     expect(part, "ascending monthly cost within block").toEqual([...part].sort((a, b) => a - b));
@@ -304,7 +304,7 @@ export async function resultsStep(
   const chosen = expected[at];
   const chosenCard = cards.nth(at);
   await expect(chosenCard).toHaveAttribute("data-offer-id", chosen.offer.id);
-  await expect(chosenCard.getByTestId("offer-monthly")).toHaveText(formatEuro(chosen.monthlyCost));
+  await expect(chosenCard.getByTestId("offer-monthly")).toHaveText(formatEuro(chosen.monthlyCost!));
   await expect(chosenCard.getByTestId("offer-price")).toHaveText(
     formatPrice(chosen.offer.energy_price, commodity === "luce" ? "kWh" : "Smc"),
   );
@@ -321,10 +321,10 @@ export async function resultsStep(
   for (const [i, adv] of chosen.offer.advantages.entries()) {
     await expect(items.nth(i)).toHaveText(adv.replace(/\*\*/g, ""));
   }
-  await expect(dialog.getByTestId("offer-modal-monthly")).toContainText(formatEuro(chosen.monthlyCost));
+  await expect(dialog.getByTestId("offer-modal-monthly")).toContainText(formatEuro(chosen.monthlyCost!));
   if (isDual) await expect(dialog.getByTestId("offer-modal-step")).toHaveText(`Offerta ${label}`);
   await dialog.getByTestId("offer-modal-cta").click();
-  return { offer: chosen.offer, cost: chosen.monthlyCost };
+  return { offer: chosen.offer, cost: chosen.monthlyCost! };
 }
 
 // ---------------------------------------------------------------------------

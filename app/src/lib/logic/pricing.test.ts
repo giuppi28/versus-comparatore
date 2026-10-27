@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { MOCK_OFFERS } from "@/lib/data";
 import type { Offer } from "@/lib/data/types";
 import {
   annualFromMonthly,
+  featuredBadgeIds,
   formatEuro,
   formatPrice,
+  formatVariablePrice,
   monthlyCost,
   monthlyFromAnnual,
   rankOffers,
@@ -54,24 +57,50 @@ describe("monthlyCost (PRD §8)", () => {
   });
 });
 
+describe("monthlyCost, variable offers", () => {
+  it("returns null for a variable offer whatever the consumption", () => {
+    const v = offer({ id: "v", price_type: "variable", energy_price: 0.01, locked_months: null });
+    expect(monthlyCost(v, 2400)).toBeNull();
+    expect(monthlyCost(v, 0)).toBeNull();
+  });
+  it("fixed offers are unchanged (explicit and missing price_type)", () => {
+    const f = offer({ id: "f", energy_price: 0.1 });
+    expect(monthlyCost(f, 1200)).toBeCloseTo(10, 10);
+    expect(
+      monthlyCost(
+        { energy_price: 0.1, other_variable_costs: 0, fixed_fee_monthly: 0, other_fixed_costs_monthly: 0 },
+        1200,
+      ),
+    ).toBeCloseTo(10, 10);
+  });
+});
+
 describe("rankOffers", () => {
+  const ids = (list: { offer: { id: string } }[]) => list.map((r) => r.offer.id);
   const offers = [
     offer({ id: "cheap", name: "Cheap", energy_price: 0.1 }),
     offer({ id: "mid", name: "Mid", energy_price: 0.15 }),
-    offer({ id: "feat", name: "Featured", energy_price: 0.3, featured: true }),
+    offer({ id: "feat", name: "Featured", energy_price: 0.3, featured: true, featured_audience: "both" }),
     offer({ id: "other", name: "Other", supplier_id: "s2", energy_price: 0.05 }),
   ];
-  it("featured first, then cost ascending", () => {
-    expect(rankOffers(offers, 2400).map((r) => r.offer.id)).toEqual(["feat", "other", "cheap", "mid"]);
+  it("forced-featured first, then cost ascending", () => {
+    expect(ids(rankOffers(offers, "casa", 2400))).toEqual(["feat", "other", "cheap", "mid"]);
   });
   it("excludes the current supplier", () => {
-    expect(rankOffers(offers, 2400, { excludeSupplierId: "s1" }).map((r) => r.offer.id)).toEqual(["other"]);
-    expect(rankOffers(offers, 2400, { excludeSupplierId: null }).length).toBe(4);
-    expect(rankOffers(offers, 2400, { excludeSupplierId: "unknown" }).length).toBe(4);
+    expect(ids(rankOffers(offers, "casa", 2400, { excludeSupplierId: "s1" }))).toEqual(["other"]);
+    expect(rankOffers(offers, "casa", 2400, { excludeSupplierId: null }).length).toBe(4);
+    expect(rankOffers(offers, "casa", 2400, { excludeSupplierId: "unknown" }).length).toBe(4);
+  });
+  it("excluding the current supplier removes a forced-featured offer too", () => {
+    const list = [
+      offer({ id: "feat", supplier_id: "s9", energy_price: 0.3, featured_audience: "both" }),
+      offer({ id: "a", energy_price: 0.1 }),
+    ];
+    expect(ids(rankOffers(list, "casa", 1200, { excludeSupplierId: "s9" }))).toEqual(["a"]);
   });
   it("returns the monthly cost and does not mutate the input", () => {
     const copy = [...offers];
-    const ranked = rankOffers(offers, 1200);
+    const ranked = rankOffers(offers, "casa", 1200);
     expect(offers).toEqual(copy);
     expect(ranked.find((r) => r.offer.id === "cheap")?.monthlyCost).toBeCloseTo(10, 10);
   });
@@ -82,18 +111,154 @@ describe("rankOffers", () => {
       offer({ id: "b", name: "Alfa" }),
       offer({ id: "a", name: "Alfa" }),
     ];
-    expect(rankOffers(tied, 1200).map((r) => r.offer.id)).toEqual(["1", "a", "b", "2"]);
+    expect(ids(rankOffers(tied, "casa", 1200))).toEqual(["1", "a", "b", "2"]);
   });
-  it("ties among featured offers are also by cost then name", () => {
+  it("ties among forced-featured offers are also by cost then name", () => {
     const f = [
-      offer({ id: "f2", name: "B", featured: true, energy_price: 0.2 }),
-      offer({ id: "f1", name: "A", featured: true, energy_price: 0.3 }),
-      offer({ id: "f3", name: "C", featured: true, energy_price: 0.2 }),
+      offer({ id: "f2", name: "B", featured_audience: "both", energy_price: 0.2 }),
+      offer({ id: "f1", name: "A", featured_audience: "both", energy_price: 0.3 }),
+      offer({ id: "f3", name: "C", featured_audience: "both", energy_price: 0.2 }),
     ];
-    expect(rankOffers(f, 1200).map((r) => r.offer.id)).toEqual(["f2", "f3", "f1"]);
+    expect(ids(rankOffers(f, "casa", 1200))).toEqual(["f2", "f3", "f1"]);
   });
   it("empty input", () => {
-    expect(rankOffers([], 1000)).toEqual([]);
+    expect(rankOffers([], "casa", 1000)).toEqual([]);
+  });
+
+  describe("audience", () => {
+    const list = [
+      offer({ id: "plain", energy_price: 0.1 }),
+      offer({ id: "casa-f", energy_price: 0.4, featured_audience: "casa" }),
+      offer({ id: "biz-f", energy_price: 0.3, featured_audience: "business" }),
+      offer({ id: "both-f", energy_price: 0.2, featured_audience: "both" }),
+    ];
+    it("casa: casa and both are forced on top, business-forced is a normal offer", () => {
+      expect(ids(rankOffers(list, "casa", 1200))).toEqual(["both-f", "casa-f", "plain", "biz-f"]);
+    });
+    it("business: business and both are forced on top, casa-forced is a normal offer", () => {
+      expect(ids(rankOffers(list, "business", 1200))).toEqual(["both-f", "biz-f", "plain", "casa-f"]);
+    });
+  });
+
+  describe("variable offers", () => {
+    const list = [
+      offer({ id: "var-hi", price_type: "variable", energy_price: 0.03, locked_months: null }),
+      offer({ id: "fix-expensive", energy_price: 0.5 }),
+      offer({ id: "var-lo", price_type: "variable", energy_price: 0.01, locked_months: null }),
+      offer({ id: "fix-cheap", energy_price: 0.1 }),
+    ];
+    it("come after every fixed offer, ordered by spread ascending", () => {
+      const ranked = rankOffers(list, "casa", 2400);
+      expect(ids(ranked)).toEqual(["fix-cheap", "fix-expensive", "var-lo", "var-hi"]);
+      expect(ranked.filter((r) => r.offer.price_type === "variable").every((r) => r.monthlyCost === null)).toBe(true);
+    });
+    it("a variable offer is cheaper by spread than any fixed price but still last", () => {
+      expect(ids(rankOffers(list, "casa", 0)).slice(-2)).toEqual(["var-lo", "var-hi"]);
+    });
+    it("a forced-featured variable offer is on top of the other normal offers but after forced fixed ones", () => {
+      const l = [
+        ...list,
+        offer({ id: "forced-var", price_type: "variable", energy_price: 0.05, featured_audience: "both", locked_months: null }),
+        offer({ id: "forced-fix", energy_price: 0.9, featured_audience: "casa" }),
+      ];
+      expect(ids(rankOffers(l, "casa", 2400))).toEqual([
+        "forced-fix",
+        "forced-var",
+        "fix-cheap",
+        "fix-expensive",
+        "var-lo",
+        "var-hi",
+      ]);
+      // for business the casa-forced fixed offer is a normal one
+      expect(ids(rankOffers(l, "business", 2400)).slice(0, 2)).toEqual(["forced-var", "fix-cheap"]);
+    });
+    it("variable ties by spread are broken by name, then id", () => {
+      const t = [
+        offer({ id: "2", name: "Zeta", price_type: "variable", energy_price: 0.02, locked_months: null }),
+        offer({ id: "1", name: "Alfa", price_type: "variable", energy_price: 0.02, locked_months: null }),
+        offer({ id: "0", name: "Beta", price_type: "variable", energy_price: 0.0200000001, locked_months: null }),
+      ];
+      expect(ids(rankOffers(t, "casa", 1200))).toEqual(["1", "0", "2"]);
+    });
+    it("all-variable list is ordered by spread", () => {
+      const l = list.filter((o) => o.price_type === "variable");
+      expect(ids(rankOffers(l, "business", 1200))).toEqual(["var-lo", "var-hi"]);
+    });
+  });
+});
+
+describe("featuredBadgeIds", () => {
+  const rank = (list: Offer[], audience: "casa" | "business", exclude?: string) =>
+    rankOffers(list, audience, 2400, { excludeSupplierId: exclude });
+  const fixed = [
+    offer({ id: "b", energy_price: 0.2 }),
+    offer({ id: "a", energy_price: 0.1 }),
+  ];
+  const variable = offer({ id: "v", price_type: "variable", energy_price: 0.01, locked_months: null });
+
+  it("no forced offer: the cheapest displayed fixed offer", () => {
+    expect([...featuredBadgeIds(rank(fixed, "casa"), "casa")]).toEqual(["a"]);
+  });
+  it("never a variable offer automatically, even when it comes first in the input", () => {
+    expect([...featuredBadgeIds(rank([variable, ...fixed], "casa"), "casa")]).toEqual(["a"]);
+  });
+  it("all-variable list: no badge", () => {
+    expect(featuredBadgeIds(rank([variable, { ...variable, id: "v2" }], "casa"), "casa").size).toBe(0);
+  });
+  it("empty list: no badge", () => {
+    expect(featuredBadgeIds([], "casa").size).toBe(0);
+  });
+  it("forced offers get the badge (and replace the automatic one)", () => {
+    const list = [...fixed, offer({ id: "f1", energy_price: 0.9, featured_audience: "casa" }), offer({ id: "f2", energy_price: 0.8, featured_audience: "both" })];
+    expect([...featuredBadgeIds(rank(list, "casa"), "casa")].sort()).toEqual(["f1", "f2"]);
+  });
+  it("a forced variable offer gets the badge", () => {
+    const forced = { ...variable, featured_audience: "both" as const };
+    expect([...featuredBadgeIds(rank([forced, ...fixed], "casa"), "casa")]).toEqual(["v"]);
+  });
+  it("forcing for the other audience does not count: automatic badge instead", () => {
+    const list = [...fixed, offer({ id: "biz", energy_price: 0.9, featured_audience: "business" })];
+    expect([...featuredBadgeIds(rank(list, "casa"), "casa")]).toEqual(["a"]);
+    expect([...featuredBadgeIds(rank(list, "business"), "business")]).toEqual(["biz"]);
+  });
+  it("the excluded current supplier's forced offer is not displayed, so the automatic badge applies", () => {
+    const list = [...fixed, offer({ id: "f", supplier_id: "cur", energy_price: 0.9, featured_audience: "both" })];
+    expect([...featuredBadgeIds(rank(list, "casa", "cur"), "casa")]).toEqual(["a"]);
+  });
+  it("is per commodity: luce and gas lists are independent", () => {
+    const luce = rank([offer({ id: "l1", energy_price: 0.2, featured_audience: "both" }), offer({ id: "l2", energy_price: 0.1 })], "casa");
+    const gas = rank([offer({ id: "g1", commodity: "gas", energy_price: 0.5 }), offer({ id: "g2", commodity: "gas", energy_price: 0.4 })], "casa");
+    expect([...featuredBadgeIds(luce, "casa")]).toEqual(["l1"]);
+    expect([...featuredBadgeIds(gas, "casa")]).toEqual(["g2"]);
+  });
+  it("works on the real mock data: luce casa has one badge, the cheapest fixed unless forced", () => {
+    for (const audience of ["casa", "business"] as const) {
+      const pool = MOCK_OFFERS.filter(
+        (o) => o.commodity === "luce" && o.active && (o.customer_type === "both" || o.customer_type === audience),
+      );
+      const ranked = rank(pool, audience);
+      const badge = featuredBadgeIds(ranked, audience);
+      expect(badge.size).toBeGreaterThan(0);
+      const forcedIds = ranked.filter((r) => r.offer.featured_audience === audience || r.offer.featured_audience === "both").map((r) => r.offer.id);
+      if (forcedIds.length === 0) expect([...badge]).toEqual([ranked.find((r) => r.offer.price_type === "fixed")!.offer.id]);
+      else expect([...badge].sort()).toEqual([...forcedIds].sort());
+      // non-forced fixed offers precede variable ones in the real data too
+      const rest = ranked.filter((r) => !forcedIds.includes(r.offer.id)).map((r) => r.offer.price_type);
+      const firstVariable = rest.indexOf("variable");
+      if (firstVariable >= 0) expect(rest.slice(firstVariable).includes("fixed")).toBe(false);
+    }
+  });
+});
+
+describe("formatVariablePrice", () => {
+  it("formats the spread over PUN", () => {
+    expect(formatVariablePrice(0.01)).toBe("PUN + 0,01\u00a0€/kWh");
+    expect(formatVariablePrice(0.02)).toBe("PUN + 0,02\u00a0€/kWh");
+  });
+  it("keeps up to 4 decimals when needed, never pads beyond 2", () => {
+    expect(formatVariablePrice(0.0125)).toBe("PUN + 0,0125\u00a0€/kWh");
+    expect(formatVariablePrice(0.1)).toBe("PUN + 0,10\u00a0€/kWh");
+    expect(formatVariablePrice(0)).toBe("PUN + 0,00\u00a0€/kWh");
   });
 });
 

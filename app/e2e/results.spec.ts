@@ -167,7 +167,7 @@ test.describe("results page", () => {
     await expect(cards.first()).toBeVisible();
 
     const monthly = monthlyFromAnnual(2700);
-    const expected = rankOffers(luceOffers, annualFromMonthly(monthly), { excludeSupplierId: "edison-energia" });
+    const expected = rankOffers(luceOffers, "casa", annualFromMonthly(monthly), { excludeSupplierId: "edison-energia" });
     expect(expected).toHaveLength(3);
     expect(await ids(cards, "data-supplier-id")).not.toContain("edison-energia");
     expect(await ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
@@ -175,7 +175,7 @@ test.describe("results page", () => {
 
     // Monthly cost of one card matches monthlyCost() and is shown with the tooltip.
     const sorgenia = luceOffers.find((o) => o.supplier_id === "sorgenia")!;
-    const cost = monthlyCost(sorgenia, annualFromMonthly(monthly));
+    const cost = monthlyCost(sorgenia, annualFromMonthly(monthly))!;
     const card = page.locator(`[data-testid="offer-card"][data-offer-id="${sorgenia.id}"]`);
     await expect(card).toHaveAttribute("data-monthly-cost", String(Math.round(cost * 100)));
     await expect(card.getByTestId("offer-monthly")).toHaveText(formatEuro(cost));
@@ -235,7 +235,7 @@ test.describe("results page", () => {
     const cards = page.getByTestId("offer-card");
     await expect(cards.first()).toBeVisible();
     // A stale supplier left in the state is ignored for Primo allaccio.
-    const expected = rankOffers(luceOffers, annualFromMonthly(225));
+    const expected = rankOffers(luceOffers, "casa", annualFromMonthly(225));
     expect(await ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
     await expect(cards.first()).toHaveAttribute("data-featured", "true");
     await expect(cards.first()).toHaveAttribute("data-supplier-id", "edison-energia");
@@ -252,11 +252,11 @@ test.describe("results page", () => {
 
     const input = page.getByTestId("results-consumption-kwh");
     await input.fill("20");
-    const expected = rankOffers(luceOffers, annualFromMonthly(20), { excludeSupplierId: "edison-energia" });
+    const expected = rankOffers(luceOffers, "casa", annualFromMonthly(20), { excludeSupplierId: "edison-energia" });
     expect(expected.map((r) => r.offer.id)).not.toEqual(before);
     await expect.poll(() => ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
     expect(await ids(cards, "data-monthly-cost")).toEqual(
-      expected.map((r) => String(Math.round(r.monthlyCost * 100))),
+      expected.map((r) => String(Math.round(r.monthlyCost! * 100))),
     );
     expect((await flowState(page)).finalKwhMonth).toBe(20);
 
@@ -273,7 +273,7 @@ test.describe("results page", () => {
     await page.goto("/offerte?fast=1");
     const cards = page.getByTestId("offer-card");
     await expect(cards.first()).toBeVisible();
-    const expected = rankOffers(gasOffers, annualFromMonthly(monthlyFromAnnual(720)), {
+    const expected = rankOffers(gasOffers, "casa", annualFromMonthly(monthlyFromAnnual(720)), {
       excludeSupplierId: "eni-plenitude",
     });
     expect(await ids(cards, "data-offer-id")).toEqual(expected.map((r) => r.offer.id));
@@ -321,12 +321,12 @@ test.describe("results page", () => {
 
     const flow = await flowState(page);
     expect(flow.chosenOffers.luce.offer_id).toBe(sorgenia.id);
-    expect(flow.chosenOffers.luce.monthly_cost).toBeCloseTo(monthlyCost(sorgenia, annualFromMonthly(225)), 6);
+    expect(flow.chosenOffers.luce.monthly_cost).toBeCloseTo(monthlyCost(sorgenia, annualFromMonthly(225))!, 6);
     expect(flow.chosenOffers.gas).toBeNull();
     const last = captured.patches.at(-1)!.data;
     expect(last.step_reached).toBe("offer_chosen");
     expect(last.chosen_offer_luce).toBe(sorgenia.id);
-    expectCents(last.monthly_cost_shown, monthlyCost(sorgenia, annualFromMonthly(225)));
+    expectCents(last.monthly_cost_shown, monthlyCost(sorgenia, annualFromMonthly(225))!);
   });
 
   test("details can be expanded on the card", async ({ page }) => {
@@ -362,7 +362,7 @@ test.describe("results page", () => {
 
     await expect(indicator).toHaveAttribute("data-active", "gas");
     await expect(page.getByTestId("results-consumption-smc")).toHaveValue("60");
-    const expectedGas = rankOffers(gasOffers, annualFromMonthly(60), { excludeSupplierId: "eni-plenitude" });
+    const expectedGas = rankOffers(gasOffers, "casa", annualFromMonthly(60), { excludeSupplierId: "eni-plenitude" });
     await expect.poll(() => ids(cards, "data-offer-id")).toEqual(expectedGas.map((r) => r.offer.id));
     expect(await ids(cards, "data-supplier-id")).not.toContain("eni-plenitude");
     expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
@@ -394,7 +394,7 @@ test.describe("results page", () => {
     expect(last.chosen_offer_luce).toBe(iberdrola.id);
     expect(last.chosen_offer_gas).toBe(engie.id);
     const total =
-      monthlyCost(iberdrola, annualFromMonthly(225)) + monthlyCost(engie, annualFromMonthly(60));
+      monthlyCost(iberdrola, annualFromMonthly(225))! + monthlyCost(engie, annualFromMonthly(60))!;
     expectCents(last.monthly_cost_shown, total);
   });
 
