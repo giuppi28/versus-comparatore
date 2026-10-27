@@ -98,7 +98,7 @@ describe("parseMonthlyConsumption", () => {
 });
 
 describe("resolveLoadingMs", () => {
-  it("defaults to 4 s, honours ?fast=1 and the env override", () => {
+  it("defaults to 7.5 s, honours ?fast=1 and the env override", () => {
     expect(resolveLoadingMs({})).toBe(DEFAULT_LOADING_MS);
     expect(resolveLoadingMs({ fast: "1" })).toBe(FAST_LOADING_MS);
     expect(resolveLoadingMs({ fast: "0" })).toBe(DEFAULT_LOADING_MS);

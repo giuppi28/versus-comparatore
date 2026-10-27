@@ -10,8 +10,8 @@ import { commoditiesOf, needsCurrentSupplier } from "@/lib/lead/rules";
 /** Upper bound of the editable monthly consumption (same bound as the lead API). */
 export const MAX_MONTHLY_CONSUMPTION = 1_000_000;
 
-/** Default duration of the loading screen (PRD §7: ~4 s). */
-export const DEFAULT_LOADING_MS = 4000;
+/** Default duration of the loading screen (decision #19: ~7.5 s). */
+export const DEFAULT_LOADING_MS = 7500;
 /** Duration used by `?fast=1` (kept above 0 so the screen is still mounted once). */
 export const FAST_LOADING_MS = 250;
 
@@ -74,7 +74,7 @@ export function parseMonthlyConsumption(raw: string): number | null {
 
 /**
  * Loading screen duration. Priority: `?fast=1` → FAST_LOADING_MS, then
- * NEXT_PUBLIC_LOADING_MS (a non-negative number of ms; used by tests), else 4000.
+ * NEXT_PUBLIC_LOADING_MS (a non-negative number of ms; used by tests), else 7500.
  */
 export function resolveLoadingMs(opts: { fast?: string | null; envMs?: string | null }): number {
   if (opts.fast === "1") return FAST_LOADING_MS;

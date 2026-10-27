@@ -7,6 +7,7 @@ import {
   commodityPhrase,
   getLoadingMessage,
   getLoadingMessageParts,
+  barFill,
 } from "./LoadingScreen";
 
 const SUPPLIERS = [
@@ -40,22 +41,46 @@ describe("LoadingScreen", () => {
     delete window.matchMedia;
   });
 
-  it("shows the messages in order, ending with the final one", () => {
-    render(<LoadingScreen suppliers={SUPPLIERS} commodities={["luce"]} durationMs={6000} onComplete={() => {}} />);
+  it("shows the messages in order: early ones to 3 s, key message 3-7 s, final flash 7-7.5 s", () => {
+    render(<LoadingScreen suppliers={SUPPLIERS} commodities={["luce"]} onComplete={() => {}} />);
     expect(screen.getByTestId("loading-screen")).toBeInTheDocument();
     expect(message()).toBe("Analizziamo i tuoi consumi");
     advance(800);
     expect(message()).toBe("Stiamo confrontando le offerte luce per te");
     advance(700);
     expect(message()).toBe("Analizziamo i migliori fornitori");
-    advance(700);
+    advance(750); // t = 2250
     expect(message()).toBe("Calcoliamo la tua spesa mensile");
-    advance(700);
+    advance(650); // t = 2900
+    expect(message()).toBe("Calcoliamo la tua spesa mensile");
+    advance(100); // t = 3000
     expect(message()).toBe("Stiamo ricercando per te l'offerta più bassa");
-    // Longest message: still on screen ~2.3 s later (t = 5.2 s), gone shortly after 5.3 s.
-    advance(2300);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "50");
+    advance(3900); // t = 6900
     expect(message()).toBe("Stiamo ricercando per te l'offerta più bassa");
-    advance(200);
+    advance(100); // t = 7000
+    expect(message()).toBe("Ecco le migliori offerte per te!");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+    advance(450); // t = 7450: still the final flash, not complete
+    expect(message()).toBe("Ecco le migliori offerte per te!");
+  });
+
+  it("fills the bar 0-50 % in 3 s and 50-100 % in the following 4 s", () => {
+    expect(barFill(0)).toBe(0);
+    expect(barFill(1500 / 7500)).toBeCloseTo(0.25);
+    expect(barFill(3000 / 7500)).toBeCloseTo(0.5);
+    expect(barFill(5000 / 7500)).toBeCloseTo(0.5 + (0.5 * 2000) / 4000);
+    expect(barFill(7000 / 7500)).toBe(1);
+    expect(barFill(1)).toBe(1);
+  });
+
+  it("scales the timeline proportionally for a custom duration", () => {
+    render(<LoadingScreen suppliers={SUPPLIERS} durationMs={750} onComplete={() => {}} />);
+    advance(299);
+    expect(message()).toBe("Calcoliamo la tua spesa mensile");
+    advance(51);
+    expect(message()).toBe("Stiamo ricercando per te l'offerta più bassa");
+    advance(350);
     expect(message()).toBe("Ecco le migliori offerte per te!");
   });
 
@@ -67,8 +92,8 @@ describe("LoadingScreen", () => {
   });
 
   it("highlights 'offerta più bassa' with the same green markup as the other messages", () => {
-    expect(getLoadingMessageParts(0.6)).toEqual(["Stiamo ricercando per te l'", { em: "offerta più bassa" }]);
-    render(<LoadingScreen suppliers={SUPPLIERS} durationMs={6000} onComplete={() => {}} />);
+    expect(getLoadingMessageParts(0.5)).toEqual(["Stiamo ricercando per te l'", { em: "offerta più bassa" }]);
+    render(<LoadingScreen suppliers={SUPPLIERS} onComplete={() => {}} />);
     advance(3000);
     const em = screen.getByTestId("loading-message").querySelector("span span");
     expect(em?.textContent).toBe("offerta più bassa");
@@ -164,11 +189,11 @@ describe("LoadingScreen", () => {
     expect(onStart).toHaveBeenCalledTimes(1);
   });
 
-  it("uses the 6 second default duration", () => {
-    expect(DEFAULT_DURATION_MS).toBe(6000);
+  it("uses the 7.5 second default duration", () => {
+    expect(DEFAULT_DURATION_MS).toBe(7500);
     const onComplete = vi.fn();
     render(<LoadingScreen suppliers={SUPPLIERS} onComplete={onComplete} />);
-    advance(5900);
+    advance(7400);
     expect(onComplete).not.toHaveBeenCalled();
     advance(200);
     expect(onComplete).toHaveBeenCalledTimes(1);
@@ -182,9 +207,9 @@ describe("LoadingScreen", () => {
     expect(bar).toHaveAttribute("aria-valuenow", "0");
     const status = screen.getByRole("status");
     expect(status).toHaveAttribute("aria-live", "polite");
-    advance(500);
+    advance(400);
     expect(bar).toHaveAttribute("aria-valuenow", "50");
-    advance(500);
+    advance(600);
     expect(bar).toHaveAttribute("aria-valuenow", "100");
   });
 
@@ -194,9 +219,9 @@ describe("LoadingScreen", () => {
     expect(ring.tagName.toLowerCase()).toBe("circle");
     expect(ring).toHaveAttribute("stroke-dasharray", "100");
     expect(ring).toHaveAttribute("stroke-dashoffset", "100");
-    advance(500);
+    advance(400);
     expect(ring).toHaveAttribute("stroke-dashoffset", "50");
-    advance(500);
+    advance(600);
     expect(ring).toHaveAttribute("stroke-dashoffset", "0");
   });
 
@@ -231,11 +256,11 @@ describe("LoadingScreen", () => {
     expect(row.className).toContain("gap-x-10");
     // Symmetric: gaps live on the container, no per-item right padding (would shift the row left).
     screen.getAllByTestId("loading-supplier").forEach((li) => expect(li.className).not.toMatch(/(^|\s)(sm:)?pr-/));
-    advance(500);
+    advance(400);
     expect(screen.getByTestId("loading-ring")).toHaveAttribute("stroke-dashoffset", "50");
-    // Reduced motion keeps the sequence (scaled to a 1 s run): the lowest-offer message still shows.
+    // Reduced motion keeps the same sequence (scaled to a 1 s run): the lowest-offer message shows from 40 %.
     expect(message()).toBe("Stiamo ricercando per te l'offerta più bassa");
-    advance(500);
+    advance(600);
     expect(message()).toBe("Ecco le migliori offerte per te!");
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
@@ -256,7 +281,7 @@ describe("LoadingScreen", () => {
 
   it("never uses call or demo wording", () => {
     render(<LoadingScreen suppliers={SUPPLIERS} commodities={["luce", "gas"]} durationMs={1000} onComplete={() => {}} />);
-    for (const t of [0, 800, 700, 700, 700, 3000]) {
+    for (const t of [0, 800, 700, 700, 800, 4000]) {
       advance(t);
       expect(screen.getByTestId("loading-screen").textContent).not.toMatch(/chiam|telefon|call|demo/i);
     }

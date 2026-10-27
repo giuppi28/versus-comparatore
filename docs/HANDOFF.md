@@ -33,7 +33,6 @@ Phase 14 (`docs/TASKS.md`): T14.2 offers schema migration (backend-builder). T13
 - `acceptance-phase12` settings test is desktop-only: callback-number form + thank-you `tel:` link no longer checked at 390 px (add a read-only 390 px check if needed).
 - `finally` cleanup in `acceptance-phase12.spec.ts` / `admin-suppliers.spec.ts` can throw and mask the original assertion error — wrap cleanup steps in `.catch`.
 - `/privacy` admin-cookie bullet: add lifetime ("durata della sessione").
-- `LoadingScreen` message timings scale with a custom `durationMs`; the 2.5 s guarantee holds only at 6000 ms.
 - Align server `MAX_LEAD_DOCUMENT_BYTES` (5 MiB) with the 4 MB client limit — `app/src` lead document route.
 - Accepted residual exposure in the 1-minute document-removal window (QUESTIONS.md APPLY 20261023110000).
 
