@@ -1,14 +1,15 @@
 # HANDOFF — VERSUS
-Updated: 2026-10-27 · Phase: 14 — Aldo's offers, variable prices, IBAN rules, bill upload · Branch: dev · Last commit: see `git log -1`
+Updated: 2026-10-27 · Phase: 14 complete — Aldo's offers, variable prices, IBAN rules, bill upload · Branch: dev · Last commit: see `git log -1`
 
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Phase 14 (`docs/TASKS.md`): T14.2 offers schema migration (backend-builder). T13.11 stays blocked (POD codes).
+Phase 14 complete. Giuseppe: browser check (mock data), then push dev. Reviewer (claude.ai): apply `20261027100000_offers_variable_iban_featured.sql` and `20261027110000_lead_document_kind.sql` (any time, after Giuseppe's OK); `20261027120000_offers_aldo_2026_10_27.sql` ONLY together with the merge of dev into main (contains DELETE). T13.11 stays blocked (POD codes).
 
 ## Status
-- Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–12c + recipient hotfix (merge commit 0d6620c, PR #2). Offers are still placeholders (`price_verified = false`).
-- All APPLY migrations up to `20261023110000_lead_document_removal.sql` are applied on the real DB.
+- Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–12c + recipient hotfix (merge commit 0d6620c, PR #2). Offers there are still placeholders until the Phase 14 data migration is applied with the merge.
+- `dev` = Phases 13–14. Phase 14 check (2026-10-27): typecheck ✓ · lint ✓ · Vitest 1280/1280 · build ✓ (supabase source) · e2e 324 passed / 2 skipped ×2 · matrix 423 + 8 · PGlite data/RLS/offers checks ✓.
+- All APPLY migrations up to `20261023110000_lead_document_removal.sql` are applied on the real DB. Pending: 20261027100000, 20261027110000 (any time), 20261027120000 (with the merge).
 - Last full check (Phase 12b/12c): typecheck ✓ · lint ✓ · Vitest 1147/1147 · e2e 287 passed / 1 skipped (flakes green on re-run) · matrix 381 + 8 passed · `test:security` 85 passed / 1 skipped.
 - Previous phases: 0 setup · 1 DB · 2 logic · 3 customer screens · 4 admin · 5 logo pack · 6 deploy prep · 7 test matrix · 8–9 review rounds · 10 visual upgrade · 11 admin deletions · 12/12b/12c activation data, documents, callback number, Resend test.
 
@@ -18,7 +19,6 @@ Phase 14 (`docs/TASKS.md`): T14.2 offers schema migration (backend-builder). T13
 ## Waiting on Giuseppe (manual / go-live, not code tasks)
 - Resend: verify the sending domain and set `RESEND_FROM` (with `onboarding@resend.dev` Resend delivers only to the account owner). Then test "Invia email di prova" on production.
 - Aldo's privacy data for the `/privacy` placeholders: controller, address, P.IVA, privacy email, retention for IBAN and ID documents ([DA COMPLETARE]).
-- Real offer prices from Aldo (`price_verified = true`); the admin go-live checklist stays "Non pronto" until then.
 - Real callback number (Admin → Impostazioni; default `+39 095 0000000`).
 - Custom domain on Vercel.
 - Vercel Pro decision (Hobby is non-commercial use; see `app/DEPLOY.md` D1).
@@ -28,6 +28,10 @@ Phase 14 (`docs/TASKS.md`): T14.2 offers schema migration (backend-builder). T13
 - Check HEIC upload on iPhone Safari (not testable in Chromium).
 
 ## Later (low-priority)
+- Bill dialog: no "Rivedi dati letti" to reopen it after closing; a CF changed from the bill is not visible in step B (it lives in step A) — Giuseppe to decide.
+- IBAN-required notice on results is grey/discreet; brand tint if Giuseppe prefers.
+- Lockfile: T14.13 `npm install` pruned optional esbuild/terser deps — confirm a fresh `npm ci` + build on the Vercel preview.
+- vCard has no PHOTO (only SVG icons; vCard 3.0 needs a raster).
 - `admin-leads.spec.ts:137` can still time out at 12 workers (2/114); admin edit forms have no `data-hydrated` marker.
 - `e2e/admin-settings.spec.ts:80` also writes the global callback phone (mock settings row): may race `acceptance-phase12` — watch in T13.5.
 - `acceptance-phase12` settings test is desktop-only: callback-number form + thank-you `tel:` link no longer checked at 390 px (add a read-only 390 px check if needed).
