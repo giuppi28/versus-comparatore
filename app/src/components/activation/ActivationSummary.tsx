@@ -13,7 +13,8 @@ export interface ActivationSummaryProps {
   total: number;
 }
 
-function monthsLabel(n: number): string {
+function monthsLabel(n: number | null): string {
+  if (n === null) return "—";
   return n === 1 ? "1 mese" : `${n} mesi`;
 }
 

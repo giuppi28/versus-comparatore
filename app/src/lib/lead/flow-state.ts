@@ -56,7 +56,7 @@ export interface ChosenOfferSnapshot {
   other_variable_costs: number;
   fixed_fee_monthly: number;
   other_fixed_costs_monthly: number;
-  locked_months: number;
+  locked_months: number | null;
   activation_cost: number;
   promo_text: string | null;
   /** Unrounded monthly cost shown to the customer when choosing (VAT excluded). */

@@ -282,5 +282,50 @@ begin
      and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where a.grantee = 0);
   if n <> 4 then raise exception 'FAIL: % of 4 Phase 12b functions are security definer / search_path '''' / anon-only-by-grant', n; end if;
 
+  -- ---------------------------------------------------------------- Phase 14 offers schema (T14.2)
+  select count(*) into n from public.offers where featured is distinct from (featured_audience is not null);
+  if n <> 0 then raise exception 'FAIL: % offers with featured out of sync with featured_audience', n; end if;
+  select count(*) into n from public.offers where featured and featured_audience <> 'both' and name in ('Edison Luce Fissa 12', 'Plenitude Gas Fisso 12');
+  if n <> 0 then raise exception 'FAIL: seed featured offers must be audience both'; end if;
+  select count(*) into n from public.offers where iban_required;
+  if n <> 0 then raise exception 'FAIL: iban_required must default to false'; end if;
+  select count(*) into n from pg_attribute where attrelid = 'public.offers'::regclass and attname = 'locked_months' and not attnotnull;
+  if n <> 1 then raise exception 'FAIL: locked_months must be nullable'; end if;
+  declare
+    v_sup uuid := (select supplier_id from public.offers limit 1);
+    ok boolean;
+    r  public.offers;
+  begin
+    -- valid variable luce offer
+    insert into public.offers (supplier_id, name, commodity, price_type, energy_price, locked_months, iban_required, featured_audience)
+      values (v_sup, 'T14.2 variabile', 'luce', 'variable', 0.01, null, true, 'casa') returning * into r;
+    if not r.featured or not r.iban_required then raise exception 'FAIL: variable offer insert / featured sync'; end if;
+    update public.offers set featured = false where id = r.id returning * into r;
+    if r.featured_audience is not null then raise exception 'FAIL: featured=false must clear the audience'; end if;
+    update public.offers set featured = true where id = r.id returning * into r;
+    if r.featured_audience <> 'both' then raise exception 'FAIL: featured=true must set audience both'; end if;
+    update public.offers set featured_audience = 'business' where id = r.id returning * into r;
+    if not r.featured then raise exception 'FAIL: audience set must set featured'; end if;
+    delete from public.offers where id = r.id;
+    -- old-app style insert: fixed + featured only
+    insert into public.offers (supplier_id, name, commodity, energy_price, locked_months, featured)
+      values (v_sup, 'T14.2 old app', 'gas', 0.5, 12, true) returning * into r;
+    if r.featured_audience <> 'both' or r.price_type <> 'fixed' or r.iban_required then raise exception 'FAIL: old-app insert'; end if;
+    delete from public.offers where id = r.id;
+    -- rejected combinations
+    ok := false; begin insert into public.offers (supplier_id, name, commodity, price_type, energy_price, locked_months) values (v_sup, 'x', 'gas', 'variable', 0.01, null); exception when check_violation then ok := true; end;
+    if not ok then raise exception 'FAIL: variable gas must be rejected'; end if;
+    ok := false; begin insert into public.offers (supplier_id, name, commodity, price_type, energy_price, locked_months) values (v_sup, 'x', 'luce', 'variable', 0.01, 12); exception when check_violation then ok := true; end;
+    if not ok then raise exception 'FAIL: variable with locked_months must be rejected'; end if;
+    ok := false; begin insert into public.offers (supplier_id, name, commodity, energy_price, locked_months) values (v_sup, 'x', 'luce', 0.1, null); exception when check_violation then ok := true; end;
+    if not ok then raise exception 'FAIL: fixed without locked_months must be rejected'; end if;
+    ok := false; begin insert into public.offers (supplier_id, name, commodity, energy_price, locked_months) values (v_sup, 'x', 'luce', 0.1, 121); exception when check_violation then ok := true; end;
+    if not ok then raise exception 'FAIL: fixed locked_months 121 must be rejected'; end if;
+    ok := false; begin insert into public.offers (supplier_id, name, commodity, price_type, energy_price, locked_months) values (v_sup, 'x', 'luce', 'other', 0.1, 12); exception when check_violation then ok := true; end;
+    if not ok then raise exception 'FAIL: unknown price_type must be rejected'; end if;
+    ok := false; begin insert into public.offers (supplier_id, name, commodity, energy_price, locked_months, featured_audience) values (v_sup, 'x', 'luce', 0.1, 12, 'all'); exception when check_violation then ok := true; end;
+    if not ok then raise exception 'FAIL: unknown featured_audience must be rejected'; end if;
+  end;
+
   raise notice 'ALL DATA CHECKS PASSED';
 end $$;

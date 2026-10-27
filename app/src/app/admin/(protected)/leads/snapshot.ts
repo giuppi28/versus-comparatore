@@ -15,7 +15,7 @@ export function snapshotPriceLines(s: LeadOfferSnapshot): string[] {
     `Quota fissa: ${formatEuro(s.fixed_fee_monthly)}/mese`,
   ];
   if (s.other_fixed_costs_monthly) lines.push(`Altri costi fissi: ${formatEuro(s.other_fixed_costs_monthly)}/mese`);
-  lines.push(`Vincolo: ${s.locked_months} ${s.locked_months === 1 ? "mese" : "mesi"}`);
+  if (s.locked_months !== null) lines.push(`Vincolo: ${s.locked_months} ${s.locked_months === 1 ? "mese" : "mesi"}`);
   return lines;
 }
 

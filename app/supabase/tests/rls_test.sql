@@ -540,8 +540,8 @@ begin
   if l.chosen_offer_luce is not null or l.chosen_offer_gas is not null then raise exception 'FAIL: chosen offers not cleared'; end if;
   if snap is null then raise exception 'FAIL: no luce snapshot on lead e1'; end if;
   if (select array_agg(k order by k) from jsonb_object_keys(snap) k) <> array[
-       'commodity', 'deleted_at', 'energy_price', 'fixed_fee_monthly', 'locked_months', 'offer_id',
-       'offer_name', 'other_fixed_costs_monthly', 'other_variable_costs', 'supplier_name'] then
+       'commodity', 'deleted_at', 'energy_price', 'fixed_fee_monthly', 'iban_required', 'locked_months', 'offer_id',
+       'offer_name', 'other_fixed_costs_monthly', 'other_variable_costs', 'price_type', 'supplier_name'] then
     raise exception 'FAIL: snapshot keys %', snap;
   end if;
   if snap ->> 'offer_id' <> '00000000-0000-4000-8000-00000000d101'
@@ -554,6 +554,8 @@ begin
      or (snap ->> 'fixed_fee_monthly')::numeric <> 9.5
      or (snap ->> 'other_fixed_costs_monthly')::numeric <> 1.25
      or (snap -> 'locked_months') <> '24'::jsonb
+     or snap ->> 'price_type' <> 'fixed'
+     or (snap -> 'iban_required') <> 'false'::jsonb
      or (snap ->> 'deleted_at')::timestamptz is null then
     raise exception 'FAIL: luce snapshot values %', snap;
   end if;

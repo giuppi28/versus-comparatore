@@ -86,6 +86,8 @@ describe("deleteOffer", () => {
       supplier_name: "Edison Energia",
       offer_name: "Edison Luce Fissa 12",
       commodity: "luce",
+      price_type: "fixed",
+      iban_required: false,
       energy_price: 0.129,
       other_variable_costs: 0.06,
       fixed_fee_monthly: 9,

@@ -223,6 +223,8 @@ export function parseOfferForm(values: OfferFormValues): OfferParseResult {
       advantages: v.advantages,
       details: v.details,
       featured: v.featured,
+      iban_required: false,
+      featured_audience: v.featured ? "both" : null,
       active: v.active,
       price_verified: v.price_verified,
     },

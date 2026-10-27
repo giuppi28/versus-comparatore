@@ -27,6 +27,8 @@ function offer(over: Partial<Offer> & { id: string }): Offer {
     advantages: [],
     details: null,
     featured: false,
+    iban_required: false,
+    featured_audience: null,
     active: true,
     price_verified: false,
     updated_at: "2026-01-01T00:00:00Z",

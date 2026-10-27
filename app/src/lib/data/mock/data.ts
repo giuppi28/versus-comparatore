@@ -83,6 +83,8 @@ function offer(spec: OfferSpec): Offer {
     advantages,
     details: null,
     featured: spec.featured,
+    iban_required: false,
+    featured_audience: spec.featured ? "both" : null,
     active: true,
     price_verified: false,
     updated_at: MOCK_UPDATED_AT,

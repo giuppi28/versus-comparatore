@@ -228,6 +228,8 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
       advantages: [],
       details: null,
       featured: false,
+      iban_required: false,
+      featured_audience: null,
       active: true,
       price_verified: false,
       updated_at: "",

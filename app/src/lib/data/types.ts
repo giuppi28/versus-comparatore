@@ -40,8 +40,8 @@ export interface Offer {
   name: string;
   commodity: Commodity;
   customer_type: OfferCustomerType;
-  /** v1: fixed price only. */
-  price_type: "fixed";
+  /** fixed = final price; variable (luce only) = energy_price is the spread over PUN (€/kWh). */
+  price_type: "fixed" | "variable";
   /** €/kWh (luce) or €/Smc (gas). */
   energy_price: number;
   /** Other variable costs, €/kWh or €/Smc. */
@@ -49,13 +49,19 @@ export interface Offer {
   /** Always stored monthly (the admin UI converts from yearly). */
   fixed_fee_monthly: number;
   other_fixed_costs_monthly: number;
-  locked_months: number;
+  /** Null for variable offers. */
+  locked_months: number | null;
   activation_cost: number;
   promo_text: string | null;
   /** Ordered bullets; `**word**` renders bold. */
   advantages: string[];
   details: string | null;
+  /** Always `featured_audience !== null` (the DB trigger keeps them in sync). */
   featured: boolean;
+  /** Payment by IBAN is mandatory for this offer. */
+  iban_required: boolean;
+  /** Forced-featured audience; null = not featured. */
+  featured_audience: "casa" | "business" | "both" | null;
   active: boolean;
   /** Internal: Aldo verified the prices. Go-live blocked until all active offers are verified. */
   price_verified: boolean;
@@ -100,7 +106,10 @@ export interface LeadOfferSnapshot {
   other_variable_costs: number;
   fixed_fee_monthly: number;
   other_fixed_costs_monthly: number;
-  locked_months: number;
+  locked_months: number | null;
+  /** Present on snapshots taken after migration 20261027100000. */
+  price_type?: "fixed" | "variable";
+  iban_required?: boolean;
   /** ISO timestamp of the deletion. */
   deleted_at: string;
 }

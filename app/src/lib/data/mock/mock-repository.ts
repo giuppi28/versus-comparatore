@@ -207,7 +207,9 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       other_variable_costs: o.other_variable_costs,
       fixed_fee_monthly: o.fixed_fee_monthly,
       other_fixed_costs_monthly: o.other_fixed_costs_monthly,
+      price_type: o.price_type,
       locked_months: o.locked_months,
+      iban_required: o.iban_required,
       deleted_at: new Date().toISOString(),
     };
     for (const lead of leads) {
