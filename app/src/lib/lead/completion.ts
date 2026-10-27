@@ -190,7 +190,8 @@ export function checkCompletion(input: ParsedCompleteData, today: string = itali
 
 /**
  * Integrity checks against the data source (anon-readable data only): chosen offers
- * must be active and visible for the customer type; comune must exist.
+ * must be active and visible for the customer type, and an IBAN is required when one
+ * of them has `iban_required`; comune must exist.
  */
 export async function checkCompletionReferences(
   repo: Repository,
@@ -207,7 +208,10 @@ export async function checkCompletionReferences(
       const id = data[key];
       if (!id) continue;
       const offers = await repo.listActiveOffers(commodity, customerType);
-      if (!offers.some((o) => o.id === id)) fields[key] = "not_available";
+      const chosen = offers.find((o) => o.id === id);
+      if (!chosen) fields[key] = "not_available";
+      // IBAN-only offer: payment by IBAN is mandatory (SPEC #16). Read from the DB, never from the client.
+      else if (chosen.iban_required && isBlank(data.iban)) fields.iban ??= "required";
     }
   }
   if (data.comune_istat) {

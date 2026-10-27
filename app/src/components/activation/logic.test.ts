@@ -27,6 +27,7 @@ import {
   stepOfField,
   supplierOptions,
   validateStepA,
+  ibanRequired,
   validateStepB,
 } from "./logic";
 
@@ -371,6 +372,22 @@ describe("IBAN, holder and document validation (step B extras)", () => {
     expect(validatePaymentAndDocument(withAct(full), TODAY)).toEqual({});
     expect(validatePaymentAndDocument(withAct({ ...full, documentExpiry: "2020-01-01" }), TODAY).document_expiry).toMatch(/scaduto/);
     expect(validatePaymentAndDocument(withAct({ ...full, documentNumber: "12" }), TODAY).document_number).toBeDefined();
+  });
+  it("IBAN is required when any chosen offer has iban_required (single + dual); optional otherwise", () => {
+    const req = (c: "luce" | "gas") => ({ ...offer(c), iban_required: true });
+    expect(validateStepB(flow(filledB)).iban).toBeUndefined();
+    expect(ibanRequired(flow(filledB))).toBe(false);
+    const luceOnly = flow({ ...filledB, chosenOffers: { luce: req("luce"), gas: null } });
+    expect(validateStepB(luceOnly).iban).toMatch(/obbligatorio/);
+    const withIban = applyFlowPatch(luceOnly, { activation: { iban: "IT60X0542811101000000123456" } });
+    expect(validateStepB(withIban).iban).toBeUndefined();
+    const gasReq = flow({ ...filledB, commodity: "dual", chosenOffers: { luce: offer("luce"), gas: req("gas") } });
+    expect(ibanRequired(gasReq)).toBe(true);
+    expect(validateStepB(gasReq).iban).toBeDefined();
+    expect(messageForFieldCode("iban", "required")).toMatch(/obbligatorio/);
+    // holder rules unchanged once an IBAN is present
+    const holder = applyFlowPatch(withIban, { activation: { ibanHolderDifferent: true } });
+    expect(validateStepB(holder).iban_holder_first_name).toBeDefined();
   });
   it("validateStepB includes the extras and server codes map to messages", () => {
     const st = flow({ ...filledB, activation: { ...filledB.activation, iban: "IT00" } });

@@ -207,7 +207,7 @@ test.describe("activation form", () => {
     await expect(field(page, "power_kw")).toHaveValue("3");
     await expect(page.getByTestId("activation-gas")).toHaveCount(0);
     await expect(page.getByTestId("iban-discount")).toBeVisible();
-    await expect(page.getByTestId("iban-discount")).toHaveText("Sconto del 15% se paghi con IBAN");
+    await expect(page.getByTestId("iban-discount")).toHaveText("Sconto del 20% se paghi con IBAN");
     await fillAddress(page);
     await field(page, "pod").fill("it001e123456789"); // 15 chars, lower case
     await field(page, "pod").blur();
@@ -250,6 +250,37 @@ test.describe("activation form", () => {
     // redirects to "/" otherwise) and the names + chosen offers stay in the flow state.
     await expect(page.getByRole("heading", { name: /Grazie, Mario/ })).toBeVisible();
     await expect(page).toHaveURL(/\/grazie$/);
+  });
+
+  test("IBAN-only offer: IBAN is required, blocks the submit, and is sent once filled", async ({ page }) => {
+    const mock = await mockComplete(page);
+    const ibanOffer = {
+      ...luceOffer,
+      offer_id: "offer-aldo-iren-fisso-revolution",
+      offer_name: "Prezzo Fisso Revolution",
+      supplier_id: "iren",
+      supplier_name: "Iren",
+      energy_price: 0.13,
+      iban_required: true,
+    };
+    await open(page, casaLuce({ chosenOffers: { luce: ibanOffer, gas: null } }));
+    await fillStepA(page);
+    await page.getByTestId("activation-next").click();
+    await expect(page.getByTestId("iban-discount")).toHaveText("Sconto del 20% se paghi con IBAN");
+    await expect(page.getByTestId("activation-payment").getByRole("heading")).toHaveText("Pagamento");
+    await fillAddress(page);
+    await field(page, "pod").fill(POD);
+    await radio(page, "voltage-220").click();
+
+    await page.getByTestId("activation-submit").click();
+    await expect(page.getByText("Inserisci l'IBAN: per questa offerta il pagamento con IBAN è obbligatorio.")).toBeVisible();
+    expect(mock.requests).toHaveLength(0);
+
+    await field(page, "iban").fill("IT60X0542811101000000123456");
+    await page.getByTestId("activation-submit").click();
+    await expect(page).toHaveURL(/\/grazie$/);
+    expect(mock.requests).toHaveLength(1);
+    expect((mock.requests[0] as { data: Json }).data).toMatchObject({ iban: "IT60X0542811101000000123456" });
   });
 
   test("business dual with P.IVA: both sections, both offers in the summary", async ({ page }, testInfo) => {

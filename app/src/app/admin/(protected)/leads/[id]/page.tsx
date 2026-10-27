@@ -66,7 +66,14 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
   const offerName = async (oid: string | null) => {
     if (!oid) return null;
     const o = await repo.getOffer(oid);
-    return o ? `${o.supplier.name} — ${o.name}` : null;
+    return o
+      ? {
+          label: `${o.supplier.name} — ${o.name}`,
+          price_type: o.price_type,
+          energy_price: o.energy_price,
+          iban_required: o.iban_required,
+        }
+      : null;
   };
   const documents = await repo.listLeadDocuments(lead.id);
   const [comune, supLuce, supGas, offLuce, offGas] = await Promise.all([
@@ -259,10 +266,11 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
 
 function OfferValue({ view, testId }: { view: ChosenOfferView; testId: string }) {
   if (view.kind === "none") return null;
-  if (view.kind === "live") return <span data-testid={testId}>{view.label}</span>;
+  if (view.kind === "live" && view.lines.length === 0) return <span data-testid={testId}>{view.label}</span>;
+  const deleted = view.kind === "deleted";
   return (
-    <span data-testid={testId} data-deleted="true" className="flex flex-col gap-1">
-      <span>{view.title}</span>
+    <span data-testid={testId} data-deleted={deleted ? "true" : undefined} className="flex flex-col gap-1">
+      <span>{deleted ? view.title : view.label}</span>
       <span className="flex flex-col text-sm font-normal text-ink-muted">
         {view.lines.map((l) => (
           <span key={l}>{l}</span>

@@ -25,6 +25,7 @@ import { DocumentFields, PaymentFields } from "./PaymentDocumentSections";
 import {
   effectiveCap,
   effectiveGasUses,
+  ibanRequired,
   powerFromSelectValue,
   powerOptions,
   podWarning,
@@ -360,7 +361,7 @@ export function StepB({
         </Section>
       )}
 
-      <Section title="Pagamento (facoltativo)" testId="activation-payment">
+      <Section title={ibanRequired(state) ? "Pagamento" : "Pagamento (facoltativo)"} testId="activation-payment">
         <PaymentFields {...extraProps} />
       </Section>
 

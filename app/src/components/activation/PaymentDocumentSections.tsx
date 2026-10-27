@@ -20,6 +20,7 @@ import {
 import { DocumentPrepareError, prepareDocumentFile } from "./compress-image";
 import {
   formatUploadSize,
+  ibanRequired,
   groupIban,
   removeErrorMessage,
   uploadErrorMessage,
@@ -38,7 +39,7 @@ type SectionProps = Pick<
   "state" | "update" | "errorFor" | "touch" | "edited"
 >;
 
-/** "Pagamento (facoltativo)": IBAN and, optionally, a different account holder. */
+/** "Pagamento": IBAN and, optionally, a different account holder. */
 export function PaymentFields({
   state,
   update,
@@ -49,6 +50,7 @@ export function PaymentFields({
   const a = state.activation;
   const holderId = useId();
   const hasIban = a.iban.trim().length > 0;
+  const required = ibanRequired(state);
 
   return (
     <div className="space-y-5">
@@ -56,7 +58,8 @@ export function PaymentFields({
         <Input
           label="IBAN"
           name="iban"
-          hint="Facoltativo, se vuoi pagare con addebito sul conto"
+          required={required}
+          hint={required ? "Obbligatorio: l'offerta scelta si attiva solo con pagamento IBAN" : "Facoltativo, se vuoi pagare con addebito sul conto"}
           autoCapitalize="characters"
           autoComplete="off"
           spellCheck={false}
@@ -74,9 +77,12 @@ export function PaymentFields({
             if (grouped !== a.iban) update({ activation: { iban: grouped } });
           }}
         />
-        {/* Fixed copy, deliberately outside aria-describedby (SPEC #12). */}
-        <p data-testid="iban-discount" className="text-sm font-bold text-ink">
-          Sconto del 15% se paghi con IBAN
+        {/* Fixed copy, deliberately outside aria-describedby (SPEC #15). */}
+        <p
+          data-testid="iban-discount"
+          className="rounded-control bg-brand-50 px-3 py-2 text-sm font-bold text-brand-700"
+        >
+          Sconto del 20% se paghi con IBAN
         </p>
       </div>
       {hasIban && (
