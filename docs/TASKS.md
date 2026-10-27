@@ -57,4 +57,4 @@ DB rule: migrations are written, never applied (decision #3); the schema migrati
 - [x] T14.15 Block D review: `verifier` then `critical-reviewer` on the T14.13–T14.14 diff (upload path, no data leaving the browser, token binding). Fix high/medium, re-run once. review: 2
 
 ### Block E — regression
-- [ ] T14.16 Full regression with the new mock data. Agent: `verifier` (raw counts), then `qa-tester` updates e2e/matrix expectations broken by the 42 offers (no feature-code changes; feature bugs go back to the owning builder). Acceptance: typecheck ✓ lint ✓ Vitest ✓ `npm run e2e` ✓ `npm run e2e:matrix` ✓ (desktop + mobile). review: 1
+- [x] T14.16 Full regression with the new mock data. Agent: `verifier` (raw counts), then `qa-tester` updates e2e/matrix expectations broken by the 42 offers (no feature-code changes; feature bugs go back to the owning builder). Acceptance: typecheck ✓ lint ✓ Vitest ✓ `npm run e2e` ✓ `npm run e2e:matrix` ✓ (desktop + mobile). review: 1
