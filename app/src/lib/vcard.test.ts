@@ -3,7 +3,7 @@ import { buildVCard, escapeVCardText, foldVCardLine } from "./vcard";
 
 describe("escapeVCardText", () => {
   it("escapes backslash, semicolon, comma and newlines", () => {
-    expect(escapeVCardText("a\\b;c,d\ne")).toBe("a\\\\b\;c\\,d\\ne");
+    expect(escapeVCardText("a\\b;c,d\ne")).toBe("a\\\\b\\;c\\,d\\ne");
   });
 });
 
