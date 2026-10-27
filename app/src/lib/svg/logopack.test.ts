@@ -14,21 +14,24 @@ const publicDir = path.join(appDir, "public", "logos");
 const publicBlackDir = path.join(publicDir, "black");
 
 const realSlugs = MOCK_SUPPLIERS.filter((s) => !s.is_placeholder).map((s) => s.slug);
+// Logos shipped ahead of their supplier rows (added 2026-10-27; created later via admin / migration).
+const EXTRA_PACK_SLUGS = ["sentra-energia", "estra-energia", "enegan", "asti-energia"];
+const packSlugs = [...realSlugs, ...EXTRA_PACK_SLUGS];
 const read = (p: string) => readFileSync(p, "utf8");
 
 describe("logopack", () => {
   it("covers every real supplier and no placeholder", () => {
     expect(realSlugs).toHaveLength(11);
     for (const variant of ["color", "black", "white"]) {
-      expect(readdirSync(path.join(packDir, variant)).sort()).toEqual(realSlugs.map((s) => `${s}.svg`).sort());
+      expect(readdirSync(path.join(packDir, variant)).sort()).toEqual(packSlugs.map((s) => `${s}.svg`).sort());
     }
-    const expected = realSlugs.map((s) => `${s}.svg`).sort();
+    const expected = packSlugs.map((s) => `${s}.svg`).sort();
     const svgsIn = (dir: string) => readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && e.name.endsWith(".svg")).map((e) => e.name).sort();
     expect(svgsIn(publicDir)).toEqual(expected);
     expect(svgsIn(publicBlackDir)).toEqual(expected);
   });
 
-  for (const slug of realSlugs) {
+  for (const slug of packSlugs) {
     for (const variant of ["color", "black", "white"]) {
       it(`${variant}/${slug}.svg is unchanged by the sanitizer and self-contained`, () => {
         const svg = read(path.join(packDir, variant, `${slug}.svg`));
@@ -58,7 +61,7 @@ describe("logopack", () => {
 
   it("monochrome variants contain only black/white paint", () => {
     for (const [variant, hex] of [["black", "#000000"], ["white", "#ffffff"]] as const) {
-      for (const slug of realSlugs) {
+      for (const slug of packSlugs) {
         const svg = read(path.join(packDir, variant, `${slug}.svg`)).toLowerCase();
         const colors = [...svg.matchAll(/(?:fill|stroke|stop-color)(?:="|:)\s*(#[0-9a-f]{3,8})\b/g)].map((m) => m[1]);
         for (const c of colors) expect([hex, "#fff", "#ffffff"]).toContain(c);
