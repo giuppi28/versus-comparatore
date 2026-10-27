@@ -198,8 +198,8 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
     await page.locator("[name=commodity]").selectOption("luce");
     await page.locator("[name=customer_type]").selectOption("casa");
     await page.locator("[name=energy_price]").fill("0,3000");
-    await page.locator("[name=other_variable_costs]").fill("0,06");
-    await page.locator("[name=fixed_fee]").fill("20");
+    await page.locator("[name=other_variable_costs]").fill("0,01");
+    await page.locator("[name=fixed_fee]").fill("5");
     await page.locator("[name=fixed_fee_period]").selectOption("month");
     await page.locator("[name=locked_months]").fill("18");
     await page.locator("[name=promo_text]").fill("Sconto QA primo anno");
@@ -219,8 +219,8 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
       customer_type: "casa",
       price_type: "fixed",
       energy_price: 0.3,
-      other_variable_costs: 0.06,
-      fixed_fee_monthly: 20,
+      other_variable_costs: 0.01,
+      fixed_fee_monthly: 5,
       other_fixed_costs_monthly: 0,
       locked_months: 18,
       activation_cost: 0,
@@ -235,7 +235,14 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
       updated_at: "",
       ...over,
     });
-    const luceOffers = MOCK_OFFERS.filter((o) => o.commodity === "luce");
+    // Aldo's luce casa offers (the comparison seeded above is Casa).
+    const luceOffers = MOCK_OFFERS.filter((o) => o.commodity === "luce" && o.customer_type === "casa");
+    // Variable offers (Iren, Eni Trend) always come after every fixed one, so "last" = last FIXED offer.
+    const variableCount = luceOffers.filter((o) => o.price_type === "variable").length;
+    const lastFixedId = async () => {
+      const ids = await publicIds();
+      return ids[ids.length - 1 - variableCount];
+    };
     const expectedIds = (offer: Offer) =>
       rankOffers([...luceOffers, offer], "casa", annualFromMonthly(225), { excludeSupplierId: "edison-energia" }).map((r) => r.offer.id);
     const cleanup = async () => {
@@ -253,7 +260,7 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
       const mine = pub.locator(`[data-testid="offer-card"][data-offer-id="${offerId}"]`);
       await expect(mine).toBeVisible();
       expect(await publicIds()).toEqual(expectedIds(made({})));
-      expect((await publicIds()).at(-1)).toBe(offerId);
+      expect(await lastFixedId()).toBe(offerId);
       const cost = monthlyCost(made({}), annualFromMonthly(225))!;
       await expect(mine.getByTestId("offer-monthly")).toHaveText(formatEuro(cost));
       await expect(mine.getByTestId("offer-name")).toHaveText(offerName);
@@ -272,7 +279,7 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
       await expect(items.nth(1)).toHaveText("Vantaggio due di prova");
       await pub.getByRole("dialog").getByRole("button", { name: /chiudi/i }).first().click();
 
-      // ---- edit the price (cheap): moves to the first place among non-featured, cost follows ----
+      // ---- edit the price (cheap: 225 kWh x 0,06 + 5 = 18,50 < Sentra 24,75): first among the fixed offers, cost follows ----
       await page.goto(`/admin/offerte/${offerId}`);
       await page.locator("[name=energy_price]").fill("0,0500");
       await submit(page, /Salva modifiche/).click();
@@ -293,7 +300,7 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
       await row.getByTestId("toggle-featured").click();
       await expect(row).toHaveAttribute("data-featured", "true");
       await openPublic();
-      expect(await publicIds()).toEqual(expectedIds(made({ featured: true })));
+      expect(await publicIds()).toEqual(expectedIds(made({ featured: true, featured_audience: "both" })));
       expect((await publicIds())[0]).toBe(offerId);
       await expect(mine).toHaveAttribute("data-featured", "true");
       await expect(mine.getByTestId("offer-featured-band")).toHaveText("In evidenza");
@@ -302,7 +309,7 @@ test.describe("admin CRUD (suppliers, logos, offers)", () => {
       await row.getByTestId("toggle-featured").click();
       await expect(row).toHaveAttribute("data-featured", "false");
       await openPublic();
-      expect((await publicIds()).at(-1)).toBe(offerId);
+      expect(await lastFixedId()).toBe(offerId);
 
       // ---- customer type: casa-only offer is invisible to a Partita IVA, visible once set to "both" ----
       const business = await context.newPage();

@@ -22,7 +22,7 @@ const ADMIN_ROUTES = [
   "/admin/fornitori/enel-energia",
   "/admin/offerte",
   "/admin/offerte/nuova",
-  "/admin/offerte/offer-edison-luce-fissa-12",
+  "/admin/offerte/offer-aldo-10",
   "/admin/impostazioni",
   "/admin/login/mfa",
   "/admin/login/mfa/attiva",

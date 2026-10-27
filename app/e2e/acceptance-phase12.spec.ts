@@ -23,9 +23,9 @@ const rnd = () => Math.floor(Math.random() * 250);
 const rand = () => Math.random().toString(36).replace(/[^a-z]/g, "").slice(0, 8).padEnd(8, "q");
 
 const luceOffer = {
-  offer_id: "offer-edison-luce-fissa-12", commodity: "luce", offer_name: "Edison Luce Fissa 12",
+  offer_id: "offer-aldo-10", commodity: "luce", offer_name: "Offerta Edison Energia",
   supplier_id: "edison-energia", supplier_name: "Edison Energia", supplier_logo_path: null,
-  energy_price: 0.129, other_variable_costs: 0, fixed_fee_monthly: 9, other_fixed_costs_monthly: 0,
+  energy_price: 0.2, other_variable_costs: 0, fixed_fee_monthly: 0, other_fixed_costs_monthly: 0,
   locked_months: 12, activation_cost: 0, promo_text: null, monthly_cost: 50,
 };
 const catania = { istat: "087015", name: "Catania", province: "CT", caps: ["95121", "95122"], climate_zone: "B" };
@@ -320,6 +320,6 @@ test.describe("E. privacy", () => {
   test("shows the ID document + IBAN section", async ({ page }) => {
     await page.goto("/privacy");
     await expect(page.getByText("IBAN e documento d'identità (facoltativi)")).toBeVisible();
-    await expect(page.getByText("Il documento caricato è cancellato insieme alla tua richiesta.")).toBeVisible();
+    await expect(page.getByText("I file caricati sono cancellati insieme alla tua richiesta.")).toBeVisible();
   });
 });

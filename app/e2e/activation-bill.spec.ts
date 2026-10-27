@@ -12,15 +12,15 @@ const POD_BILL = "IT001E87654321";
 const POD_TYPED = "IT001E12345678";
 
 const luceOffer = {
-  offer_id: "offer-edison-luce-fissa-12",
+  offer_id: "offer-aldo-10",
   commodity: "luce",
-  offer_name: "Edison Luce Fissa 12",
+  offer_name: "Offerta Edison Energia",
   supplier_id: "edison-energia",
   supplier_name: "Edison Energia",
   supplier_logo_path: null,
-  energy_price: 0.129,
+  energy_price: 0.2,
   other_variable_costs: 0,
-  fixed_fee_monthly: 9,
+  fixed_fee_monthly: 0,
   other_fixed_costs_monthly: 0,
   locked_months: 12,
   activation_cost: 0,

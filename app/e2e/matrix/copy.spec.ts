@@ -253,7 +253,7 @@ test.describe("copy and brand rules", () => {
     });
   }
 
-  test("results with a featured offer: 'In evidenza' band and promo box are green, never orange", TAG, async ({ page }) => {
+  test("results with a featured offer: 'In evidenza' band is green, never orange (Aldo's offers carry no promo box)", TAG, async ({ page }) => {
     await reachActivation(page, MATRIX.find((c) => c.commodity === "luce" && c.customer === "casa" && c.service === "primo_allaccio")!);
     await page.goBack();
     await expect(page.getByTestId("offer-featured-band").first()).toBeVisible();
@@ -271,7 +271,8 @@ test.describe("copy and brand rules", () => {
       };
     });
     expect(colours.band).not.toBeNull();
-    expect(colours.promo).not.toBeNull();
+    // promo_text is null on all 42 offers: no promo box is rendered at all.
+    expect(colours.promo).toBeNull();
     expect(colours.cta).not.toBeNull();
     const orange: string[] = [];
     await expectNoOrange(page, "featured results", orange);

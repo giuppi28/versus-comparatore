@@ -282,8 +282,8 @@ test.describe("screenshots: admin area", () => {
     await page.goto("/admin/offerte");
     await expect(page.getByRole("heading", { name: "Offerte", level: 1 })).toBeVisible();
     await shot(page, "admin-offers-list");
-    await page.goto("/admin/offerte/offer-edison-luce-fissa-12");
-    await expect(page.locator("[name=name]")).toHaveValue("Edison Luce Fissa 12");
+    await page.goto("/admin/offerte/offer-aldo-10");
+    await expect(page.locator("[name=name]")).toHaveValue("Offerta Edison Energia");
     await shot(page, "admin-offer-form");
     await page.goto("/admin/offerte/nuova");
     await page.getByRole("button", { name: "Crea offerta" }).click();
