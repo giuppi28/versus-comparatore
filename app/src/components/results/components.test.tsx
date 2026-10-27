@@ -14,7 +14,7 @@ function withSupplier(offerId: string): OfferWithSupplier {
 }
 
 describe("OfferCard", () => {
-  const edison = withSupplier("offer-edison-luce-fissa-12");
+  const edison = withSupplier("offer-aldo-14");
   const cost = monthlyCost(edison, 2700);
 
   it("shows the PRD §8 elements and exposes the data attributes", () => {
@@ -22,15 +22,15 @@ describe("OfferCard", () => {
     render(<OfferCard offer={edison} commodity="luce" monthlyCost={cost} onActivate={onActivate} />);
     const card = screen.getByTestId("offer-card");
     expect(card).toHaveAttribute("data-offer-id", edison.id);
-    expect(card).toHaveAttribute("data-supplier-id", "edison-energia");
+    expect(card).toHaveAttribute("data-supplier-id", "sentra-energia");
     expect(card).toHaveAttribute("data-featured", "true");
     expect(card).toHaveAttribute("data-monthly-cost", String(Math.round(cost * 100)));
     expect(screen.getByText("In evidenza")).toBeInTheDocument();
-    expect(screen.getByText("Edison Luce Fissa 12")).toBeInTheDocument();
+    expect(screen.getByText("Offerta Sentra Energia")).toBeInTheDocument();
     expect(screen.getByTestId("offer-locked")).toHaveTextContent("Bloccato 12 mesi");
     expect(screen.getByTestId("offer-price")).toHaveTextContent("€/kWh");
-    expect(screen.getByTestId("offer-fixed-fee")).toHaveTextContent("9,00");
-    expect(screen.getByTestId("offer-promo")).toHaveTextContent("Fino a 60€ di sconto il primo anno");
+    expect(screen.getByTestId("offer-fixed-fee")).toHaveTextContent("0,00");
+    expect(screen.queryByTestId("offer-promo")).toBeNull();
     expect(screen.getByText("stima")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("offer-cta"));
     expect(onActivate).toHaveBeenCalledTimes(1);
@@ -38,7 +38,7 @@ describe("OfferCard", () => {
   });
 
   it("hides band and promo when the offer has none, expands the details", () => {
-    const sorgenia = withSupplier("offer-sorgenia-luce-sicura-24");
+    const sorgenia = withSupplier("offer-aldo-01");
     render(<OfferCard offer={sorgenia} commodity="luce" monthlyCost={50} onActivate={() => {}} />);
     expect(screen.queryByTestId("offer-featured-band")).toBeNull();
     expect(screen.queryByTestId("offer-promo")).toBeNull();
@@ -49,7 +49,7 @@ describe("OfferCard", () => {
   });
 
   it("uses Smc for gas and marks a chosen offer", () => {
-    const hera = withSupplier("offer-hera-gas-sereno");
+    const hera = withSupplier("offer-aldo-27");
     render(<OfferCard offer={hera} commodity="gas" monthlyCost={40} chosen onActivate={() => {}} />);
     expect(screen.getByTestId("offer-price")).toHaveTextContent("€/Smc");
     expect(screen.getByTestId("offer-chosen-badge")).toBeInTheDocument();

@@ -19,7 +19,7 @@ vi.mock("@/lib/data/admin", () => ({
 
 import { deleteOfferAction } from "./actions";
 
-const EDISON_LUCE = "offer-edison-luce-fissa-12";
+const EDISON_LUCE = "offer-aldo-10";
 
 beforeEach(() => {
   repo = createMockRepository();

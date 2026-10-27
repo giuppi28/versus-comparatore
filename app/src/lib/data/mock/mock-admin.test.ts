@@ -196,9 +196,11 @@ describe("offers admin", () => {
 
   it("listUnverifiedActiveOffers follows active and price_verified", async () => {
     const all = await repo.listAllOffers();
+    // Aldo's 42 offers are all verified (decision #23): flip some to unverified first.
+    expect(await repo.listUnverifiedActiveOffers()).toEqual([]);
+    for (const o of all.slice(0, 3)) await repo.setOfferFlags(o.id, { price_verified: false });
     const unverified = await repo.listUnverifiedActiveOffers();
-    expect(unverified.length).toBe(all.filter((o) => o.active && !o.price_verified).length);
-    expect(unverified.length).toBeGreaterThan(0);
+    expect(unverified.length).toBe(3);
 
     for (const o of unverified) await repo.setOfferFlags(o.id, { price_verified: true });
     expect(await repo.listUnverifiedActiveOffers()).toEqual([]);

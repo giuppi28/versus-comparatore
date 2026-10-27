@@ -9,9 +9,9 @@ import {
 import { LEAD_HISTORY_FIELDS, type LeadData } from "../types";
 
 // Mock-layer parity with migration 20261015170000 (lead snapshots on delete).
-const EDISON_LUCE = "offer-edison-luce-fissa-12";
-const PLENITUDE_GAS = "offer-plenitude-gas-fisso-12";
-const SORGENIA_LUCE = "offer-sorgenia-luce-sicura-24";
+const EDISON_LUCE = "offer-aldo-10";
+const PLENITUDE_GAS = "offer-aldo-26";
+const SORGENIA_LUCE = "offer-aldo-01";
 
 let repo: Repository;
 beforeEach(() => {
@@ -84,13 +84,13 @@ describe("deleteOffer", () => {
     expect(l.chosen_offer_luce_snapshot).toEqual({
       offer_id: EDISON_LUCE,
       supplier_name: "Edison Energia",
-      offer_name: "Edison Luce Fissa 12",
+      offer_name: "Offerta Edison Energia",
       commodity: "luce",
       price_type: "fixed",
       iban_required: false,
-      energy_price: 0.129,
-      other_variable_costs: 0.06,
-      fixed_fee_monthly: 9,
+      energy_price: 0.2,
+      other_variable_costs: 0,
+      fixed_fee_monthly: 0,
       other_fixed_costs_monthly: 0,
       locked_months: 12,
       deleted_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
@@ -115,7 +115,7 @@ describe("deleteOffer", () => {
     const l = (await repo.getLead(id))!;
     expect(first?.offer_id).toBe(EDISON_LUCE);
     expect(l.chosen_offer_luce_snapshot?.offer_id).toBe(SORGENIA_LUCE);
-    expect(l.chosen_offer_luce_snapshot?.supplier_name).toBe("Sorgenia");
+    expect(l.chosen_offer_luce_snapshot?.supplier_name).toBe("Iren");
   });
 
   it("deleted offers disappear from the public results and the admin list", async () => {
@@ -131,8 +131,8 @@ describe("deleteOffer", () => {
 
 describe("deleteSupplier", () => {
   it("counts its offers", async () => {
-    expect(await repo.countOffersBySupplier("edison-energia")).toBe(1);
-    expect(await repo.countOffersBySupplier("enel-energia")).toBe(0);
+    expect(await repo.countOffersBySupplier("edison-energia")).toBe(4);
+    expect(await repo.countOffersBySupplier("hera-comm")).toBe(0);
     const extra = await repo.createOffer({
       ...(await repo.getOffer(EDISON_LUCE))!,
       name: "Edison Gas Extra",
@@ -140,7 +140,7 @@ describe("deleteSupplier", () => {
       active: false,
     });
     expect(extra.supplier_id).toBe("edison-energia");
-    expect(await repo.countOffersBySupplier("edison-energia")).toBe(2);
+    expect(await repo.countOffersBySupplier("edison-energia")).toBe(5);
   });
 
   it("deletes its offers first (snapshots), then the supplier (names in leads)", async () => {
@@ -158,7 +158,7 @@ describe("deleteSupplier", () => {
       current_supplier_gas: "enel-energia",
     });
 
-    expect(await repo.deleteSupplier("edison-energia")).toEqual({ deletedOffers: 2, logoCleanupFailed: false });
+    expect(await repo.deleteSupplier("edison-energia")).toEqual({ deletedOffers: 5, logoCleanupFailed: false });
 
     expect(await repo.getSupplier("edison-energia")).toBeNull();
     expect(await repo.countOffersBySupplier("edison-energia")).toBe(0);
@@ -176,8 +176,8 @@ describe("deleteSupplier", () => {
   });
 
   it("deletes a supplier without offers", async () => {
-    expect(await repo.deleteSupplier("enel-energia")).toEqual({ deletedOffers: 0, logoCleanupFailed: false });
-    expect(await repo.getSupplier("enel-energia")).toBeNull();
+    expect(await repo.deleteSupplier("hera-comm")).toEqual({ deletedOffers: 0, logoCleanupFailed: false });
+    expect(await repo.getSupplier("hera-comm")).toBeNull();
   });
 
   it("rejects placeholders before touching anything", async () => {

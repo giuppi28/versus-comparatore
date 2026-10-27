@@ -14,14 +14,12 @@ const publicDir = path.join(appDir, "public", "logos");
 const publicBlackDir = path.join(publicDir, "black");
 
 const realSlugs = MOCK_SUPPLIERS.filter((s) => !s.is_placeholder).map((s) => s.slug);
-// Logos shipped ahead of their supplier rows (added 2026-10-27; created later via admin / migration).
-const EXTRA_PACK_SLUGS = ["sentra-energia", "estra-energia", "enegan", "asti-energia"];
-const packSlugs = [...realSlugs, ...EXTRA_PACK_SLUGS];
+const packSlugs = realSlugs;
 const read = (p: string) => readFileSync(p, "utf8");
 
 describe("logopack", () => {
   it("covers every real supplier and no placeholder", () => {
-    expect(realSlugs).toHaveLength(11);
+    expect(realSlugs).toHaveLength(15);
     for (const variant of ["color", "black", "white"]) {
       expect(readdirSync(path.join(packDir, variant)).sort()).toEqual(packSlugs.map((s) => `${s}.svg`).sort());
     }
