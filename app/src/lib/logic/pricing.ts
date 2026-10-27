@@ -147,6 +147,10 @@ export function formatPrice(value: number, unit: "kWh" | "Smc"): string {
   return `${formatDecimal(value, 4)}${NBSP}€/${unit}`;
 }
 
+/** Shown on the card and in the offer modal for `iban_required` offers (SPEC decision #16). */
+export const IBAN_REQUIRED_NOTICE =
+  "Per attivare questa offerta è obbligatorio il pagamento con IBAN: ti servirà al passo successivo.";
+
 /**
  * Variable-price offers (luce only): the spread over PUN, "PUN + 0,01 €/kWh".
  * 2 to 4 decimals (0,01 stays "0,01", 0,0125 stays "0,0125"); NBSP before the euro sign.

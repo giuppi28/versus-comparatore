@@ -173,7 +173,7 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
     );
   }
 
-  const total = totalMonthlyCost(state) ?? 0;
+  const total = totalMonthlyCost(state);
   const stepProps = { state, update, errorFor, touch, edited };
 
   return (

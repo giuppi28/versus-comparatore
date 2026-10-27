@@ -59,8 +59,12 @@ export interface ChosenOfferSnapshot {
   locked_months: number | null;
   activation_cost: number;
   promo_text: string | null;
-  /** Unrounded monthly cost shown to the customer when choosing (VAT excluded). */
-  monthly_cost: number;
+  /** Unrounded monthly cost shown when choosing (VAT excluded); null for variable offers. */
+  monthly_cost: number | null;
+  /** Missing in older saves = fixed. Variable: energy_price is a spread over PUN. */
+  price_type?: "fixed" | "variable";
+  /** The offer can only be activated with IBAN payment (older saves: missing = false). */
+  iban_required?: boolean;
 }
 
 /** Activation form data (PRD §10). Strings are raw user input ("" = empty). */
@@ -344,10 +348,14 @@ export function serviceTypeFor(state: FlowState, commodity: Commodity): ServiceT
   return effectiveServiceType(commodity, state.serviceType, state.hasGas);
 }
 
-/** Total monthly cost of the chosen offer(s) (dual: luce + gas), or null if none chosen. */
+/**
+ * Total monthly cost of the chosen offer(s) (dual: luce + gas). Null if none is chosen or
+ * any chosen offer is variable (no PUN value is known, so no total can be computed).
+ */
 export function totalMonthlyCost(state: FlowState): number | null {
   const { luce, gas } = state.chosenOffers;
   if (!luce && !gas) return null;
+  if ((luce && luce.monthly_cost === null) || (gas && gas.monthly_cost === null)) return null;
   return (luce?.monthly_cost ?? 0) + (gas?.monthly_cost ?? 0);
 }
 
@@ -367,8 +375,9 @@ export function snapshotOffer(offer: OfferWithSupplier, annualConsumption: numbe
     locked_months: offer.locked_months,
     activation_cost: offer.activation_cost,
     promo_text: offer.promo_text,
-    // Variable offers have no monthly cost (0 until T14.7/T14.8 handle them in the UI).
-    monthly_cost: monthlyCost(offer, annualConsumption) ?? 0,
+    monthly_cost: monthlyCost(offer, annualConsumption),
+    price_type: offer.price_type,
+    iban_required: offer.iban_required,
   };
 }
 
@@ -430,7 +439,13 @@ function page1Data(state: FlowState): Omit<LeadPatchData, "step_reached"> {
     final_smc_month: gas ? (state.finalSmcMonth ?? undefined) : undefined,
     chosen_offer_luce: luce ? state.chosenOffers.luce?.offer_id : undefined,
     chosen_offer_gas: gas ? state.chosenOffers.gas?.offer_id : undefined,
-    monthly_cost_shown: total != null ? Math.round(total * 100) / 100 : undefined,
+    // Chosen but not computable (a variable offer) -> explicit null; nothing chosen -> omitted.
+    monthly_cost_shown:
+      total != null
+        ? Math.round(total * 100) / 100
+        : state.chosenOffers.luce || state.chosenOffers.gas
+          ? null
+          : undefined,
   });
 }
 

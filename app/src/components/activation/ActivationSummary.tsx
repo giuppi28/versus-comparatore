@@ -4,13 +4,13 @@ import { useId, useState, type ReactNode } from "react";
 import { Card, ChevronDownIcon, cn } from "@/components/ui";
 import type { ChosenOfferSnapshot } from "@/lib/lead/flow-state";
 import { resolveLogoUrl } from "@/lib/data/logo";
-import { formatEuro, formatPrice } from "@/lib/logic";
+import { formatEuro, formatPrice, formatVariablePrice, isVariableOffer } from "@/lib/logic";
 
 export interface ActivationSummaryProps {
   luce: ChosenOfferSnapshot | null;
   gas: ChosenOfferSnapshot | null;
-  /** Sum of the chosen offers' monthly costs (unrounded). */
-  total: number;
+  /** Sum of the chosen offers' monthly costs (unrounded); null when any is variable. */
+  total: number | null;
 }
 
 function monthsLabel(n: number | null): string {
@@ -53,6 +53,7 @@ function Row({ label, children, testId }: { label: string; children: ReactNode; 
 function OfferBlock({ offer, label }: { offer: ChosenOfferSnapshot; label: string | null }) {
   const unit = offer.commodity === "luce" ? "kWh" : "Smc";
   const key = offer.commodity;
+  const variable = isVariableOffer(offer);
   return (
     <section data-testid={`summary-offer-${key}`} aria-label={label ?? "Offerta scelta"}>
       <div className="flex items-center gap-3">
@@ -71,11 +72,13 @@ function OfferBlock({ offer, label }: { offer: ChosenOfferSnapshot; label: strin
           {formatEuro(offer.activation_cost)}
         </Row>
         <Row label="Cambio contatore">No</Row>
-        <Row label="Prezzo bloccato" testId={`summary-locked-${key}`}>
-          {monthsLabel(offer.locked_months)}
-        </Row>
-        <Row label="Prezzo energia" testId={`summary-price-${key}`}>
-          {formatPrice(offer.energy_price, unit)}
+        {!variable && (
+          <Row label="Prezzo bloccato" testId={`summary-locked-${key}`}>
+            {monthsLabel(offer.locked_months)}
+          </Row>
+        )}
+        <Row label={variable ? "Prezzo" : "Prezzo energia"} testId={`summary-price-${key}`}>
+          {variable ? formatVariablePrice(offer.energy_price) : formatPrice(offer.energy_price, unit)}
         </Row>
         {offer.other_variable_costs > 0 && (
           <Row label="Altri costi variabili">{formatPrice(offer.other_variable_costs, unit)}</Row>
@@ -115,19 +118,19 @@ export function ActivationSummary({ luce, gas, total }: ActivationSummaryProps) 
       <div className="rounded-card bg-surface-muted px-4 py-3">
         <p className="text-sm text-ink-muted">Spesa mensile</p>
         <p data-testid="summary-total" className="text-3xl font-bold text-ink">
-          {formatEuro(total)}
+          {total === null ? "Varia con il PUN" : formatEuro(total)}
         </p>
-        <p className="text-xs text-ink-subtle">Stima IVA esclusa</p>
+        {total !== null && <p className="text-xs text-ink-subtle">Stima IVA esclusa</p>}
         {dual && (
           <ul className="mt-2 space-y-0.5 text-sm text-ink-muted">
             {luce && (
               <li data-testid="summary-monthly-luce">
-                Luce: <span className="font-semibold text-ink">{formatEuro(luce.monthly_cost)}</span>
+                Luce: <span className="font-semibold text-ink">{luce.monthly_cost === null ? "Varia con il PUN" : formatEuro(luce.monthly_cost)}</span>
               </li>
             )}
             {gas && (
               <li data-testid="summary-monthly-gas">
-                Gas: <span className="font-semibold text-ink">{formatEuro(gas.monthly_cost)}</span>
+                Gas: <span className="font-semibold text-ink">{gas.monthly_cost === null ? "Varia con il PUN" : formatEuro(gas.monthly_cost)}</span>
               </li>
             )}
           </ul>

@@ -329,6 +329,51 @@ test.describe("results page", () => {
     expectCents(last.monthly_cost_shown, monthlyCost(sorgenia, annualFromMonthly(225))!);
   });
 
+  test("variable offer: PUN price, 'Varia con il PUN', no lock, IBAN notice, badge on cheapest fixed; choice sends null cost", async ({
+    page,
+  }, info) => {
+    const captured = await setup(page, luceCasa({ currentSupplierLuce: "edison-energia" }));
+    await page.goto("/offerte?fast=1");
+    const cards = page.getByTestId("offer-card");
+    await expect(cards.first()).toBeVisible();
+    const IBAN = "Per attivare questa offerta è obbligatorio il pagamento con IBAN: ti servirà al passo successivo.";
+
+    // Variable offers are last; exactly one badge (cheapest fixed, none forced for casa).
+    const order = await ids(cards, "data-offer-id");
+    const variableIds = luceOffers.filter((o) => o.customer_type === "casa" && o.price_type === "variable").map((o) => o.id);
+    expect(order.slice(-variableIds.length).sort()).toEqual([...variableIds].sort());
+    expect(await ids(cards, "data-featured")).toEqual(order.map((_, i) => (i === 0 ? "true" : "false")));
+
+    const iren = luceOffers.find((o) => o.name === "Prezzo Variabile Revolution")!;
+    const irenCard = page.locator(`[data-testid="offer-card"][data-offer-id="${iren.id}"]`);
+    await expect(irenCard.getByTestId("offer-price")).toHaveText(/^PUN \+ 0,01\s€\/kWh$/);
+    await expect(irenCard.getByTestId("offer-monthly")).toHaveText("Varia con il PUN");
+    await expect(irenCard.getByTestId("offer-locked")).toHaveCount(0);
+    await expect(irenCard).not.toContainText("Bloccato");
+    await expect(irenCard.getByTestId("offer-iban-notice")).toHaveCount(0);
+
+    const trend = luceOffers.find((o) => o.name === "Trend")!;
+    const trendCard = page.locator(`[data-testid="offer-card"][data-offer-id="${trend.id}"]`);
+    await expect(trendCard.getByTestId("offer-iban-notice")).toHaveText(IBAN);
+    await noOverflow(page);
+    await shot(page, info, "variable");
+
+    await trendCard.getByTestId("offer-cta").click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByTestId("offer-modal-iban-notice")).toHaveText(IBAN);
+    await expect(dialog.getByTestId("offer-modal-monthly")).toContainText("Varia con il PUN");
+    await expect(dialog.getByTestId("offer-modal-features")).not.toContainText("Prezzo bloccato");
+    await noOverflow(page);
+    await page.getByTestId("offer-modal-cta").click();
+    await page.waitForURL(/\/attivazione$/);
+
+    expect((await flowState(page)).chosenOffers.luce.monthly_cost).toBeNull();
+    const last = captured.patches.at(-1)!.data;
+    expect(last.chosen_offer_luce).toBe(trend.id);
+    expect(last.monthly_cost_shown).toBeNull();
+    await noOverflow(page);
+  });
+
   test("details can be expanded on the card", async ({ page }) => {
     await setup(page, luceCasa());
     await page.goto("/offerte?fast=1");

@@ -10,7 +10,7 @@ import type { Commodity, LeadCustomerType, OfferWithSupplier, Supplier } from "@
 import { useFlow } from "@/lib/lead/flow-context";
 import { updateLead } from "@/lib/lead/client";
 import { annualKwh, annualSmc, applyFlowPatch, snapshotOffer, toLeadPatchData } from "@/lib/lead/flow-state";
-import { annualFromMonthly, monthlyCost, monthlyFromAnnual, rankOffers } from "@/lib/logic";
+import { annualFromMonthly, featuredBadgeIds, monthlyCost, monthlyFromAnnual, rankOffers } from "@/lib/logic";
 import { ConsumptionPanel } from "./ConsumptionPanel";
 import { EmptyState } from "./EmptyState";
 import { DualStepIndicator } from "./DualStepIndicator";
@@ -136,13 +136,15 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
     [offers, step, annual, state],
   );
 
+  const featuredIds = useMemo(() => featuredBadgeIds(ranked, audienceFor(state)), [ranked, state]);
+
   const handleConsumptionChange = (value: number) => {
     const chosen = state.chosenOffers[step];
     update({
       ...(step === "luce" ? { finalKwhMonth: value } : { finalSmcMonth: value }),
       // Keep an already chosen offer's cost in line with the consumption on screen.
       ...(chosen
-        ? { chosenOffers: { [step]: { ...chosen, monthly_cost: monthlyCost(chosen, annualFromMonthly(value)) ?? 0 } } }
+        ? { chosenOffers: { [step]: { ...chosen, monthly_cost: monthlyCost(chosen, annualFromMonthly(value)) } } }
         : {}),
     });
   };
@@ -306,7 +308,8 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
                 key={offer.id}
                 offer={offer}
                 commodity={step}
-                monthlyCost={cost ?? 0}
+                monthlyCost={cost}
+                featured={featuredIds.has(offer.id)}
                 chosen={state.chosenOffers[step]?.offer_id === offer.id}
                 onActivate={() => setModalOfferId(offer.id)}
               />
@@ -321,7 +324,7 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
           onClose={() => setModalOfferId(null)}
           offer={modalOffer}
           commodity={step}
-          monthlyCost={modalRanked.monthlyCost ?? 0}
+          monthlyCost={modalRanked.monthlyCost}
           onActivate={handleActivate}
           step={isDual ? `Offerta ${label}` : undefined}
         />

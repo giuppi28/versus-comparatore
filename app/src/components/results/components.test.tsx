@@ -19,7 +19,7 @@ describe("OfferCard", () => {
 
   it("shows the PRD §8 elements and exposes the data attributes", () => {
     const onActivate = vi.fn();
-    render(<OfferCard offer={edison} commodity="luce" monthlyCost={cost} onActivate={onActivate} />);
+    render(<OfferCard offer={edison} commodity="luce" monthlyCost={cost} featured onActivate={onActivate} />);
     const card = screen.getByTestId("offer-card");
     expect(card).toHaveAttribute("data-offer-id", edison.id);
     expect(card).toHaveAttribute("data-supplier-id", "sentra-energia");
@@ -46,6 +46,40 @@ describe("OfferCard", () => {
     fireEvent.click(screen.getByTestId("offer-details-toggle"));
     expect(screen.getByTestId("offer-details")).toBeInTheDocument();
     expect(screen.getByTestId("offer-details-toggle")).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("badge follows the featured prop, not offer.featured", () => {
+    const forced = { ...edison, featured: true };
+    const { unmount } = render(<OfferCard offer={forced} commodity="luce" monthlyCost={cost} onActivate={() => {}} />);
+    expect(screen.queryByTestId("offer-featured-band")).toBeNull();
+    expect(screen.getByTestId("offer-card")).toHaveAttribute("data-featured", "false");
+    unmount();
+    render(<OfferCard offer={{ ...edison, featured: false }} commodity="luce" monthlyCost={cost} featured onActivate={() => {}} />);
+    expect(screen.getByTestId("offer-featured-band")).toHaveTextContent("In evidenza");
+    expect(screen.getByTestId("offer-card")).toHaveAttribute("data-featured", "true");
+  });
+
+  it("variable offer: PUN spread, 'Varia con il PUN', no lock line, IBAN notice", () => {
+    const trend = withSupplier("offer-aldo-05");
+    expect(trend.price_type).toBe("variable");
+    expect(trend.iban_required).toBe(true);
+    render(<OfferCard offer={trend} commodity="luce" monthlyCost={null} onActivate={() => {}} />);
+    expect(screen.getByTestId("offer-price")).toHaveTextContent("PUN + 0,02 €/kWh");
+    expect(screen.getByTestId("offer-monthly")).toHaveTextContent("Varia con il PUN");
+    expect(screen.queryByTestId("offer-locked")).toBeNull();
+    expect(screen.queryByText(/Bloccato/)).toBeNull();
+    expect(screen.queryByText("stima")).toBeNull();
+    expect(screen.getByTestId("offer-iban-notice")).toHaveTextContent(
+      "Per attivare questa offerta è obbligatorio il pagamento con IBAN: ti servirà al passo successivo.",
+    );
+    fireEvent.click(screen.getByTestId("offer-details-toggle"));
+    expect(screen.queryByText("Prezzo bloccato")).toBeNull();
+  });
+
+  it("no IBAN notice for offers that do not require it", () => {
+    const iren = withSupplier("offer-aldo-03");
+    render(<OfferCard offer={iren} commodity="luce" monthlyCost={null} onActivate={() => {}} />);
+    expect(screen.queryByTestId("offer-iban-notice")).toBeNull();
   });
 
   it("uses Smc for gas and marks a chosen offer", () => {

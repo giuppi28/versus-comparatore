@@ -201,4 +201,27 @@ describe("renderBold", () => {
     const { container } = render(<p>{renderBold("a **b c")}</p>);
     expect(container.textContent).toBe("a **b c");
   });
+
+  describe("variable and IBAN offers", () => {
+    it("shows PUN price, 'Varia con il PUN' and no lock row", () => {
+      setup({ price_type: "variable", energy_price: 0.01, locked_months: null }, { monthlyCost: null });
+      expect(screen.getByTestId("offer-modal-monthly")).toHaveTextContent("Varia con il PUN");
+      const features = screen.getByTestId("offer-modal-features");
+      expect(features).toHaveTextContent("PUN + 0,01 €/kWh");
+      expect(features).not.toHaveTextContent("Prezzo bloccato");
+      expect(features).toHaveTextContent("prezzo variabile");
+    });
+
+    it("shows the IBAN notice only when iban_required", () => {
+      const { unmount } = render(
+        <OfferModal open onClose={() => {}} onActivate={() => {}} offer={makeOffer({ iban_required: true })} commodity="luce" monthlyCost={10} />,
+      );
+      expect(screen.getByTestId("offer-modal-iban-notice")).toHaveTextContent(
+        "Per attivare questa offerta è obbligatorio il pagamento con IBAN: ti servirà al passo successivo.",
+      );
+      unmount();
+      setup();
+      expect(screen.queryByTestId("offer-modal-iban-notice")).toBeNull();
+    });
+  });
 });
