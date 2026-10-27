@@ -133,6 +133,9 @@ describe("parseOfferForm", () => {
     const rest: Record<string, unknown> = { ...offer };
     delete rest.id;
     delete rest.updated_at;
+    // The form does not send these (kept on edit, derived by the DB trigger; T14.9 adds them).
+    delete rest.iban_required;
+    delete rest.featured_audience;
     expect(r.data).toEqual(rest);
   });
 });

@@ -223,8 +223,9 @@ export function parseOfferForm(values: OfferFormValues): OfferParseResult {
       advantages: v.advantages,
       details: v.details,
       featured: v.featured,
-      iban_required: false,
-      featured_audience: v.featured ? "both" : null,
+      // iban_required / featured_audience are deliberately not sent: the DB trigger
+      // offers_sync_featured derives the audience and edits keep IBAN/audience.
+      // T14.9 adds the real fields to this form.
       active: v.active,
       price_verified: v.price_verified,
     },

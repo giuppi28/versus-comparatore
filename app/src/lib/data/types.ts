@@ -352,7 +352,13 @@ export type SupplierPatch = Partial<Omit<Supplier, "id">>;
 export type SupplierCreateInput = Pick<Supplier, "name" | "slug"> &
   Partial<Omit<Supplier, "id" | "name" | "slug">>;
 
-export type OfferCreateInput = Omit<Offer, "id" | "updated_at">;
+/**
+ * iban_required and featured_audience are optional: the admin form does not send them
+ * (T14.9 adds the real fields). On the DB the trigger offers_sync_featured derives
+ * featured_audience from featured; the mock repository does the same.
+ */
+export type OfferCreateInput = Omit<Offer, "id" | "updated_at" | "iban_required" | "featured_audience"> &
+  Partial<Pick<Offer, "iban_required" | "featured_audience">>;
 export type OfferPatch = Partial<OfferCreateInput>;
 /** Result of Repository.deleteSupplier. */
 export interface SupplierDeletion {

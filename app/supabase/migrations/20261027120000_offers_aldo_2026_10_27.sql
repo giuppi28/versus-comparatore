@@ -116,7 +116,9 @@ begin
          count(*) filter (where commodity = 'gas' and customer_type = 'business'),
          count(*)
     into v_luce_casa, v_luce_business, v_gas_casa, v_gas_business, v_total
-    from public.offers;
+    from public.offers o
+    join public.suppliers s on s.id = o.supplier_id
+   where s.active;
   if (v_luce_casa, v_luce_business, v_gas_casa, v_gas_business, v_total) <> (13, 9, 11, 9, 42) then
     raise exception 'offers_aldo_2026_10_27: unexpected counts luce casa %, luce business %, gas casa %, gas business %, total %',
       v_luce_casa, v_luce_business, v_gas_casa, v_gas_business, v_total;

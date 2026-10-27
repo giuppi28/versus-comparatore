@@ -1200,6 +1200,20 @@ begin
   if n <> 2 then raise exception 'FAIL: % id documents stored for lead K (2 expected)', n; end if;
   select count(*) into n from public.lead_documents where lead_id = current_setting('rls.k_id')::uuid and kind = 'bill' and status = 'uploaded';
   if n <> 1 then raise exception 'FAIL: % bills stored for lead K (1 expected)', n; end if;
+  -- a second bill slot that slipped in (e.g. issued after the first expired) pending for lead K
+  insert into public.lead_documents (lead_id, object_path, mime_type, size_bytes, status, expires_at, kind)
+  values (current_setting('rls.k_id')::uuid, current_setting('rls.k_id') || '/' || repeat('a', 32) || '.pdf', 'application/pdf', 100, 'pending', now() + interval '5 minutes', 'bill');
+  perform set_config('rls.k_late_bill', (select id::text from public.lead_documents where object_path = current_setting('rls.k_id') || '/' || repeat('a', 32) || '.pdf'), true);
+end $$;
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare ok boolean; err text;
+begin
+  -- confirming it would exceed the one-bill limit: bill_limit_reached (API: too_many_bills)
+  ok := false; begin perform public.confirm_lead_document('rls-test-secret-not-the-real-one', current_setting('rls.k_token'), current_setting('rls.k_late_bill')::uuid); exception when others then ok := sqlerrm = 'bill_limit_reached'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: confirm of a second bill (got %)', err; end if;
 end $$;
 
 reset role;

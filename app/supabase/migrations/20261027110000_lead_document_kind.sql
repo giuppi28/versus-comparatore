@@ -101,6 +101,7 @@ end;
 $$;
 comment on function public.register_lead_document(text, text, text, integer, text) is
   'Server only (LEAD_API_SECRET): issue a one-time, 5-minute upload slot in bucket lead-documents for the in-progress lead owning the token (kind id_document: max 2, JPEG/PDF; kind bill: max 1, PDF only, 4 MiB; 20 slots incl. removed ones). Returns {id, lead_id, path, bucket, expires_at, kind}.';
+alter function public.register_lead_document(text, text, text, integer, text) owner to postgres;
 revoke all on function public.register_lead_document(text, text, text, integer, text) from public, anon, authenticated;
 grant execute on function public.register_lead_document(text, text, text, integer, text) to anon, authenticated;
 
@@ -131,7 +132,8 @@ begin
   select count(*) into v_count from public.lead_documents d
    where d.lead_id = v_lead and d.status = 'uploaded' and d.kind = v_doc.kind;
   if v_count >= (case when v_doc.kind = 'bill' then 1 else 2 end) then
-    raise exception 'document_limit_reached' using errcode = '22023';
+    raise exception '%', (case when v_doc.kind = 'bill' then 'bill_limit_reached' else 'document_limit_reached' end)
+      using errcode = '22023';
   end if;
 
   update public.lead_documents d
@@ -146,5 +148,6 @@ end;
 $$;
 comment on function public.confirm_lead_document(text, text, uuid) is
   'Server only (LEAD_API_SECRET): mark an upload slot of the in-progress lead owning the token as uploaded (the name can no longer be written).';
+alter function public.confirm_lead_document(text, text, uuid) owner to postgres;
 revoke all on function public.confirm_lead_document(text, text, uuid) from public, anon, authenticated;
 grant execute on function public.confirm_lead_document(text, text, uuid) to anon, authenticated;

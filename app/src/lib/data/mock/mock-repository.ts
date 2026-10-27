@@ -529,6 +529,8 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       if (!supplierById(input.supplier_id)) throw new SupplierNotFoundError();
       const created: Offer = {
         ...structuredClone(input),
+        iban_required: input.iban_required ?? false,
+        featured_audience: input.featured_audience ?? (input.featured ? "both" : null),
         id: crypto.randomUUID(),
         updated_at: new Date().toISOString(),
       };
@@ -542,7 +544,12 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       if (patch.supplier_id !== undefined && !supplierById(patch.supplier_id)) {
         throw new SupplierNotFoundError();
       }
-      Object.assign(existing, structuredClone(definedOnly(patch)), {
+      const changes = structuredClone(definedOnly(patch));
+      // Mirrors the DB trigger offers_sync_featured: featured drives featured_audience.
+      if (changes.featured !== undefined && changes.featured_audience === undefined) {
+        changes.featured_audience = changes.featured ? (existing.featured_audience ?? "both") : null;
+      }
+      Object.assign(existing, changes, {
         updated_at: new Date().toISOString(),
       });
       return withSupplier(existing)!;
