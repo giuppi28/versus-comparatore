@@ -49,6 +49,6 @@ describe("buildVCard", () => {
     expect(v.replace(/\r\n /g, "")).toContain("TYPE=PNG:" + "A".repeat(200));
   });
   it("escapes the phone value", () => {
-    expect(buildVCard({ phone: "1;2,3" })).toContain("TEL;TYPE=WORK,VOICE:1\;2\\,3\r\n");
+    expect(buildVCard({ phone: "1;2,3" })).toContain("TEL;TYPE=WORK,VOICE:1\\;2\\,3\r\n");
   });
 });
