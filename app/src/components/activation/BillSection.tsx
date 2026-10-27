@@ -142,6 +142,7 @@ export function BillFields({ state, update, edited, touch, suppliers, avail }: B
     }
     update({ ...top, activation });
     setDraft(null);
+    setTimeout(() => itemRef.current?.focus(), 0);
   }
 
   return (

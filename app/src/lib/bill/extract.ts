@@ -71,7 +71,8 @@ export async function extractPdfText(file: File): Promise<string> {
     } finally {
       clearTimeout(timer);
       // Timeout or error: free the loading task and its worker (no-op if already destroyed).
-      await task?.destroy().catch(() => undefined);
+      // Not awaited: destroy() waits for the worker, which may be stuck on the very file that timed out.
+      void task?.destroy().catch(() => undefined);
     }
   } catch {
     return "";
