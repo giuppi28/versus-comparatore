@@ -65,6 +65,14 @@ export default function GrazieClient({ callbackPhone }: { callbackPhone: string 
               </a>{" "}
               da un nostro consulente per confermare l&apos;attivazione.
             </p>
+            <a
+              href="/api/vcard"
+              download="versus.vcf"
+              data-testid="thankyou-vcard"
+              className="inline-flex min-h-11 items-center justify-center rounded-control border border-control bg-surface px-5 text-base font-semibold text-ink transition-colors hover:border-ink"
+            >
+              Salva il nostro numero
+            </a>
           </div>
 
           <section
