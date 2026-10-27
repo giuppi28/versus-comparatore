@@ -54,3 +54,4 @@ Phase 14 (`docs/TASKS.md`): T14.2 offers schema migration (backend-builder). T13
 - 2026-10-24 Phase 13 (A+B) complete; FEATURES/GOTCHAS updated — 8fbe62c.
 - 2026-10-27 Scope change Phase 14: SPEC PRD v0.6.3 notes + decisions #15–#24, TASKS Phase 14 (T14.1–T14.16), offers CSV in docs/source/.
 - 2026-10-27 T14.1 logo pack (4 new suppliers) found uncommitted from an earlier session; verified (deterministic rebuild, 78 tests, previews OK), preview label fixed to "Asti Energy".
+- 2026-10-27 T14.2 done: migration 20261027100000_offers_variable_iban_featured.sql (+ BEFORE trigger offers_sync_featured keeping featured/featured_audience in sync for the production app), types, null locked_months handled; Vitest 1173, PGlite checks passed — 300186e. Notes: admin edit currently resets featured_audience (fix in T14.9); GrazieClient prints locked_months directly ("null mesi" for variable — fix in T14.7/T14.11).
