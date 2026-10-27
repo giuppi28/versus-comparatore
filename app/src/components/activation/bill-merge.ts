@@ -5,6 +5,7 @@
  */
 import type { ParsedBill } from "@/lib/bill/parse";
 import type { Supplier } from "@/lib/data/types";
+import { validateCodiceFiscale } from "@/lib/logic/validators";
 
 export const BILL_FIELDS = ["pod", "pdr", "taxCode", "supplierLuce", "supplierGas"] as const;
 export type BillField = (typeof BILL_FIELDS)[number];
@@ -74,4 +75,16 @@ export function planBillMerge(
     out[f] = d;
   }
   return out;
+}
+
+/**
+ * The bill holder may be someone else (Subentro / Voltura): a codice fiscale that fails the step-A
+ * name check is not proposed, so it cannot block "Conferma" for POD / PDR / supplier.
+ */
+export function dropMismatchedTaxCode(
+  draft: BillValues,
+  names: { firstName: string; lastName: string },
+): BillValues {
+  if (draft.taxCode.trim() === "") return draft;
+  return validateCodiceFiscale(draft.taxCode, names).ok ? draft : { ...draft, taxCode: "" };
 }

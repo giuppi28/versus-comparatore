@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   billConflicts,
+  dropMismatchedTaxCode,
   buildBillDraft,
   EMPTY_BILL_VALUES,
   hasBillValues,
@@ -53,5 +54,17 @@ describe("planBillMerge", () => {
   });
   it("cancel = nothing written (the caller simply does not call the merge)", () => {
     expect(planBillMerge(v(), v({ pod: "IT001E12345678" }), {})).toEqual({});
+  });
+});
+
+describe("dropMismatchedTaxCode", () => {
+  const draft = v({ pod: "IT001E12345678", taxCode: "RSSMRA85T10A562S" });
+  it("keeps a codice fiscale that matches the step-A name", () => {
+    expect(dropMismatchedTaxCode(draft, { firstName: "Mario", lastName: "Rossi" })).toEqual(draft);
+  });
+  it("empties it when the bill holder is someone else, keeping the other values", () => {
+    expect(dropMismatchedTaxCode(draft, { firstName: "Anna", lastName: "Bianchi" })).toEqual(
+      v({ pod: "IT001E12345678" }),
+    );
   });
 });

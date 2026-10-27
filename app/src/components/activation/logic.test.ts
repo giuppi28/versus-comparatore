@@ -8,6 +8,8 @@ import {
   VALID_POD,
 } from "@/lib/lead/test-fixtures";
 import {
+  addDocumentPatch,
+  removeDocumentPatch,
   activationRedirect,
   buildSubmitPayload,
   effectiveCap,
@@ -429,5 +431,19 @@ describe("upload helpers and POD warning", () => {
     expect(podWarning(flow({ comune: roma, activation: { pod: "IT001E12345678" } }))).toMatch(/Controlla il POD/);
     expect(podWarning(flow({ comune: roma, activation: { pod: "IT002E12345678" } }))).toBeNull();
     expect(podWarning(flow({ activation: { pod: "" } }))).toBeNull();
+  });
+});
+
+describe("document list patches (overlapping uploads)", () => {
+  const doc = (id: string, kind: string) =>
+    ({ id, kind, name: id, size_bytes: 1 }) as unknown as FlowState["activation"]["documents"][number];
+  it("a bill and an ID resolving out of order both survive, and a removal keeps the other", () => {
+    let state = INITIAL_FLOW_STATE;
+    // Both async actions started from the same (empty) list; each applies on the latest state.
+    state = applyFlowPatch(state, addDocumentPatch(state, doc("id-1", "id_card")));
+    state = applyFlowPatch(state, addDocumentPatch(state, doc("bill-1", "bill")));
+    expect(state.activation.documents.map((d) => d.id)).toEqual(["id-1", "bill-1"]);
+    state = applyFlowPatch(state, removeDocumentPatch(state, "id-1"));
+    expect(state.activation.documents.map((d) => d.id)).toEqual(["bill-1"]);
   });
 });

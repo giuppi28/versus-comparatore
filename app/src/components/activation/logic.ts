@@ -5,7 +5,7 @@
  */
 import type { GasUseId } from "@/config/consumption";
 import type { Commodity, Supplier } from "@/lib/data/types";
-import { toLeadCompleteData, serviceTypeFor, type FlowState } from "@/lib/lead/flow-state";
+import { toLeadCompleteData, serviceTypeFor, type FlowPatch, type FlowState } from "@/lib/lead/flow-state";
 import {
   DEFAULT_POWER_KW,
   includesGas,
@@ -484,4 +484,14 @@ export function activationRedirect(state: FlowState): string | null {
   if (includesLuce(state.commodity) && !state.chosenOffers.luce) return "/offerte";
   if (includesGas(state.commodity) && !state.chosenOffers.gas) return "/offerte";
   return null;
+}
+
+/** Adds a document to the list in the latest state (safe against overlapping async uploads). */
+export function addDocumentPatch(state: FlowState, doc: FlowState["activation"]["documents"][number]): FlowPatch {
+  return { activation: { documents: [...state.activation.documents, doc] } };
+}
+
+/** Removes a document from the list in the latest state (safe against overlapping async actions). */
+export function removeDocumentPatch(state: FlowState, id: string): FlowPatch {
+  return { activation: { documents: state.activation.documents.filter((d) => d.id !== id) } };
 }

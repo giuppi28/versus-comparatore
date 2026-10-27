@@ -19,9 +19,11 @@ import {
 } from "@/lib/lead/client";
 import { DocumentPrepareError, prepareDocumentFile } from "./compress-image";
 import {
+  addDocumentPatch,
   formatUploadSize,
   ibanRequired,
   groupIban,
+  removeDocumentPatch,
   removeErrorMessage,
   uploadErrorMessage,
 } from "./logic";
@@ -182,8 +184,7 @@ export function DocumentFields({
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   // The bill (kind "bill") lives in its own section: this one only handles identity documents.
-  const allDocuments = a.documents;
-  const documents = allDocuments.filter((d) => d.kind !== "bill");
+  const documents = a.documents.filter((d) => d.kind !== "bill");
   const full = documents.length >= DOCUMENT_MAX_FILES;
 
   async function onFiles(files: FileList | null) {
@@ -196,11 +197,7 @@ export function DocumentFields({
     try {
       const prepared = await prepareDocumentFile(file);
       const doc = await uploadLeadDocument(prepared);
-      update({
-        activation: {
-          documents: [...allDocuments, { ...doc, name: prepared.name }],
-        },
-      });
+      update((s) => addDocumentPatch(s, { ...doc, name: prepared.name }));
     } catch (err) {
       const code =
         err instanceof LeadApiError || err instanceof DocumentPrepareError
@@ -230,7 +227,7 @@ export function DocumentFields({
         return;
       }
     }
-    update({ activation: { documents: allDocuments.filter((d) => d.id !== id) } });
+    update((s) => removeDocumentPatch(s, id));
     setRemovingId(null);
   }
 

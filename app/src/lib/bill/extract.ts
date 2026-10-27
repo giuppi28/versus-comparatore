@@ -17,7 +17,9 @@ function hasPdfSignature(bytes: Uint8Array): boolean {
   return head.includes("%PDF-");
 }
 
-async function readPdfText(data: Uint8Array): Promise<string> {
+type PdfTask = { destroy(): Promise<void> };
+
+async function readPdfText(data: Uint8Array, onTask?: (task: PdfTask) => void): Promise<string> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
@@ -25,6 +27,7 @@ async function readPdfText(data: Uint8Array): Promise<string> {
   ).toString();
 
   const task = pdfjs.getDocument({ data, enableXfa: false, verbosity: 0 });
+  onTask?.(task);
   try {
     const doc = await task.promise;
     const pages = Math.min(doc.numPages, MAX_BILL_PAGES);
@@ -56,13 +59,19 @@ export async function extractPdfText(file: File): Promise<string> {
     const data = new Uint8Array(await file.arrayBuffer());
     if (!hasPdfSignature(data)) return "";
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let task: PdfTask | undefined;
     const timeout = new Promise<string>((resolve) => {
       timer = setTimeout(() => resolve(""), EXTRACT_TIMEOUT_MS);
     });
+    const reading = readPdfText(data, (t) => (task = t));
+    // A late rejection after the timeout must not surface as an unhandled rejection.
+    reading.catch(() => undefined);
     try {
-      return await Promise.race([readPdfText(data), timeout]);
+      return await Promise.race([reading, timeout]);
     } finally {
       clearTimeout(timer);
+      // Timeout or error: free the loading task and its worker (no-op if already destroyed).
+      await task?.destroy().catch(() => undefined);
     }
   } catch {
     return "";

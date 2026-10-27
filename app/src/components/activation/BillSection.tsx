@@ -19,13 +19,14 @@ import { LeadApiError, removeLeadDocument, uploadLeadDocument } from "@/lib/lead
 import {
   billConflicts,
   buildBillDraft,
+  dropMismatchedTaxCode,
   hasBillValues,
   planBillMerge,
   type BillField,
   type BillFieldAvailability,
   type BillValues,
 } from "./bill-merge";
-import { formatUploadSize, removeErrorMessage, supplierOptions } from "./logic";
+import { addDocumentPatch, formatUploadSize, removeDocumentPatch, removeErrorMessage, supplierOptions } from "./logic";
 import type { StepProps } from "./types";
 
 const BILL_ERRORS: Record<string, string> = {
@@ -54,6 +55,7 @@ export function BillFields({ state, update, edited, touch, suppliers, avail }: B
   const a = state.activation;
   const fileId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const itemRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -81,8 +83,11 @@ export function BillFields({ state, update, edited, touch, suppliers, avail }: B
     try {
       // Upload and in-browser reading run in parallel; the text never leaves the browser.
       const [doc, text] = await Promise.all([uploadLeadDocument(file, "bill"), extractPdfText(file)]);
-      update({ activation: { documents: [...a.documents, { ...doc, name: file.name }] } });
-      const proposal = buildBillDraft(parseBillText(text, [...suppliers]), suppliers, avail);
+      update((s) => addDocumentPatch(s, { ...doc, name: file.name }));
+      const proposal = dropMismatchedTaxCode(
+        buildBillDraft(parseBillText(text, [...suppliers]), suppliers, avail),
+        { firstName: state.firstName.trim(), lastName: state.lastName.trim() },
+      );
       if (hasBillValues(proposal)) setDraft(proposal);
       else setNotice(UNREADABLE);
     } catch (err) {
@@ -105,8 +110,15 @@ export function BillFields({ state, update, edited, touch, suppliers, avail }: B
         return;
       }
     }
-    update({ activation: { documents: a.documents.filter((d) => d.id !== id) } });
+    update((s) => removeDocumentPatch(s, id));
     setRemoving(false);
+  }
+
+  function cancelDialog() {
+    setDraft(null);
+    // The file input is gone once a bill is attached: send focus to the bill item
+    // (after the modal has restored focus to its trigger on unmount).
+    setTimeout(() => itemRef.current?.focus(), 0);
   }
 
   function apply(values: Partial<BillValues>) {
@@ -141,8 +153,10 @@ export function BillFields({ state, update, edited, touch, suppliers, avail }: B
       </p>
       {bill ? (
         <div
+          ref={itemRef}
+          tabIndex={-1}
           data-testid="bill-item"
-          className="flex items-center gap-2 rounded-control border border-line px-3 py-2 text-sm text-ink"
+          className="flex items-center gap-2 rounded-control border border-line px-3 py-2 text-sm text-ink focus:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-100"
         >
           <span aria-hidden="true" className="text-brand-600">
             <CheckIcon className="size-5" />
@@ -217,7 +231,7 @@ export function BillFields({ state, update, edited, touch, suppliers, avail }: B
           names={{ firstName: state.firstName.trim(), lastName: state.lastName.trim() }}
           suppliers={suppliers}
           avail={avail}
-          onCancel={() => setDraft(null)}
+          onCancel={cancelDialog}
           onConfirm={apply}
         />
       )}
