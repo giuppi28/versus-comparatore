@@ -181,7 +181,9 @@ export function DocumentFields({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
-  const documents = a.documents;
+  // The bill (kind "bill") lives in its own section: this one only handles identity documents.
+  const allDocuments = a.documents;
+  const documents = allDocuments.filter((d) => d.kind !== "bill");
   const full = documents.length >= DOCUMENT_MAX_FILES;
 
   async function onFiles(files: FileList | null) {
@@ -196,7 +198,7 @@ export function DocumentFields({
       const doc = await uploadLeadDocument(prepared);
       update({
         activation: {
-          documents: [...documents, { ...doc, name: prepared.name }],
+          documents: [...allDocuments, { ...doc, name: prepared.name }],
         },
       });
     } catch (err) {
@@ -228,7 +230,7 @@ export function DocumentFields({
         return;
       }
     }
-    update({ activation: { documents: documents.filter((d) => d.id !== id) } });
+    update({ activation: { documents: allDocuments.filter((d) => d.id !== id) } });
     setRemovingId(null);
   }
 
