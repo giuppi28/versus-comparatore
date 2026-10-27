@@ -218,7 +218,7 @@ begin
   -- new functions: SECURITY DEFINER, search_path '', never executable by PUBLIC
   select count(*) into n from pg_proc p
    where p.oid in ('public.get_callback_phone()'::regprocedure,
-                   'public.register_lead_document(text, text, text, integer)'::regprocedure,
+                   'public.register_lead_document(text, text, text, integer, text)'::regprocedure,
                    'public.confirm_lead_document(text, text, uuid)'::regprocedure,
                    'public.complete_lead(text, text, jsonb)'::regprocedure,
                    'private.lead_document_upload_allowed(text)'::regprocedure)
@@ -274,7 +274,7 @@ begin
   select count(*) into n from pg_proc p
    where p.oid in ('public.request_lead_document_removal(text, text, uuid)'::regprocedure,
                    'public.finish_lead_document_removal(text, text, uuid)'::regprocedure,
-                   'public.register_lead_document(text, text, text, integer)'::regprocedure,
+                   'public.register_lead_document(text, text, text, integer, text)'::regprocedure,
                    'private.lead_document_removal_allowed(text)'::regprocedure)
      and p.prosecdef
      and 'search_path=""' = any (p.proconfig)
@@ -326,6 +326,53 @@ begin
     ok := false; begin insert into public.offers (supplier_id, name, commodity, energy_price, locked_months, featured_audience) values (v_sup, 'x', 'luce', 0.1, 12, 'all'); exception when check_violation then ok := true; end;
     if not ok then raise exception 'FAIL: unknown featured_audience must be rejected'; end if;
   end;
+
+  -- ---------------------------------------------------------------- Phase 14 document kind (T14.3)
+  select count(*) into n from information_schema.columns
+   where table_schema = 'public' and table_name = 'lead_documents' and column_name = 'kind'
+     and is_nullable = 'NO' and column_default like '''id_document''%';
+  if n <> 1 then raise exception 'FAIL: lead_documents.kind must be not null default id_document'; end if;
+  declare
+    v_lead uuid;
+    ok boolean;
+    k text;
+  begin
+    select id into v_lead from public.leads limit 1;
+    if v_lead is null then
+      insert into public.leads (privacy_consent, commodity, customer_type, first_name, last_name, phone)
+        values (true, 'luce', 'casa', 'Kind', 'Check', '3331112222') returning id into v_lead;
+    end if;
+    -- old-style insert (no kind) defaults to id_document
+    insert into public.lead_documents (lead_id, object_path, mime_type, size_bytes, expires_at)
+      values (v_lead, v_lead::text || '/' || repeat('a', 32) || '.jpg', 'image/jpeg', 10, now()) returning kind into k;
+    if k <> 'id_document' then raise exception 'FAIL: kind default is %', k; end if;
+    insert into public.lead_documents (lead_id, object_path, mime_type, size_bytes, expires_at, kind)
+      values (v_lead, v_lead::text || '/' || repeat('b', 32) || '.pdf', 'application/pdf', 10, now(), 'bill') returning kind into k;
+    if k <> 'bill' then raise exception 'FAIL: bill kind not stored'; end if;
+    ok := false; begin
+      insert into public.lead_documents (lead_id, object_path, mime_type, size_bytes, expires_at, kind)
+        values (v_lead, v_lead::text || '/' || repeat('c', 32) || '.pdf', 'application/pdf', 10, now(), 'selfie');
+    exception when check_violation then ok := true; end;
+    if not ok then raise exception 'FAIL: unknown document kind accepted'; end if;
+    ok := false; begin
+      insert into public.lead_documents (lead_id, object_path, mime_type, size_bytes, expires_at, kind)
+        values (v_lead, v_lead::text || '/' || repeat('d', 32) || '.pdf', 'application/pdf', 10, now(), null);
+    exception when not_null_violation then ok := true; end;
+    if not ok then raise exception 'FAIL: null kind accepted'; end if;
+    delete from public.lead_documents where lead_id = v_lead and (object_path like '%' || repeat('a', 32) || '.jpg' or object_path like '%' || repeat('b', 32) || '.pdf');
+  end;
+  -- the old 4-argument register_lead_document is gone (no ambiguous overload); the 5-argument one is secret-gated
+  select count(*) into n from pg_proc p join pg_namespace s on s.oid = p.pronamespace
+   where s.nspname = 'public' and p.proname = 'register_lead_document';
+  if n <> 1 then raise exception 'FAIL: % register_lead_document overloads (1 expected)', n; end if;
+  select count(*) into n from pg_proc p
+   where p.oid in ('public.register_lead_document(text, text, text, integer, text)'::regprocedure,
+                   'public.confirm_lead_document(text, text, uuid)'::regprocedure)
+     and p.prosecdef and 'search_path=""' = any (p.proconfig)
+     and has_function_privilege('anon', p.oid, 'execute')
+     and has_function_privilege('authenticated', p.oid, 'execute')
+     and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where a.grantee = 0);
+  if n <> 2 then raise exception 'FAIL: % of 2 document functions with the expected security settings', n; end if;
 
   raise notice 'ALL DATA CHECKS PASSED';
 end $$;

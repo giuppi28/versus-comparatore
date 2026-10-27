@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { leadDocumentKindSchema } from "./schemas";
 import { checkCompletion } from "./completion";
 import {
   completeBodySchema,
@@ -110,5 +111,16 @@ describe("completeBodySchema + checkCompletion", () => {
       completeData({ commodity: "dual", chosen_offer_gas: "g", has_gas: true, pdr: VALID_PDR, current_supplier_gas: "iren", gas_uses: [] }),
     );
     expect(checkCompletion(parsed).fields).toEqual({ gas_uses: "required" });
+  });
+});
+
+describe("leadDocumentKindSchema", () => {
+  it("defaults to id_document, accepts bill, rejects anything else", () => {
+    expect(leadDocumentKindSchema.parse(undefined)).toBe("id_document");
+    expect(leadDocumentKindSchema.parse("id_document")).toBe("id_document");
+    expect(leadDocumentKindSchema.parse("bill")).toBe("bill");
+    for (const bad of ["", "BILL", "selfie", null, 1]) {
+      expect(leadDocumentKindSchema.safeParse(bad).success).toBe(false);
+    }
   });
 });

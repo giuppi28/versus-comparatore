@@ -263,16 +263,27 @@ export const LEAD_DOCUMENT_URL_MAX_SECONDS = 300;
 /** Private Supabase Storage bucket holding the documents. */
 export const LEAD_DOCUMENT_BUCKET = "lead-documents";
 
+/** What a lead document is: an identity document (max 2, JPEG/PDF) or a bill (max 1, PDF only). */
+export type LeadDocumentKind = "id_document" | "bill";
+export const LEAD_DOCUMENT_KINDS: readonly LeadDocumentKind[] = ["id_document", "bill"];
+/** Max bills per lead (removed bills free the slot). */
+export const MAX_LEAD_BILLS = 1;
+/** Max size of a bill (PDF), aligned with the server upload limit of 4 MiB. */
+export const MAX_LEAD_BILL_BYTES = 4 * 1024 * 1024;
+
 /** File handed to Repository.uploadLeadDocument (bytes already read by the server route). */
 export interface LeadDocumentFile {
   mime: LeadDocumentMime;
   bytes: Uint8Array;
+  /** Default "id_document". A bill must be a PDF of at most MAX_LEAD_BILL_BYTES. */
+  kind?: LeadDocumentKind;
 }
 
 /** An uploaded identity document (metadata only; the bytes stay in private storage). */
 export interface LeadDocument {
   id: string;
   lead_id: string;
+  kind: LeadDocumentKind;
   mime_type: LeadDocumentMime;
   size_bytes: number;
   created_at: string;

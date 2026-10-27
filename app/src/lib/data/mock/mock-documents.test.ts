@@ -11,7 +11,7 @@ import {
   LeadNotFoundError,
   type Repository,
 } from "../repository";
-import { DEFAULT_CALLBACK_PHONE, MAX_LEAD_DOCUMENT_BYTES, MAX_LEAD_DOCUMENT_SLOTS } from "../types";
+import { DEFAULT_CALLBACK_PHONE, MAX_LEAD_BILL_BYTES, MAX_LEAD_DOCUMENT_BYTES, MAX_LEAD_DOCUMENT_SLOTS } from "../types";
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xdb, 9, 9]);
 const PDF = new TextEncoder().encode("%PDF-1.4\n%test");
@@ -179,5 +179,49 @@ describe("mock Phase 12 lead fields + callback phone", () => {
     });
     const custom = createMockRepository({ settings: { notification_email: null, callback_phone: "+39 06 7654321" } });
     expect(await custom.getCallbackPhone()).toBe("+39 06 7654321");
+  });
+});
+
+describe("mock lead documents: kind", () => {
+  let repo: Repository;
+  let token: string;
+  let leadId: string;
+  beforeEach(async () => {
+    repo = createMockRepository();
+    const ref = await repo.createLead({ privacy_consent: true });
+    token = ref.token;
+    leadId = ref.id;
+  });
+
+  it("defaults to id_document and lists the kind", async () => {
+    const doc = await repo.uploadLeadDocument(token, { mime: "image/jpeg", bytes: JPEG });
+    expect(doc.kind).toBe("id_document");
+    expect((await repo.listLeadDocuments(leadId)).map((d) => d.kind)).toEqual(["id_document"]);
+  });
+
+  it("bill: PDF only, max 1, independent of the 2 identity documents", async () => {
+    await expect(repo.uploadLeadDocument(token, { mime: "image/jpeg", bytes: JPEG, kind: "bill" })).rejects.toMatchObject({ reason: "type" });
+    await expect(repo.uploadLeadDocument(token, { mime: "image/jpeg", bytes: JPEG, kind: "x" as never })).rejects.toBeInstanceOf(InvalidLeadDocumentError);
+    await repo.uploadLeadDocument(token, { mime: "image/jpeg", bytes: JPEG });
+    await repo.uploadLeadDocument(token, { mime: "application/pdf", bytes: PDF });
+    const bill = await repo.uploadLeadDocument(token, { mime: "application/pdf", bytes: PDF, kind: "bill" });
+    expect(bill.kind).toBe("bill");
+    await expect(repo.uploadLeadDocument(token, { mime: "application/pdf", bytes: PDF, kind: "bill" })).rejects.toMatchObject({ kind: "bill" });
+    await expect(repo.uploadLeadDocument(token, { mime: "image/jpeg", bytes: JPEG })).rejects.toMatchObject({ kind: "id_document" });
+    expect((await repo.listLeadDocuments(leadId)).map((d) => d.kind)).toEqual(["id_document", "id_document", "bill"]);
+    // removing the bill frees only the bill slot
+    await repo.removeLeadDocument(token, bill.id);
+    await expect(repo.uploadLeadDocument(token, { mime: "image/jpeg", bytes: JPEG })).rejects.toBeInstanceOf(LeadDocumentLimitError);
+    await expect(repo.uploadLeadDocument(token, { mime: "application/pdf", bytes: PDF, kind: "bill" })).resolves.toMatchObject({ kind: "bill" });
+  });
+
+  it("bill size limit is 4 MiB", async () => {
+    const ok = new Uint8Array(MAX_LEAD_BILL_BYTES);
+    ok.set(PDF);
+    await expect(repo.uploadLeadDocument(token, { mime: "application/pdf", bytes: ok, kind: "bill" })).resolves.toBeDefined();
+    const over = new Uint8Array(MAX_LEAD_BILL_BYTES + 1);
+    over.set(PDF);
+    const other = await repo.createLead({ privacy_consent: true });
+    await expect(repo.uploadLeadDocument(other.token, { mime: "application/pdf", bytes: over, kind: "bill" })).rejects.toMatchObject({ reason: "size" });
   });
 });

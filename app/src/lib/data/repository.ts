@@ -11,6 +11,7 @@ import type {
   LeadDeletion,
   LeadDocument,
   LeadDocumentFile,
+  LeadDocumentKind,
   LeadDocumentMime,
   LeadDocumentUrlOptions,
   LeadRef,
@@ -27,7 +28,13 @@ import type {
   SupplierInput,
   SupplierPatch,
 } from "./types";
-import { LEAD_DOCUMENT_MIME_TYPES, LEAD_DOCUMENT_URL_MAX_SECONDS, MAX_LEAD_DOCUMENT_BYTES } from "./types";
+import {
+  LEAD_DOCUMENT_KINDS,
+  LEAD_DOCUMENT_MIME_TYPES,
+  LEAD_DOCUMENT_URL_MAX_SECONDS,
+  MAX_LEAD_BILL_BYTES,
+  MAX_LEAD_DOCUMENT_BYTES,
+} from "./types";
 
 export class LeadNotFoundError extends Error {
   constructor() {
@@ -123,11 +130,14 @@ export class InvalidLeadDocumentError extends Error {
   }
 }
 
-/** The lead already has MAX_LEAD_DOCUMENTS documents (or too many upload attempts). */
+/**
+ * The lead already has MAX_LEAD_DOCUMENTS identity documents / MAX_LEAD_BILLS bills (or too
+ * many upload attempts). `kind` says which limit was hit.
+ */
 export class LeadDocumentLimitError extends Error {
   readonly code = "document_limit_reached" as const;
-  constructor() {
-    super("Maximum number of documents reached for this lead");
+  constructor(readonly kind: LeadDocumentKind = "id_document") {
+    super(kind === "bill" ? "Maximum number of bills reached for this lead" : "Maximum number of documents reached for this lead");
     this.name = "LeadDocumentLimitError";
   }
 }
@@ -161,9 +171,12 @@ export function detectLeadDocumentMime(bytes: Uint8Array): LeadDocumentMime | nu
  */
 export function assertLeadDocument(file: LeadDocumentFile): void {
   if (!file || !LEAD_DOCUMENT_MIME_TYPES.includes(file.mime)) throw new InvalidLeadDocumentError("type");
+  if (file.kind !== undefined && !LEAD_DOCUMENT_KINDS.includes(file.kind)) throw new InvalidLeadDocumentError("type");
+  const isBill = file.kind === "bill";
+  if (isBill && file.mime !== "application/pdf") throw new InvalidLeadDocumentError("type");
   // ArrayBuffer.isView, not instanceof: byte arrays may come from another realm.
   const bytes = file.bytes as Uint8Array | undefined;
-  if (!bytes || !ArrayBuffer.isView(bytes) || bytes.BYTES_PER_ELEMENT !== 1 || bytes.length === 0 || bytes.length > MAX_LEAD_DOCUMENT_BYTES) {
+  if (!bytes || !ArrayBuffer.isView(bytes) || bytes.BYTES_PER_ELEMENT !== 1 || bytes.length === 0 || bytes.length > (isBill ? MAX_LEAD_BILL_BYTES : MAX_LEAD_DOCUMENT_BYTES)) {
     throw new InvalidLeadDocumentError("size");
   }
   if (detectLeadDocumentMime(file.bytes) !== file.mime) throw new InvalidLeadDocumentError("content");
@@ -241,7 +254,7 @@ export interface Repository {
    * Stores an identity document for the IN-PROGRESS lead owning `token`
    * (Supabase: register slot -> upload to the private bucket -> confirm; see README
    * "Lead documents"). Validates type, size and magic bytes again (assertLeadDocument).
-   * Throws InvalidLeadDocumentError, LeadDocumentLimitError (max 2 per lead),
+   * Throws InvalidLeadDocumentError, LeadDocumentLimitError (max 2 identity documents and 1 bill per lead, `kind` tells which),
    * LeadNotFoundError (unknown/completed lead), LeadApiSecretError, or a generic Error
    * (storage failure).
    */

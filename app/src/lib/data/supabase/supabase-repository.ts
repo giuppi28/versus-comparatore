@@ -27,6 +27,7 @@ import type {
   Lead,
   LeadCompletion,
   LeadDocument,
+  LeadDocumentKind,
   LeadDocumentMime,
   LeadOfferSnapshot,
   LeadQuery,
@@ -68,9 +69,10 @@ import {
  *   - leads: iban, iban_holder_*, document_* columns (writable through the lead RPCs)
  *   - settings.callback_phone; rpc get_callback_phone() -> text (anon); complete_lead also
  *     returns callback_phone
- *   - rpc register_lead_document(p_secret, p_token, p_mime_type, p_size_bytes)
- *       -> { id, lead_id, path, bucket, expires_at }   (errors invalid_document /
- *          document_limit_reached / lead_not_found / invalid_secret)
+ *   - rpc register_lead_document(p_secret, p_token, p_mime_type, p_size_bytes[, p_kind])
+ *       -> { id, lead_id, path, bucket, expires_at, kind }   (errors invalid_document /
+ *          document_limit_reached / bill_limit_reached / lead_not_found / invalid_secret;
+ *          p_kind 'id_document' (default, max 2) | 'bill' (PDF only, max 1))
  *   - private bucket "lead-documents": anon may INSERT only the issued path while its
  *     slot is pending (5 min); admin SELECT (signed URLs) + DELETE
  *   - rpc confirm_lead_document(p_secret, p_token, p_document_id)
@@ -128,6 +130,7 @@ function fail(error: { message: string; code?: string }, ctx?: "supplier" | "off
   if (ctx === "lead" && (error.code === "28000" || /invalid_secret/i.test(error.message))) throw new LeadApiSecretError("invalid");
   if (/lead_not_found/i.test(error.message)) throw new LeadNotFoundError();
   if (/privacy_consent_required/i.test(error.message)) throw new PrivacyConsentRequiredError();
+  if (/bill_limit_reached/i.test(error.message)) throw new LeadDocumentLimitError("bill");
   if (/document_limit_reached/i.test(error.message)) throw new LeadDocumentLimitError();
   if (/invalid_document/i.test(error.message)) throw new InvalidLeadDocumentError("type");
   if (/document_not_found/i.test(error.message)) throw new LeadDocumentNotFoundError();
@@ -147,9 +150,11 @@ function toSettings(row: Record<string, unknown> | null | undefined): Settings {
   };
 }
 
-const LEAD_DOCUMENT_COLUMNS = "id, lead_id, mime_type, size_bytes, created_at";
+const LEAD_DOCUMENT_COLUMNS = "id, lead_id, kind, mime_type, size_bytes, created_at";
+/** Same without `kind`: used when the kind migration is not applied yet. */
+const LEAD_DOCUMENT_COLUMNS_LEGACY = "id, lead_id, mime_type, size_bytes, created_at";
 
-function toLeadDocument(row: unknown): LeadDocument {
+function toLeadDocument(row: unknown, fallbackKind: LeadDocumentKind = "id_document"): LeadDocument {
   const r = firstRow(row) as Record<string, unknown> | null | undefined;
   if (!r || typeof r.id !== "string" || typeof r.lead_id !== "string") {
     throw new Error("Unexpected response from lead document function");
@@ -157,6 +162,7 @@ function toLeadDocument(row: unknown): LeadDocument {
   return {
     id: r.id,
     lead_id: r.lead_id,
+    kind: r.kind === "bill" || r.kind === "id_document" ? r.kind : fallbackKind,
     mime_type: r.mime_type as LeadDocumentMime,
     size_bytes: Number(r.size_bytes),
     created_at: String(r.created_at),
@@ -446,11 +452,15 @@ export function createSupabaseRepository(
       assertLeadDocument(file);
       const secret = leadSecret();
       // 1. One-time upload slot (checks secret, in-progress lead, type, size, max 2).
+      // p_kind is sent only for bills: id documents use the original 4-argument call (the
+      // function defaults p_kind to 'id_document'), so they work before and after the migration.
+      const kind: LeadDocumentKind = file.kind ?? "id_document";
       const reg = await client.rpc("register_lead_document", {
         p_secret: secret,
         p_token: token,
         p_mime_type: file.mime,
         p_size_bytes: file.bytes.length,
+        ...(kind === "bill" ? { p_kind: kind } : {}),
       });
       if (reg.error) fail(reg.error, "lead");
       const slot = firstRow(reg.data) as { id?: unknown; path?: unknown } | null;
@@ -469,7 +479,7 @@ export function createSupabaseRepository(
         p_document_id: slot.id,
       });
       if (conf.error) fail(conf.error, "lead");
-      return toLeadDocument(conf.data);
+      return toLeadDocument(conf.data, kind);
     },
 
     async removeLeadDocument(token, documentId) {
@@ -604,17 +614,18 @@ export function createSupabaseRepository(
     },
 
     async listLeadDocuments(leadId) {
-      const { data, error } = await client
-        .from("lead_documents")
-        .select(LEAD_DOCUMENT_COLUMNS)
-        .eq("lead_id", leadId)
-        .eq("status", "uploaded")
-        .order("created_at");
+      const query = (columns: string) =>
+        client.from("lead_documents").select(columns).eq("lead_id", leadId).eq("status", "uploaded").order("created_at");
+      let { data, error } = await query(LEAD_DOCUMENT_COLUMNS);
+      // Column `kind` missing (migration not applied yet): every document is an identity document.
+      if (error && /kind/i.test(error.message) && !isMissingRelation(error)) {
+        ({ data, error } = await query(LEAD_DOCUMENT_COLUMNS_LEGACY));
+      }
       if (error) {
         if (isMissingRelation(error)) return [];
         fail(error);
       }
-      return ((data ?? []) as unknown[]).map(toLeadDocument);
+      return ((data ?? []) as unknown[]).map((row) => toLeadDocument(row));
     },
 
     async createLeadDocumentUrl(documentId, options) {

@@ -33,6 +33,7 @@ import {
   LEAD_HISTORY_FIELDS,
   LEAD_PAGE_SIZE_DEFAULT,
   LEAD_PAGE_SIZE_MAX,
+  MAX_LEAD_BILLS,
   MAX_LEAD_DOCUMENT_SLOTS,
   MAX_LEAD_DOCUMENTS,
 } from "../types";
@@ -333,14 +334,16 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       const lead = leadByToken(token);
       // Like lock_lead_by_token: completed leads are read-only.
       if (lead.step_reached === "completed") throw new LeadNotFoundError();
+      const kind = file.kind ?? "id_document";
       const issued = issuedSlots.get(lead.id) ?? 0;
-      if (documents.filter((d) => d.lead_id === lead.id).length >= MAX_LEAD_DOCUMENTS || issued >= MAX_LEAD_DOCUMENT_SLOTS) {
-        throw new LeadDocumentLimitError();
-      }
+      if (issued >= MAX_LEAD_DOCUMENT_SLOTS) throw new LeadDocumentLimitError(kind);
+      const ofKind = documents.filter((d) => d.lead_id === lead.id && d.kind === kind).length;
+      if (ofKind >= (kind === "bill" ? MAX_LEAD_BILLS : MAX_LEAD_DOCUMENTS)) throw new LeadDocumentLimitError(kind);
       issuedSlots.set(lead.id, issued + 1);
       const doc: MockDocument = {
         id: crypto.randomUUID(),
         lead_id: lead.id,
+        kind,
         mime_type: file.mime,
         size_bytes: file.bytes.length,
         created_at: new Date().toISOString(),

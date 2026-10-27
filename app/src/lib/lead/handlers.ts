@@ -27,7 +27,7 @@ import {
   PrivacyConsentRequiredError,
 } from "@/lib/data";
 import { LeadApiSecretError } from "@/lib/data/repository";
-import type { LeadData, LeadDocument, LeadStepReached, Repository } from "@/lib/data";
+import type { LeadData, LeadDocument, LeadDocumentKind, LeadStepReached, Repository } from "@/lib/data";
 import {
   DOCUMENT_ALLOWED_MIMES,
   DOCUMENT_MAX_BYTES,
@@ -38,6 +38,7 @@ import {
   LEAD_COOKIE,
   LEAD_COOKIE_MAX_AGE_SEC,
   LEAD_DOCUMENT_FIELD,
+  LEAD_DOCUMENT_KIND_FIELD,
   LEAD_STEP_COOKIE,
   type LeadApiErrorCode,
   type LeadApiResponse,
@@ -61,6 +62,7 @@ import { STEP_ORDER, stepRank } from "./rules";
 import {
   completeBodySchema,
   createBodySchema,
+  leadDocumentKindSchema,
   patchBodySchema,
   zodFieldErrors,
   type FieldErrors,
@@ -230,8 +232,8 @@ async function readBodyCapped(request: Request, max: number): Promise<Uint8Array
   return out;
 }
 
-/** Parses a multipart body with exactly one part, `file`, holding a file. */
-async function readDocumentFile(request: Request): Promise<File> {
+/** Parses a multipart body: one part `file` holding a file, plus an optional text part `kind`. */
+async function readDocumentForm(request: Request): Promise<{ file: File; kind: LeadDocumentKind }> {
   const type = request.headers.get("content-type") ?? "";
   if (!/^multipart\/form-data\s*;\s*boundary=/i.test(type)) throw new HttpError(400, "invalid_body");
   const declared = Number(request.headers.get("content-length") ?? 0);
@@ -244,12 +246,19 @@ async function readDocumentFile(request: Request): Promise<File> {
     throw new HttpError(400, "invalid_body");
   }
   const entries = form.getAll(LEAD_DOCUMENT_FIELD);
-  if ([...form.keys()].some((k) => k !== LEAD_DOCUMENT_FIELD) || entries.length > 1) {
+  const kinds = form.getAll(LEAD_DOCUMENT_KIND_FIELD);
+  if (
+    [...form.keys()].some((k) => k !== LEAD_DOCUMENT_FIELD && k !== LEAD_DOCUMENT_KIND_FIELD) ||
+    entries.length > 1 ||
+    kinds.length > 1
+  ) {
     throw new HttpError(400, "invalid_body");
   }
+  const parsedKind = leadDocumentKindSchema.safeParse(kinds.length === 0 ? undefined : kinds[0]);
+  if (!parsedKind.success) throw new HttpError(400, "invalid_body");
   const file = entries[0];
   if (!file || typeof file === "string") throw new HttpError(422, "file_missing");
-  return file;
+  return { file, kind: parsedKind.data };
 }
 
 const isAllowedMime = (type: string): type is DocumentMime =>
@@ -410,10 +419,12 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
 
     uploadDocument: handle("document", async (request) => {
       const token = requireToken(request);
-      const file = await readDocumentFile(request);
+      const { file, kind } = await readDocumentForm(request);
       if (file.size === 0) throw new HttpError(422, "file_missing");
       const declaredType = file.type.toLowerCase();
       if (!isAllowedMime(declaredType)) throw new HttpError(415, "file_type");
+      // A bill must be a PDF (identity documents may also be JPEG).
+      if (kind === "bill" && declaredType !== "application/pdf") throw new HttpError(415, "file_type");
       if (file.size > DOCUMENT_MAX_BYTES) throw new HttpError(413, "file_size");
       const bytes = new Uint8Array(await file.arrayBuffer());
       // A renamed file (e.g. a PNG saved as .jpg) is declared by the browser from its extension.
@@ -421,21 +432,21 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
 
       let doc: LeadDocument;
       try {
-        doc = await deps.getRepository().uploadLeadDocument(token, { mime: declaredType, bytes });
+        doc = await deps.getRepository().uploadLeadDocument(token, { mime: declaredType, bytes, kind });
       } catch (err) {
         if (isRepoError(err, InvalidLeadDocumentError, "InvalidLeadDocumentError")) {
           if (err.reason === "type") throw new HttpError(415, "file_type");
           if (err.reason === "size") throw new HttpError(413, "file_size");
           throw new HttpError(422, "file_content");
         }
-        if (isRepoError(err, LeadDocumentLimitError, "LeadDocumentLimitError")) throw new HttpError(409, "too_many_files");
+        if (isRepoError(err, LeadDocumentLimitError, "LeadDocumentLimitError")) throw new HttpError(409, err.kind === "bill" ? "too_many_bills" : "too_many_files");
         // Mapped by `handle` (404 + cookies expired / 500 misconfiguration).
         if (isLeadNotFound(err) || isLeadApiSecretError(err)) throw err;
         console.error("[lead] document upload failed:", err instanceof Error ? `${err.name}: ${err.message}` : err);
         throw new HttpError(502, "upload_failed");
       }
       return json(
-        { ok: true, document: { id: doc.id, mime_type: doc.mime_type, size_bytes: doc.size_bytes } },
+        { ok: true, document: { id: doc.id, kind: doc.kind, mime_type: doc.mime_type, size_bytes: doc.size_bytes } },
         201,
       );
     }),
