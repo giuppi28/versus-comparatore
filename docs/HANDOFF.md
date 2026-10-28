@@ -4,12 +4,12 @@ Updated: 2026-10-28 · Phase: 14b — small fixes (privacy IBAN text, tie rule, 
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Phase 14b in progress (T14b.1–T14b.3, decisions #25–#27). See the Log below.
+Phase 14b complete (T14b.1–T14b.3). Giuseppe: browser check (gas casa order + badge, IBAN notice on card/modal at 1440/390, /privacy IBAN section), then push dev and merge when ready. No APPLY pending. T13.11 stays blocked (POD codes).
 
 ## Status
 - Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–14 (PR #4, merge ae6e137). All Phase 14 migrations applied and verified on the real DB (20261027100000, 20261027110000 via connector; 20261027120000 by Giuseppe in the SQL editor before the merge). No pending APPLY.
 - Real DB = Aldo's 42 offers (luce casa 13 / luce business 9 / gas casa 11 / gas business 9; 40 fixed, 2 variable; 4 IBAN-required; 4 business-featured), 18 suppliers.
-- `dev` = `main` + Phase 14b. Phase 14 check (2026-10-27): typecheck ✓ · lint ✓ · Vitest 1280/1280 · build ✓ · e2e 324 passed / 2 skipped ×2 · matrix 423 + 8.
+- `dev` = `main` + Phase 14b. Phase 14b check (2026-10-28): typecheck ✓ · lint ✓ · Vitest 1286/1286 · build ✓ (supabase source) · e2e 324 passed / 2 skipped · matrix 423 + 8.
 - Previous phases: 0 setup · 1 DB · 2 logic · 3 customer screens · 4 admin · 5 logo pack · 6 deploy prep · 7 test matrix · 8–9 review rounds · 10 visual upgrade · 11 admin deletions · 12/12b/12c activation data, documents, callback number, Resend test · 13 test stability, copy, privacy cookies · 14 Aldo's offers, variable prices, IBAN rules, bill upload, vCard.
 
 ## Open issues (to solve)
@@ -27,6 +27,8 @@ Phase 14b in progress (T14b.1–T14b.3, decisions #25–#27). See the Log below.
 - Check HEIC upload on iPhone Safari (not testable in Chromium).
 
 ## Later (low-priority)
+- `/privacy` "Dati raccolti" IBAN bullet parenthetical is wordy (could be "obbligatori solo per le offerte che lo richiedono").
+- `matrix/validation.spec.ts` refresh test needs at least one IBAN-free gas casa card (true for current data); otherwise unclear timeout.
 - Bill dialog: no "Rivedi dati letti" to reopen it after closing.
 - Lockfile: T14.13 `npm install` pruned optional esbuild/terser deps — confirm a fresh `npm ci` + build on the Vercel preview.
 - vCard has no PHOTO (only SVG icons; vCard 3.0 needs a raster). "Salva il nostro numero" tested OK on real phones (2026-10-28).
@@ -42,6 +44,7 @@ Phase 14b in progress (T14b.1–T14b.3, decisions #25–#27). See the Log below.
 - 2026-10-28 Phase 14 live (PR #4, ae6e137), migrations applied (QUESTIONS.md answers committed). Closed by Giuseppe, no code: CF from the bill stays in step A; vCard OK on real phones. GOTCHAS "preview offers inactive until merge" removed. Phase 14b decisions #25–#27 + tasks — ccea008.
 - 2026-10-28 T14b.1 done: equal monthly cost → IBAN-free fixed offer first (badge follows); Vitest 1286 — a4ff579.
 - 2026-10-28 T14b.2 done: /privacy IBAN text (required only for offers that state it; ID + bill optional), IBAN notice text-ink font-medium on neutral box; acceptance-phase12 + results e2e 51 passed / 1 skipped — ce0acad.
+- 2026-10-28 T14b.3 regression: all green except matrix validation.spec:566 desktop (picked card nth(1) = Iren after the new tie order → IBAN required); test now picks the first card without the IBAN notice — 8ded20c. Matrix 423 + 8. Review: 0 high / 0 medium, 2 low → Later.
 
 ## Log (Phase 13–14)
 - 2026-10-24 Adopted build-orchestrator workflow (docs/, kit agents, hooks, statusline, settings) — a4a2d58.
