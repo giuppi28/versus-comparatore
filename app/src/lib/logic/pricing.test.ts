@@ -290,3 +290,40 @@ describe("formatting", () => {
     expect(formatPrice(0.45678, "Smc")).toBe("0,4568 €/Smc");
   });
 });
+
+describe("rankOffers, IBAN tie rule (SPEC decision #26)", () => {
+  const ids = (list: { offer: { id: string } }[]) => list.map((r) => r.offer.id);
+  const iban = offer({ id: "a-iban", name: "A", energy_price: 0.1, iban_required: true });
+  const free = offer({ id: "z-free", name: "Z", energy_price: 0.1, iban_required: false });
+
+  it("equal cost: IBAN-free first, in both input orders", () => {
+    expect(ids(rankOffers([iban, free], "casa", 1200))).toEqual(["z-free", "a-iban"]);
+    expect(ids(rankOffers([free, iban], "casa", 1200))).toEqual(["z-free", "a-iban"]);
+  });
+  it("different cost: IBAN does not matter", () => {
+    const cheapIban = offer({ id: "ci", name: "Z", energy_price: 0.09, iban_required: true });
+    expect(ids(rankOffers([free, cheapIban], "casa", 1200))).toEqual(["ci", "z-free"]);
+  });
+  it("same IBAN flag: still name then id", () => {
+    const free2 = offer({ id: "b-free", name: "A", energy_price: 0.1 });
+    expect(ids(rankOffers([free, free2], "casa", 1200))).toEqual(["b-free", "z-free"]);
+  });
+  it("forced-featured group is unaffected", () => {
+    const f1 = offer({ id: "f-free", name: "Z", energy_price: 0.1, featured_audience: "casa" });
+    const f2 = offer({ id: "f-iban", name: "A", energy_price: 0.1, featured_audience: "casa", iban_required: true });
+    expect(ids(rankOffers([f1, f2], "casa", 1200))).toEqual(["f-iban", "f-free"]);
+  });
+  it("badge goes to the IBAN-free offer", () => {
+    const ranked = rankOffers([iban, free], "casa", 1200);
+    expect([...featuredBadgeIds(ranked, "casa")]).toEqual(["z-free"]);
+  });
+  it("mock data, gas casa: Sentra 0.34 before Iren Gas Revolution 0.34, with the badge", () => {
+    const gas = MOCK_OFFERS.filter((o) => o.commodity === "gas" && o.customer_type === "casa" && o.active);
+    const ranked = rankOffers(gas, "casa", 1200);
+    const sentra = ranked.findIndex((r) => r.offer.name === "Offerta Sentra Energia");
+    const iren = ranked.findIndex((r) => r.offer.name === "Gas Revolution Prezzo Fisso" && r.offer.energy_price === 0.34);
+    expect(sentra).toBeGreaterThanOrEqual(0);
+    expect(sentra).toBeLessThan(iren);
+    expect(featuredBadgeIds(ranked, "casa").has(ranked[sentra].offer.id)).toBe(true);
+  });
+});
