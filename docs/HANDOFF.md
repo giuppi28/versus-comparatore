@@ -1,17 +1,16 @@
 # HANDOFF — VERSUS
-Updated: 2026-10-27 · Phase: 14 complete — Aldo's offers, variable prices, IBAN rules, bill upload · Branch: dev · Last commit: see `git log -1`
+Updated: 2026-10-28 · Phase: 14b — small fixes (privacy IBAN text, tie rule, IBAN notice) · Branch: dev · Last commit: see `git log -1`
 
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Phase 14 complete. Giuseppe: browser check (mock data), then push dev. Reviewer (claude.ai): apply `20261027100000_offers_variable_iban_featured.sql` and `20261027110000_lead_document_kind.sql` (any time, after Giuseppe's OK); `20261027120000_offers_aldo_2026_10_27.sql` ONLY together with the merge of dev into main (contains DELETE). T13.11 stays blocked (POD codes).
+Phase 14b in progress (T14b.1–T14b.3, decisions #25–#27). See the Log below.
 
 ## Status
-- Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–12c + recipient hotfix (merge commit 0d6620c, PR #2). Offers there are still placeholders until the Phase 14 data migration is applied with the merge.
-- `dev` = Phases 13–14. Phase 14 check (2026-10-27): typecheck ✓ · lint ✓ · Vitest 1280/1280 · build ✓ (supabase source) · e2e 324 passed / 2 skipped ×2 · matrix 423 + 8 · PGlite data/RLS/offers checks ✓.
-- All APPLY migrations up to `20261023110000_lead_document_removal.sql` are applied on the real DB. Pending: 20261027100000, 20261027110000 (any time), 20261027120000 (with the merge).
-- Last full check (Phase 12b/12c): typecheck ✓ · lint ✓ · Vitest 1147/1147 · e2e 287 passed / 1 skipped (flakes green on re-run) · matrix 381 + 8 passed · `test:security` 85 passed / 1 skipped.
-- Previous phases: 0 setup · 1 DB · 2 logic · 3 customer screens · 4 admin · 5 logo pack · 6 deploy prep · 7 test matrix · 8–9 review rounds · 10 visual upgrade · 11 admin deletions · 12/12b/12c activation data, documents, callback number, Resend test.
+- Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–14 (PR #4, merge ae6e137). All Phase 14 migrations applied and verified on the real DB (20261027100000, 20261027110000 via connector; 20261027120000 by Giuseppe in the SQL editor before the merge). No pending APPLY.
+- Real DB = Aldo's 42 offers (luce casa 13 / luce business 9 / gas casa 11 / gas business 9; 40 fixed, 2 variable; 4 IBAN-required; 4 business-featured), 18 suppliers.
+- `dev` = `main` + Phase 14b. Phase 14 check (2026-10-27): typecheck ✓ · lint ✓ · Vitest 1280/1280 · build ✓ · e2e 324 passed / 2 skipped ×2 · matrix 423 + 8.
+- Previous phases: 0 setup · 1 DB · 2 logic · 3 customer screens · 4 admin · 5 logo pack · 6 deploy prep · 7 test matrix · 8–9 review rounds · 10 visual upgrade · 11 admin deletions · 12/12b/12c activation data, documents, callback number, Resend test · 13 test stability, copy, privacy cookies · 14 Aldo's offers, variable prices, IBAN rules, bill upload, vCard.
 
 ## Open issues (to solve)
 - POD codes IT002/IT011/IT012/IT020 unconfirmed → T13.11 (blocked).
@@ -28,10 +27,9 @@ Phase 14 complete. Giuseppe: browser check (mock data), then push dev. Reviewer 
 - Check HEIC upload on iPhone Safari (not testable in Chromium).
 
 ## Later (low-priority)
-- Bill dialog: no "Rivedi dati letti" to reopen it after closing; a CF changed from the bill is not visible in step B (it lives in step A) — Giuseppe to decide.
-- IBAN-required notice on results is grey/discreet; brand tint if Giuseppe prefers.
+- Bill dialog: no "Rivedi dati letti" to reopen it after closing.
 - Lockfile: T14.13 `npm install` pruned optional esbuild/terser deps — confirm a fresh `npm ci` + build on the Vercel preview.
-- vCard has no PHOTO (only SVG icons; vCard 3.0 needs a raster).
+- vCard has no PHOTO (only SVG icons; vCard 3.0 needs a raster). "Salva il nostro numero" tested OK on real phones (2026-10-28).
 - `admin-leads.spec.ts:137` can still time out at 12 workers (2/114); admin edit forms have no `data-hydrated` marker.
 - `e2e/admin-settings.spec.ts:80` also writes the global callback phone (mock settings row): may race `acceptance-phase12` — watch in T13.5.
 - `acceptance-phase12` settings test is desktop-only: callback-number form + thank-you `tel:` link no longer checked at 390 px (add a read-only 390 px check if needed).
@@ -41,6 +39,10 @@ Phase 14 complete. Giuseppe: browser check (mock data), then push dev. Reviewer 
 - Accepted residual exposure in the 1-minute document-removal window (QUESTIONS.md APPLY 20261023110000).
 
 ## Log (current phase)
+- 2026-10-28 Phase 14 live (PR #4, ae6e137), migrations applied (QUESTIONS.md answers committed). Closed by Giuseppe, no code: CF from the bill stays in step A; vCard OK on real phones. GOTCHAS "preview offers inactive until merge" removed. Phase 14b decisions #25–#27 + tasks — ccea008.
+- 2026-10-28 T14b.1 done: equal monthly cost → IBAN-free fixed offer first (badge follows); Vitest 1286 — a4ff579.
+
+## Log (Phase 13–14)
 - 2026-10-24 Adopted build-orchestrator workflow (docs/, kit agents, hooks, statusline, settings) — a4a2d58.
 - 2026-10-24 Decisions: page1 flake added (T13.4); orchestrator = Opus 5.5; POD codes still unconfirmed.
 - 2026-10-24 Scope change: Phase 13 Block B added (T13.6–T13.10), POD task renumbered T13.11 (Block C); SPEC decisions #10–#14 + PRD v0.6.2 notes; GOTCHAS cookie/IBAN entries. Planning only, nothing built.
