@@ -41,6 +41,7 @@ Phase 14b in progress (T14b.1–T14b.3, decisions #25–#27). See the Log below.
 ## Log (current phase)
 - 2026-10-28 Phase 14 live (PR #4, ae6e137), migrations applied (QUESTIONS.md answers committed). Closed by Giuseppe, no code: CF from the bill stays in step A; vCard OK on real phones. GOTCHAS "preview offers inactive until merge" removed. Phase 14b decisions #25–#27 + tasks — ccea008.
 - 2026-10-28 T14b.1 done: equal monthly cost → IBAN-free fixed offer first (badge follows); Vitest 1286 — a4ff579.
+- 2026-10-28 T14b.2 done: /privacy IBAN text (required only for offers that state it; ID + bill optional), IBAN notice text-ink font-medium on neutral box; acceptance-phase12 + results e2e 51 passed / 1 skipped — ce0acad.
 
 ## Log (Phase 13–14)
 - 2026-10-24 Adopted build-orchestrator workflow (docs/, kit agents, hooks, statusline, settings) — a4a2d58.
