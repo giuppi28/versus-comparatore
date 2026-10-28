@@ -319,7 +319,7 @@ test.describe("D. admin lead detail", () => {
 test.describe("E. privacy", () => {
   test("shows the ID document + IBAN section", async ({ page }) => {
     await page.goto("/privacy");
-    await expect(page.getByText("IBAN e documento d'identità (facoltativi)")).toBeVisible();
+    await expect(page.getByText("IBAN, documento d'identità e bolletta")).toBeVisible();
     await expect(page.getByText("I file caricati sono cancellati insieme alla tua richiesta.")).toBeVisible();
   });
 });

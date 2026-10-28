@@ -171,7 +171,7 @@ export function OfferCard({ offer, commodity, monthlyCost, featured = false, cho
           {offer.iban_required && (
             <p
               data-testid="offer-iban-notice"
-              className="rounded-control bg-surface-muted px-3 py-2 text-sm text-ink-muted"
+              className="rounded-control bg-surface-muted px-3 py-2 text-sm font-medium text-ink"
             >
               {IBAN_REQUIRED_NOTICE}
             </p>

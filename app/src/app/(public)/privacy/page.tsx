@@ -30,7 +30,7 @@ const DATA_COLLECTED = [
   "dati di consumo (stimati in base alle tue risposte o inseriti da te)",
   "fornitore attuale di luce e gas",
   "offerta scelta e relativa spesa mensile mostrata",
-  "IBAN ed eventuali dati dell’intestatario del conto, se diverso dal titolare (facoltativi)",
+  "IBAN ed eventuali dati dell’intestatario del conto, se diverso dal titolare (obbligatori solo per le offerte che prevedono il pagamento con IBAN, altrimenti facoltativi)",
   "dati del documento d’identità (tipo, numero, scadenza, ente di rilascio) e copia del documento caricata (facoltativi)",
   "copia della bolletta in PDF (facoltativa), conservata come il documento d’identità; i dati che contiene (POD, PDR, codice fiscale, fornitore) sono letti solo nel tuo browser per precompilare il modulo, senza servizi esterni",
 ];
@@ -99,11 +99,14 @@ export default function PrivacyPage() {
               </p>
               <div className="flex flex-col gap-3">
                 <h3 className="text-lg font-semibold tracking-tight text-ink">
-                  IBAN e documento d&apos;identità (facoltativi)
+                  IBAN, documento d&apos;identità e bolletta
                 </h3>
                 <p>
-                  Il conferimento di IBAN e documento d&apos;identità è facoltativo: puoi non fornirli.
-                  Se li indichi, li trattiamo per le seguenti finalità:
+                  L&apos;IBAN è obbligatorio per le offerte che prevedono il pagamento con IBAN: tali
+                  offerte lo indicano prima dell&apos;attivazione e, senza l&apos;IBAN, quell&apos;offerta non
+                  può essere attivata. Per le altre offerte l&apos;IBAN è facoltativo. Il documento
+                  d&apos;identità e la bolletta sono sempre facoltativi: puoi non fornirli. Se li
+                  indichi, li trattiamo per le seguenti finalità:
                 </p>
                 <ul className="list-disc space-y-1 pl-6">
                   <li>
@@ -138,8 +141,10 @@ export default function PrivacyPage() {
               <p>
                 Il trattamento si fonda sul tuo consenso, che puoi prestare al momento dell’invio dei
                 dati (art. 6, par. 1, lett. a, GDPR), e sull’esecuzione di misure precontrattuali
-                adottate su tua richiesta (art. 6, par. 1, lett. b, GDPR). Il conferimento dei dati è
-                facoltativo, ma senza di essi non possiamo completare la richiesta di attivazione.
+                adottate su tua richiesta (art. 6, par. 1, lett. b, GDPR). Il conferimento dei dati
+                di contatto e dei dati della fornitura è necessario per completare la richiesta di
+                attivazione; l&apos;IBAN è necessario solo per le offerte che lo richiedono, mentre
+                documento d&apos;identità e bolletta restano facoltativi.
               </p>
             </Section>
 
