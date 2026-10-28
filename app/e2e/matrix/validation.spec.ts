@@ -617,8 +617,9 @@ test.describe("back buttons and refresh", () => {
     await cards.nth(1).getByTestId("offer-cta").click();
     await page.getByTestId("offer-modal-cta").click();
     await expect(page.getByTestId("dual-step-indicator")).toHaveAttribute("data-active", "gas");
-    // nth(1): the first gas card (Iren, 0,34) requires an IBAN and this flow submits without one.
-    await cards.nth(1).getByTestId("offer-cta").click();
+    // Ties on monthly cost list the IBAN-free offer first (Sentra 0,34 before Iren 0,34, IBAN required):
+    // this flow submits without an IBAN, so pick the first card without the IBAN notice.
+    await cards.filter({ hasNot: page.getByTestId("offer-iban-notice") }).first().getByTestId("offer-cta").click();
     await page.getByTestId("offer-modal-cta").click();
     await page.waitForURL(/\/attivazione$/);
 
