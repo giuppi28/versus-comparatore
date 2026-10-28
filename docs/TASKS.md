@@ -58,3 +58,9 @@ DB rule: migrations are written, never applied (decision #3); the schema migrati
 
 ### Block E — regression
 - [x] T14.16 Full regression with the new mock data. Agent: `verifier` (raw counts), then `qa-tester` updates e2e/matrix expectations broken by the 42 offers (no feature-code changes; feature bugs go back to the owning builder). Acceptance: typecheck ✓ lint ✓ Vitest ✓ `npm run e2e` ✓ `npm run e2e:matrix` ✓ (desktop + mobile). review: 1
+
+## Phase 14b — small fixes (agreed with Giuseppe 2026-10-28)
+Spec: decisions #25–#27 in `docs/SPEC.md`. Phase 14 is live on `main`; DB = Aldo's 42 offers.
+- [ ] T14b.1 Ranking tie rule (decision #26). Agent: `logic-builder`. Files: `src/lib/logic/pricing.ts` + its test. Acceptance: non-forced fixed offers with equal monthly cost → `iban_required = false` first, then name → id; forced/variable unchanged; badge follows; Vitest for the rule incl. Sentra/Iren gas casa case. review: 1
+- [ ] T14b.2 `/privacy` IBAN text + IBAN-required notice styling (decisions #25, #27). Agent: `frontend-builder`. Files: `src/app/(public)/privacy/page.tsx`, the results card + offer modal notice, tests asserting the old text (`e2e/acceptance-phase12.spec.ts`, component tests). Acceptance: new legal Italian text and heading, no call wording; notice in dark body-text colour (not green), AA contrast, no overflow at 390 px; tests green. review: 1
+- [ ] T14b.3 Regression: typecheck, lint, Vitest, `npm run e2e`, `npm run e2e:matrix` (desktop + mobile); `qa-tester` updates order-dependent assertions (gas casa). Then `reviewer` on the Phase 14b diff. review: 1
