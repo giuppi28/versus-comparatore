@@ -3,12 +3,13 @@
 Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VERSUS_Consegna_Aldo.pdf` (sorgente `.html` accanto).
 
 ## A. Prima dell'incontro con Aldo
-- [ ] Verifica della produzione: un lead completato su https://versus-comparatore.vercel.app con «Richiamami»; poi Claude controlla il DB.
+- [x] Verifica della produzione: un lead completato su https://versus-comparatore.vercel.app con «Richiamami»; richiamo registrato (2026-11-02, lead `b361d409-e2c6-4099-a063-1471444a2f05`).
 - [ ] Supabase → Authentication → Sign In / Providers: disattiva "Allow new users to sign up".
 - [ ] Supabase → Authentication: attiva "Leaked password protection".
 - [ ] Vercel → Settings → Cron Jobs: il keep-alive di Supabase è elencato e ha girato.
 - [ ] Controllo del sito a 390 px e su desktop; cookie del lead `HttpOnly; Secure` (DevTools → Application → Cookies).
 - [ ] Caricamento di una foto HEIC da iPhone Safari.
+- [ ] «Salva il nostro numero» dal telefono: apre la scheda contatto (su desktop scarica un file `.vcf`, è normale).
 - [ ] Stampa del PDF per Aldo.
 
 ## B. Durante l'incontro (insieme ad Aldo, pagina 5 del PDF)
@@ -36,7 +37,7 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
 - [ ] Numero reale per i richiami in `/admin/impostazioni`.
 - [ ] `/admin/impostazioni` mostra "Pronto per la pubblicazione".
 - [ ] Lead di prova finale sul dominio: email ad Aldo arrivata, richiamo registrato.
-- [ ] Pulizia lead di prova: `859362c5-3670-427c-98e1-0cef27aa95c5`, `3e987e81-8a3d-49b0-a10c-f0c554ee29fe`, quelli `TEST-SECURITY` e quelli di prova in produzione.
+- [ ] Pulizia lead di prova: `859362c5-3670-427c-98e1-0cef27aa95c5`, `3e987e81-8a3d-49b0-a10c-f0c554ee29fe`, `b361d409-e2c6-4099-a063-1471444a2f05`, quelli `TEST-SECURITY` e quelli di prova in produzione.
 - [ ] Supabase → Advisors → Security: solo gli avvisi già noti (funzioni SECURITY DEFINER dei lead, `is_admin`).
 
 ## D. Decisioni tue
