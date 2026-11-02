@@ -5,7 +5,7 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
 ## A. Prima dell'incontro con Aldo
 - [x] Verifica della produzione: un lead completato su https://versus-comparatore.vercel.app con «Richiamami»; richiamo registrato (2026-11-02, lead `b361d409-e2c6-4099-a063-1471444a2f05`).
 - [x] Supabase → Authentication → Sign In / Providers: disattiva "Allow new users to sign up" (verificato 2026-11-02: `disable_signup = true`, provider email attivo).
-- [ ] Supabase → Authentication: attiva "Leaked password protection".
+- [~] Supabase → Authentication: "Leaked password protection" — non disponibile sul piano Free (solo Pro, verificato 2026-11-02). Compensare con password lunga e unica per Aldo + TOTP obbligatorio. L'avviso resta negli Advisors.
 - [ ] Vercel → Settings → Cron Jobs: il keep-alive di Supabase è elencato e ha girato.
 - [ ] Controllo del sito a 390 px e su desktop; cookie del lead `HttpOnly; Secure` (DevTools → Application → Cookies).
 - [ ] Caricamento di una foto HEIC da iPhone Safari.
