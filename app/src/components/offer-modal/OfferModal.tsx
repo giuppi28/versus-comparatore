@@ -111,7 +111,7 @@ export function OfferModal({
         {offer.iban_required && (
           <p
             data-testid="offer-modal-iban-notice"
-            className="rounded-card bg-surface-muted px-4 py-3 text-sm text-ink-muted"
+            className="rounded-card bg-surface-muted px-4 py-3 text-sm font-medium text-ink"
           >
             {IBAN_REQUIRED_NOTICE}
           </p>

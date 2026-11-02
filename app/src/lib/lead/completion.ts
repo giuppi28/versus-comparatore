@@ -94,14 +94,9 @@ function checkActivationExtras(
     for (const k of IBAN_HOLDER_FIELDS) data[k] = null;
   }
 
-  // Identity document data: optional, but all four fields once any is given.
-  const given = DOCUMENT_FIELDS.filter((k) => !isBlank(input[k]));
-  if (given.length === 0) {
-    for (const k of DOCUMENT_FIELDS) data[k] = null;
-  } else {
-    for (const k of DOCUMENT_FIELDS) {
-      if (isBlank(input[k])) fields[k] ??= "required";
-    }
+  // Identity document data: each field optional and independent; blank → null.
+  for (const k of DOCUMENT_FIELDS) {
+    if (isBlank(input[k])) data[k] = null;
   }
   if (input.document_expiry && input.document_expiry < today) fields.document_expiry ??= "past";
 }

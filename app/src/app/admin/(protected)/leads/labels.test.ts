@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DOCUMENT_TYPE_LABELS, formatDate, formatFileSize, formatIban } from "./labels";
+import {
+  CALLBACK_NOT_RECORDED_LABEL,
+  DOCUMENT_TYPE_LABELS,
+  callbackRequestState,
+  formatDate,
+  formatFileSize,
+  formatIban,
+} from "./labels";
 
 describe("formatIban", () => {
   it("groups by 4 characters", () => {
@@ -30,5 +37,22 @@ describe("DOCUMENT_TYPE_LABELS", () => {
     expect(DOCUMENT_TYPE_LABELS.carta_identita).toBe("Carta d'identità");
     expect(DOCUMENT_TYPE_LABELS.patente).toBe("Patente");
     expect(DOCUMENT_TYPE_LABELS.passaporto).toBe("Passaporto");
+  });
+});
+
+describe("callbackRequestState", () => {
+  it("is requested whenever the timestamp is set", () => {
+    expect(callbackRequestState({ step_reached: "completed", callback_requested_at: "2026-11-02T10:00:00Z" })).toBe(
+      "requested",
+    );
+  });
+  it("is not_recorded for a completed lead without timestamp", () => {
+    expect(callbackRequestState({ step_reached: "completed", callback_requested_at: null })).toBe("not_recorded");
+    expect(CALLBACK_NOT_RECORDED_LABEL).toBe("Non registrata");
+  });
+  it("is pending for leads not completed", () => {
+    for (const step of ["page1", "results", "offer_chosen"] as const) {
+      expect(callbackRequestState({ step_reached: step, callback_requested_at: null })).toBe("pending");
+    }
   });
 });

@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { companyLines } from "@/lib/legal/company";
 import { BrandLockup } from "./BrandLockup";
 
 /**
- * Footer of the public pages: lockup, privacy link, copyright. No legal data on purpose.
+ * Footer of the public pages: lockup, privacy link, copyright and the company legal line
+ * (only the known values from `lib/legal/company.ts`; nothing when all are unknown).
  * `data-site-footer` lets globals.css hide it while the full-screen loading view is mounted.
  */
 export function SiteFooter() {
+  const legal = companyLines();
   return (
     <footer data-site-footer className="relative border-t border-line bg-surface">
       <div
@@ -24,6 +27,16 @@ export function SiteFooter() {
           <p>© VERSUS {new Date().getFullYear()}</p>
         </div>
       </div>
+      {legal.length > 0 && (
+        <div
+          data-testid="footer-legal"
+          className="mx-auto flex w-full max-w-6xl flex-col gap-1 border-t border-line px-4 py-4 text-xs leading-relaxed text-ink-muted [overflow-wrap:anywhere] sm:px-6"
+        >
+          {legal.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      )}
     </footer>
   );
 }

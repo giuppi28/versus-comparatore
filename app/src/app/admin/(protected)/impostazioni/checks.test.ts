@@ -14,7 +14,9 @@ const READY: GoLiveInputs = {
   resendKeyPresent: true,
   resendFromPresent: true,
   siteUrlPresent: true,
+  companyDataComplete: true,
   dataSource: "supabase",
+  callbackMigrationApplied: true,
 };
 
 describe("go-live checks", () => {
@@ -29,11 +31,42 @@ describe("go-live checks", () => {
     ["resendKeyPresent", false],
     ["resendFromPresent", false],
     ["siteUrlPresent", false],
+    ["companyDataComplete", false],
     ["dataSource", "mock"],
+    ["callbackMigrationApplied", false],
   ] as const)("is not ready when %s fails", (key, value) => {
     const checks = computeGoLiveChecks({ ...READY, [key]: value });
     expect(isReadyForGoLive(checks)).toBe(false);
     expect(checks.filter((c) => !c.ok)).toHaveLength(1);
+  });
+
+  it("flags missing company data with its own item", () => {
+    const c = computeGoLiveChecks({ ...READY, companyDataComplete: false }).find((x) => x.id === "company-data")!;
+    expect(c.label).toBe("Dati dell'impresa nel footer");
+    expect(c.ok).toBe(false);
+  });
+
+  it("flags the pending callback request migration with its own item, after the existing ones", () => {
+    const ids = computeGoLiveChecks(READY).map((c) => c.id);
+    expect(ids).toEqual([
+      "offers-verified",
+      "notification-email",
+      "env-recipient",
+      "resend-key",
+      "resend-from",
+      "site-url",
+      "company-data",
+      "data-source",
+      "callback-migration",
+    ]);
+    const missing = computeGoLiveChecks({ ...READY, callbackMigrationApplied: false }).find(
+      (x) => x.id === "callback-migration",
+    )!;
+    expect(missing.label).toBe("Migrazione richiesta di richiamo applicata");
+    expect(missing.ok).toBe(false);
+    expect(missing.detail).toContain("20261102100000_lead_callback_request.sql");
+    const applied = computeGoLiveChecks({ ...READY, dataSource: "mock" }).find((x) => x.id === "callback-migration")!;
+    expect(applied.ok).toBe(true);
   });
 
   it("pluralises the unverified offers detail", () => {
@@ -73,10 +106,11 @@ describe("go-live checks", () => {
   });
 
   it("lists every privacy placeholder in the pending privacy item", () => {
-    expect(PRIVACY_PLACEHOLDERS).toHaveLength(6);
+    expect(PRIVACY_PLACEHOLDERS).toHaveLength(7);
     const privacy = MANUAL_CHECKS.find((m) => m.id === "manual-privacy-placeholders")!;
     expect(privacy.doneNote).toBeUndefined();
     for (const ph of PRIVACY_PLACEHOLDERS) expect(privacy.detail).toContain(ph);
+    expect(PRIVACY_PLACEHOLDERS).toContain('[Call center esterno: nome o "nessuno"]');
   });
 
   it("shows the bootstrap function item as done by the reviewer", () => {

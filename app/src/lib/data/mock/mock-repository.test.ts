@@ -265,6 +265,38 @@ describe("lead lifecycle", () => {
     expect(lead).toMatchObject({ id: ref.id, token: ref.token, status: "new", notes: null });
   });
 
+  it("callback request (SPEC #28): recorded only through completeLead options, like complete_lead", async () => {
+    const text = "Premendo «Richiamami» chiedi di essere ricontattato.";
+    // Not writable through lead data.
+    const ref = await repo.createLead({
+      privacy_consent: true, callback_request_text: "x", callback_requested_at: "2020-01-01T00:00:00.000Z",
+    } as never);
+    await repo.updateLead(ref.token, { callback_request_text: "y" } as never);
+    expect(await repo.getLead(ref.id)).toMatchObject({ callback_requested_at: null, callback_request_text: null });
+
+    // Invalid text: rejected, nothing written, the lead stays in progress.
+    for (const bad of ["", "  \t ", "x".repeat(501)]) {
+      await expect(repo.completeLead(ref.token, { first_name: "Mario" }, { callbackRequestText: bad })).rejects.toThrow(
+        "invalid_callback_request",
+      );
+    }
+    expect(await repo.getLead(ref.id)).toMatchObject({ step_reached: "page1", first_name: null });
+
+    const before = Date.now();
+    await repo.completeLead(ref.token, {}, { callbackRequestText: text });
+    const lead = (await repo.getLead(ref.id))!;
+    expect(lead).toMatchObject({ step_reached: "completed", callback_request_text: text });
+    expect(Date.parse(lead.callback_requested_at!)).toBeGreaterThanOrEqual(before);
+
+    // Without the option (old callers): both stay null; 500 chars is the maximum.
+    const plain = await repo.createLead({ privacy_consent: true });
+    await repo.completeLead(plain.token, {});
+    expect(await repo.getLead(plain.id)).toMatchObject({ callback_requested_at: null, callback_request_text: null });
+    const max = await repo.createLead({ privacy_consent: true });
+    await repo.completeLead(max.token, {}, { callbackRequestText: "y".repeat(500) });
+    expect((await repo.getLead(max.id))?.callback_request_text).toHaveLength(500);
+  });
+
   it("admin can change status and notes; settings persist", async () => {
     const ref = await repo.createLead({ privacy_consent: true });
     const updated = await repo.updateLeadAdmin(ref.id, { status: "contacted", notes: "richiamato" });

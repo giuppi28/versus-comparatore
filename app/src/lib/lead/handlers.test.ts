@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockRepository, type Repository } from "@/lib/data";
 import { LEAD_COOKIE, LEAD_STEP_COOKIE } from "./api-types";
+import { CALLBACK_REQUEST_TEXT } from "./callback-request";
 import { createLeadHandlers, createRateLimiters, MAX_BODY_BYTES, type LeadHandlers } from "./handlers";
 import type { NewLeadNotification } from "./notify";
 import { SlidingWindowRateLimiter } from "./rate-limit";
@@ -517,6 +518,53 @@ describe("POST /api/lead/complete", () => {
     expect((await res.json()).fields).toEqual({ token: "unknown_field" });
     expect((await onlyLead()).step_reached).toBe("page1");
     expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("records the callback request with the server constant (SPEC #28)", async () => {
+    const cookie = await createAndGetCookie();
+    const spy = vi.spyOn(repo, "completeLead");
+    const before = Date.now();
+    const res = await complete(completeData(), cookie);
+    expect(res.status).toBe(200);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][2]).toEqual({ callbackRequestText: CALLBACK_REQUEST_TEXT });
+    const lead = await onlyLead();
+    expect(lead.callback_request_text).toBe(CALLBACK_REQUEST_TEXT);
+    expect(lead.callback_requested_at).not.toBeNull();
+    expect(Date.parse(lead.callback_requested_at!)).toBeGreaterThanOrEqual(before);
+    expect(lead.callback_requested_at!).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  it("the client cannot send or override the callback request (422, nothing recorded)", async () => {
+    const cookie = await createAndGetCookie();
+    for (const extra of [
+      { callback_request_text: "Testo inventato dal client" },
+      { callback_requested_at: "2020-01-01T00:00:00.000Z" },
+    ]) {
+      const res = await complete({ ...completeData(), ...extra }, cookie);
+      expect(res.status).toBe(422);
+      expect((await res.json()).fields).toEqual({ [Object.keys(extra)[0]]: "unknown_field" });
+    }
+    const top = await handlers.complete(
+      req("POST", "/api/lead/complete", { data: completeData(), callback_request_text: "x" }, { cookie }),
+    );
+    expect(top.status).toBe(422);
+    expect((await top.json()).fields).toEqual({ callback_request_text: "unknown_field" });
+    const lead = await onlyLead();
+    expect(lead).toMatchObject({ step_reached: "page1", callback_requested_at: null, callback_request_text: null });
+  });
+
+  it("create / update cannot set the callback request columns", async () => {
+    const created = await handlers.create(
+      req("POST", "/api/lead", { data: { ...page1Data(), callback_request_text: "x" } }),
+    );
+    expect(created.status).toBe(422);
+    const cookie = await createAndGetCookie();
+    const patched = await handlers.update(
+      req("PATCH", "/api/lead", { data: { callback_requested_at: "2020-01-01T00:00:00.000Z" } }, { cookie }),
+    );
+    expect(patched.status).toBe(422);
+    expect(await onlyLead()).toMatchObject({ callback_requested_at: null, callback_request_text: null });
   });
 
   it("a failing notification does not fail the submit", async () => {

@@ -84,7 +84,6 @@ const VALIDATOR_MESSAGES: Record<string, Record<string, string>> = {
   iban_holder_tax_code: CODICE_FISCALE_MESSAGES,
 };
 
-const DOCUMENT_REQUIRED_MESSAGE = "Completa i dati del documento.";
 export const DOCUMENT_PAST_MESSAGE = "Il documento è scaduto: controlla la data di scadenza.";
 
 const FIELD_REQUIRED_MESSAGES: Record<string, string> = {
@@ -109,10 +108,6 @@ const FIELD_REQUIRED_MESSAGES: Record<string, string> = {
   iban_holder_first_name: "Inserisci il nome dell'intestatario.",
   iban_holder_last_name: "Inserisci il cognome dell'intestatario.",
   iban_holder_tax_code: CODICE_FISCALE_MESSAGES.empty,
-  document_type: DOCUMENT_REQUIRED_MESSAGE,
-  document_number: DOCUMENT_REQUIRED_MESSAGE,
-  document_expiry: DOCUMENT_REQUIRED_MESSAGE,
-  document_issuer: DOCUMENT_REQUIRED_MESSAGE,
 };
 
 const DOCUMENT_FIELD_MESSAGES: Record<string, Record<string, string>> = {
@@ -355,19 +350,16 @@ export function validatePaymentAndDocument(state: FlowState, today: string = ita
     }
   }
 
-  const anyDocument =
-    a.documentType !== null || filled(a.documentNumber) || filled(a.documentExpiry) || filled(a.documentIssuer);
-  if (anyDocument) {
-    if (a.documentType === null) errors.document_type = DOCUMENT_REQUIRED_MESSAGE;
-    if (!filled(a.documentNumber)) errors.document_number = DOCUMENT_REQUIRED_MESSAGE;
-    else if (!validateDocumentNumber(a.documentNumber).ok) {
-      errors.document_number = DOCUMENT_FIELD_MESSAGES.document_number.format;
-    }
-    if (!filled(a.documentExpiry)) errors.document_expiry = DOCUMENT_REQUIRED_MESSAGE;
-    else if (!validateIsoDate(a.documentExpiry).ok) errors.document_expiry = DOCUMENT_FIELD_MESSAGES.document_expiry.invalid;
+  // Identity document data: every field optional and independent; format checks only on filled ones.
+  if (filled(a.documentNumber) && !validateDocumentNumber(a.documentNumber).ok) {
+    errors.document_number = DOCUMENT_FIELD_MESSAGES.document_number.format;
+  }
+  if (filled(a.documentExpiry)) {
+    if (!validateIsoDate(a.documentExpiry).ok) errors.document_expiry = DOCUMENT_FIELD_MESSAGES.document_expiry.invalid;
     else if (a.documentExpiry.trim() < today) errors.document_expiry = DOCUMENT_PAST_MESSAGE;
-    if (!filled(a.documentIssuer)) errors.document_issuer = DOCUMENT_REQUIRED_MESSAGE;
-    else if (a.documentIssuer.trim().length < 2) errors.document_issuer = "Inserisci l'ente di rilascio.";
+  }
+  if (filled(a.documentIssuer) && a.documentIssuer.trim().length < 2) {
+    errors.document_issuer = "Inserisci l'ente di rilascio.";
   }
   return errors;
 }

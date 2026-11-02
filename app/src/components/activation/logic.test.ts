@@ -360,11 +360,10 @@ describe("IBAN, holder and document validation (step B extras)", () => {
     expect(validatePaymentAndDocument(withAct({ ibanHolderDifferent: true }), TODAY)).toEqual({});
     expect(validatePaymentAndDocument(withAct({ iban: GOOD_IBAN }), TODAY)).toEqual({});
   });
-  it("document: all-or-nothing, expiry not in the past", () => {
-    const partial = validatePaymentAndDocument(withAct({ documentNumber: "AB12345" }), TODAY);
-    expect(partial.document_type).toBe("Completa i dati del documento.");
-    expect(partial.document_expiry).toBe("Completa i dati del documento.");
-    expect(partial.document_issuer).toBe("Completa i dati del documento.");
+  it("document: fields independent and optional, expiry not in the past", () => {
+    expect(validatePaymentAndDocument(withAct({ documentNumber: "AB12345" }), TODAY)).toEqual({});
+    expect(validatePaymentAndDocument(withAct({ documentType: "patente" }), TODAY)).toEqual({});
+    expect(validatePaymentAndDocument(withAct({ documentExpiry: "2020-01-01" }), TODAY).document_expiry).toMatch(/scaduto/);
     const full = {
       documentType: "patente" as const,
       documentNumber: "U1A234567B",
@@ -397,7 +396,6 @@ describe("IBAN, holder and document validation (step B extras)", () => {
     expect(messageForFieldCode("iban", "checksum")).toMatch(/controlla/);
     expect(messageForFieldCode("iban_holder_tax_code", "surname_mismatch")).toMatch(/cognome/i);
     expect(messageForFieldCode("document_expiry", "past")).toMatch(/scaduto/);
-    expect(messageForFieldCode("document_type", "required")).toBe("Completa i dati del documento.");
     expect(splitFormErrors({ iban: "x", document_number: "y" }).general).toEqual([]);
     expect(stepOfField("iban")).toBe("B");
   });

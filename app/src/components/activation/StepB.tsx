@@ -17,6 +17,7 @@ import {
   YesIcon,
 } from "@/components/ui";
 import type { Voltage } from "@/lib/data/types";
+import { CALLBACK_REQUEST_BUTTON_LABEL, CALLBACK_REQUEST_TEXT } from "@/lib/lead/callback-request";
 import { serviceTypeFor } from "@/lib/lead/flow-state";
 import { includesGas, includesLuce, needsCurrentSupplier, needsMeterCode } from "@/lib/lead/rules";
 import { normalizePdr, normalizePod, validatePdr, validatePod } from "@/lib/logic/validators";
@@ -383,19 +384,26 @@ export function StepB({
 
       {beforeActions}
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-        <Button
-          variant="secondary"
-          size="lg"
-          data-testid="activation-back"
-          onClick={onBack}
-          disabled={submitting}
-        >
-          Indietro
-        </Button>
-        <Button type="submit" size="lg" data-testid="activation-submit" loading={submitting}>
-          Prosegui
-        </Button>
+      <div className="space-y-4">
+        {/* Explicit callback request (SPEC #28): the same constant is recorded on the lead. */}
+        <p data-testid="callback-request-text" className="text-sm text-ink-muted">
+          {CALLBACK_REQUEST_TEXT}
+        </p>
+
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+          <Button
+            variant="secondary"
+            size="lg"
+            data-testid="activation-back"
+            onClick={onBack}
+            disabled={submitting}
+          >
+            Indietro
+          </Button>
+          <Button type="submit" size="lg" data-testid="activation-submit" loading={submitting}>
+            {CALLBACK_REQUEST_BUTTON_LABEL}
+          </Button>
+        </div>
       </div>
     </form>
   );

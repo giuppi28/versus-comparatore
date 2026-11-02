@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getAdminRepository } from "@/lib/data/admin";
 import { DEFAULT_CALLBACK_PHONE, getDataSource } from "@/lib/data";
 import { normalizeEmail } from "@/lib/notify/email-address";
+import { isComplete as companyDataComplete } from "@/lib/legal/company";
 import { MANUAL_CHECKS, computeGoLiveChecks, isReadyForGoLive } from "./checks";
 import { isResendDevSender, RESEND_DEV_WARNING } from "@/lib/notify/test-email";
 import { SettingsForm, TestEmailButton } from "./SettingsForm";
@@ -15,7 +16,11 @@ const COMMODITY = { luce: "Luce", gas: "Gas" } as const;
 export default async function SettingsPage() {
   await requireAdmin();
   const repo = await getAdminRepository();
-  const [settings, unverified] = await Promise.all([repo.getSettings(), repo.listUnverifiedActiveOffers()]);
+  const [settings, unverified, callbackMigrationApplied] = await Promise.all([
+    repo.getSettings(),
+    repo.listUnverifiedActiveOffers(),
+    repo.hasCallbackRequestColumns(),
+  ]);
 
   const notificationEmail = normalizeEmail(settings.notification_email);
   // Server-side facts only: booleans, never the secret values.
@@ -26,7 +31,9 @@ export default async function SettingsPage() {
     resendKeyPresent: !!process.env.RESEND_API_KEY?.trim(),
     resendFromPresent: !!process.env.RESEND_FROM?.trim(),
     siteUrlPresent: /^https?:\/\//i.test(process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? ""),
+    companyDataComplete: companyDataComplete(),
     dataSource: getDataSource(),
+    callbackMigrationApplied,
   });
   const ready = isReadyForGoLive(checks);
 

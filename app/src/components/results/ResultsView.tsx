@@ -15,6 +15,7 @@ import { ConsumptionPanel } from "./ConsumptionPanel";
 import { EmptyState } from "./EmptyState";
 import { DualStepIndicator } from "./DualStepIndicator";
 import { OfferCard } from "./OfferCard";
+
 import { supplierLogoSrc } from "./logo-src";
 import {
   LOADED_SIGNATURE_KEY,
@@ -29,6 +30,9 @@ import {
   resolveLoadingMs,
   stepsFor,
 } from "./results-logic";
+
+export const RESULTS_FOOTNOTE =
+  "Come ordiniamo le offerte: prima quelle «In evidenza», scelte da VERSUS su base commerciale (se non ce ne sono, l'etichetta va all'offerta a prezzo fisso più conveniente); poi le offerte a prezzo fisso, dalla spesa mensile stimata più bassa alla più alta; infine quelle a prezzo variabile. Confrontiamo le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato, e non mostriamo le offerte del tuo fornitore attuale. VERSUS opera come agente ed è remunerato dai venditori. I prezzi sono indicativi e possono variare al momento del contatto con il consulente.";
 
 type Phase = "loading" | "results";
 /** Active offers loaded on the server, per commodity and customer type (see offerte/page.tsx). */
@@ -314,6 +318,11 @@ export function ResultsView({ offers: serverOffers, suppliers: serverSuppliers =
                 onActivate={() => setModalOfferId(offer.id)}
               />
             ))
+          )}
+          {ranked.length > 0 && (
+            <p data-testid="results-footnote" className="pt-2 text-xs leading-relaxed text-ink-subtle">
+              {RESULTS_FOOTNOTE}
+            </p>
           )}
         </section>
       </div>

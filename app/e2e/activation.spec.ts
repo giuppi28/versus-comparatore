@@ -13,6 +13,7 @@
  *   summary-activation-*, summary-locked-*, summary-price-*, summary-fixed-*.
  */
 import { expect, test, type Page, type Request } from "@playwright/test";
+import { CALLBACK_REQUEST_TEXT } from "../src/lib/lead/callback-request";
 
 const FLOW_KEY = "versus.flow.v1";
 const STEP_KEY = "versus.activation.step.v1";
@@ -216,14 +217,30 @@ test.describe("activation form", () => {
     await radio(page, "voltage-220").click();
     await expect(radio(page, "voltage-220")).toHaveAttribute("aria-checked", "true");
     await expectNoOverflow(page);
+
+    // SPEC #28: the submit is the explicit callback request; its sentence sits right above the buttons.
+    const submit = page.getByTestId("activation-submit");
+    const sentence = page.getByTestId("callback-request-text");
+    await expect(submit).toHaveText("Richiamami");
+    await expect(page.getByRole("button", { name: "Prosegui" })).toHaveCount(0);
+    await expect(sentence).toHaveText(CALLBACK_REQUEST_TEXT);
+    await expect(sentence).toHaveText(
+      "Premendo «Richiamami» chiedi di essere ricontattato da un consulente VERSUS al numero di telefono che hai indicato, per attivare l'offerta scelta.",
+    );
+    const [sBox, bBox] = [await sentence.boundingBox(), await submit.boundingBox()];
+    expect(sBox && bBox && sBox.y + sBox.height <= bBox.y && bBox.y - (sBox.y + sBox.height) < 40).toBe(true);
+    expect(await sentence.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeLessThanOrEqual(14);
     await shot(page, testInfo.project.name, "b-filled");
 
-    await page.getByTestId("activation-submit").click();
+    await submit.click();
     await expect(page).toHaveURL(/\/grazie$/);
 
     expect(mock.requests).toHaveLength(1);
     const body = mock.requests[0] as { data: Json };
     expect(Object.keys(body)).toEqual(["data"]);
+    // The recorded text is a server constant: the browser never sends it.
+    expect(body.data).not.toHaveProperty("callback_request_text");
+    expect(body.data).not.toHaveProperty("callback_requested_at");
     expect(body.data).toMatchObject({
       first_name: "Mario",
       last_name: "Rossi",

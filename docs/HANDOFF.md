@@ -1,17 +1,22 @@
 # HANDOFF — VERSUS
-Updated: 2026-10-27 · Phase: 14 complete — Aldo's offers, variable prices, IBAN rules, bill upload · Branch: dev · Last commit: see `git log -1`
+Updated: 2026-11-02 · Phase: 15 — legal compliance (callback request, footer/privacy, results footnote) · Branch: dev · Last commit: see `git log -1`
 
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Phase 14 complete. Giuseppe: browser check (mock data), then push dev. Reviewer (claude.ai): apply `20261027100000_offers_variable_iban_featured.sql` and `20261027110000_lead_document_kind.sql` (any time, after Giuseppe's OK); `20261027120000_offers_aldo_2026_10_27.sql` ONLY together with the merge of dev into main (contains DELETE). T13.11 stays blocked (POD codes).
+**2026-11-02 after /clear:** `dev` pushed by Giuseppe (origin/dev = 0c7e990). Real DB checked read-only: `leads.callback_request_*` columns and trigger NOT present → APPLY 20261102100000 still pending. Giuseppe asked the orchestrator to do it: the live `complete_lead` matched the migration's base, but `apply_migration` was refused by the Claude Code auto-mode classifier ("Production Deploy") — not retried; Giuseppe applies it (SQL editor, paste the file) or the claude.ai reviewer does, then the Verify queries in QUESTIONS.md. Advisors baseline before applying: only the known SECURITY DEFINER warnings + `private.app_secrets` info + leaked-password protection off.
+Checks done 2026-11-02: `next build` (supabase source) ✓ + bundle guard ✓; local real-data /privacy + footer OK (footer has no company data until `company.ts` is filled); local real-DB lead creation impossible (`.env.local` has no `LEAD_API_SECRET`, page 1 shows "Servizio momentaneamente non disponibile" locally only); mock flow at 1440 + 375 px: results annual line + footnote ✓, step B «Richiamami» sentence + button ✓, no horizontal scroll. Fix 26b8590: /privacy §10 said "email" is required, but no customer email is collected → "codice fiscale"; legal.spec 2/2. The Vercel preview is behind Vercel Authentication (not opened by the orchestrator).
+**Update 2026-11-02:** Giuseppe applied 20261102100000 in the SQL editor and pushed `dev` (preview READY on c7cd3c8). Orchestrator verified it read-only (details in QUESTIONS.md, advisors unchanged).
+End-to-end OK 2026-11-02: test lead on the dev preview (c86465d) completed with callback recorded (lead 859362c5-…; abandoned test lead 3e987e81-… also from today) — both to delete with the go-live test-lead cleanup.
+No unblocked task left (T13.11 blocked). Next: Giuseppe merges `dev` into `main` (PR on GitHub) → go-live checklist `app/DEPLOY.md` §10.
+**Giuseppe 2026-11-02 (before /clear):** wants the orchestrator to do everything incl. publishing `dev` to GitHub, but the project bash-guard hook blocks that command for agents, so Giuseppe runs it himself (or changes the hook). APPLY 20261102100000: OK given ("Sì, applicala", recorded in QUESTIONS.md) — the claude.ai reviewer applies it, then merge.
+Phase 15 complete (T15.1–T15.4). Giuseppe: OK to the reviewer for `## APPLY: 20261102100000_lead_callback_request.sql` (QUESTIONS.md) — hard precondition before merging `dev` into `main`; browser check of "Richiamami" + sentence (step B), annual line + footnote (results), /privacy, at 1440/390; then push dev. Aldo's data still needed for footer (`src/lib/legal/company.ts`) and /privacy placeholders. T13.11 stays blocked (POD codes).
 
 ## Status
-- Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–12c + recipient hotfix (merge commit 0d6620c, PR #2). Offers there are still placeholders until the Phase 14 data migration is applied with the merge.
-- `dev` = Phases 13–14. Phase 14 check (2026-10-27): typecheck ✓ · lint ✓ · Vitest 1280/1280 · build ✓ (supabase source) · e2e 324 passed / 2 skipped ×2 · matrix 423 + 8 · PGlite data/RLS/offers checks ✓.
-- All APPLY migrations up to `20261023110000_lead_document_removal.sql` are applied on the real DB. Pending: 20261027100000, 20261027110000 (any time), 20261027120000 (with the merge).
-- Last full check (Phase 12b/12c): typecheck ✓ · lint ✓ · Vitest 1147/1147 · e2e 287 passed / 1 skipped (flakes green on re-run) · matrix 381 + 8 passed · `test:security` 85 passed / 1 skipped.
-- Previous phases: 0 setup · 1 DB · 2 logic · 3 customer screens · 4 admin · 5 logo pack · 6 deploy prep · 7 test matrix · 8–9 review rounds · 10 visual upgrade · 11 admin deletions · 12/12b/12c activation data, documents, callback number, Resend test.
+- Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–14 (PR #4, merge ae6e137). All Phase 14 migrations applied and verified on the real DB (20261027100000, 20261027110000 via connector; 20261027120000 by Giuseppe in the SQL editor before the merge). No pending APPLY.
+- Real DB = Aldo's 42 offers (luce casa 13 / luce business 9 / gas casa 11 / gas business 9; 40 fixed, 2 variable; 4 IBAN-required; 4 business-featured), 18 suppliers.
+- `dev` = `main` + Phase 14b. Phase 14b check (2026-10-28): typecheck ✓ · lint ✓ · Vitest 1286/1286 · build ✓ (supabase source) · e2e 324 passed / 2 skipped · matrix 423 + 8.
+- Previous phases: 0 setup · 1 DB · 2 logic · 3 customer screens · 4 admin · 5 logo pack · 6 deploy prep · 7 test matrix · 8–9 review rounds · 10 visual upgrade · 11 admin deletions · 12/12b/12c activation data, documents, callback number, Resend test · 13 test stability, copy, privacy cookies · 14 Aldo's offers, variable prices, IBAN rules, bill upload, vCard.
 
 ## Open issues (to solve)
 - POD codes IT002/IT011/IT012/IT020 unconfirmed → T13.11 (blocked).
@@ -28,10 +33,14 @@ Phase 14 complete. Giuseppe: browser check (mock data), then push dev. Reviewer 
 - Check HEIC upload on iPhone Safari (not testable in Chromium).
 
 ## Later (low-priority)
-- Bill dialog: no "Rivedi dati letti" to reopen it after closing; a CF changed from the bill is not visible in step B (it lives in step A) — Giuseppe to decide.
-- IBAN-required notice on results is grey/discreet; brand tint if Giuseppe prefers.
+- Callback proof is deleted with the lead: define a retention rule when Aldo sets retention periods (SPEC).
+- New-lead email to Aldo does not mention the callback request; real-DB security suite and matrix `flow.ts` have no callback checks yet.
+- Page 1 checkbox still says "Acconsento…": Giuseppe to decide on "presa visione" wording.
+- `/privacy` "Dati raccolti" IBAN bullet parenthetical is wordy (could be "obbligatori solo per le offerte che lo richiedono").
+- `matrix/validation.spec.ts` refresh test needs at least one IBAN-free gas casa card (true for current data); otherwise unclear timeout.
+- Bill dialog: no "Rivedi dati letti" to reopen it after closing.
 - Lockfile: T14.13 `npm install` pruned optional esbuild/terser deps — confirm a fresh `npm ci` + build on the Vercel preview.
-- vCard has no PHOTO (only SVG icons; vCard 3.0 needs a raster).
+- vCard has no PHOTO (only SVG icons; vCard 3.0 needs a raster). "Salva il nostro numero" tested OK on real phones (2026-10-28).
 - `admin-leads.spec.ts:137` can still time out at 12 workers (2/114); admin edit forms have no `data-hydrated` marker.
 - `e2e/admin-settings.spec.ts:80` also writes the global callback phone (mock settings row): may race `acceptance-phase12` — watch in T13.5.
 - `acceptance-phase12` settings test is desktop-only: callback-number form + thank-you `tel:` link no longer checked at 390 px (add a read-only 390 px check if needed).
@@ -41,6 +50,14 @@ Phase 14 complete. Giuseppe: browser check (mock data), then push dev. Reviewer 
 - Accepted residual exposure in the 1-minute document-removal window (QUESTIONS.md APPLY 20261023110000).
 
 ## Log (current phase)
+- 2026-11-02 T15.5 done (Giuseppe: document must not block): identity document data optional field by field, client + server, format checks only on filled fields, SPEC #32; Vitest related 213, activation-extras e2e 12/12 desktop — a14f0c0. Also fix 26b8590 /privacy §10 (no email collected). Not yet run: mobile project / full e2e for these two commits.
+- 2026-11-02 Phase 15 (decisions #28–#31, source: Claude Doc "VERSUS — Approfondimento normativo"): T15.1 "Richiamami" + explicit callback request recorded (`callback_requested_at`/`callback_request_text`, immutable trigger, prod no-retry, admin "Non registrata", go-live item); T15.2 footer legal data from `company.ts` (all null until Aldo) + /privacy completed, noindex; T15.3 annual estimate + results footnote; T15.4 copy.spec allow-list. Reviews: critical 0 high / 1 medium (fixed) / 3 low (2 fixed, retention → later); level-1 0 high / 2 medium (fixed). Checks: typecheck ✓ lint ✓ Vitest 1314 ✓ build ✓ e2e 330 passed / 2 skipped ✓ matrix 423 + 8 ✓.
+- 2026-10-28 Phase 14 live (PR #4, ae6e137), migrations applied (QUESTIONS.md answers committed). Closed by Giuseppe, no code: CF from the bill stays in step A; vCard OK on real phones. GOTCHAS "preview offers inactive until merge" removed. Phase 14b decisions #25–#27 + tasks — ccea008.
+- 2026-10-28 T14b.1 done: equal monthly cost → IBAN-free fixed offer first (badge follows); Vitest 1286 — a4ff579.
+- 2026-10-28 T14b.2 done: /privacy IBAN text (required only for offers that state it; ID + bill optional), IBAN notice text-ink font-medium on neutral box; acceptance-phase12 + results e2e 51 passed / 1 skipped — ce0acad.
+- 2026-10-28 T14b.3 regression: all green except matrix validation.spec:566 desktop (picked card nth(1) = Iren after the new tie order → IBAN required); test now picks the first card without the IBAN notice — 8ded20c. Matrix 423 + 8. Review: 0 high / 0 medium, 2 low → Later.
+
+## Log (Phase 13–14)
 - 2026-10-24 Adopted build-orchestrator workflow (docs/, kit agents, hooks, statusline, settings) — a4a2d58.
 - 2026-10-24 Decisions: page1 flake added (T13.4); orchestrator = Opus 5.5; POD codes still unconfirmed.
 - 2026-10-24 Scope change: Phase 13 Block B added (T13.6–T13.10), POD task renumbered T13.11 (Block C); SPEC decisions #10–#14 + PRD v0.6.2 notes; GOTCHAS cookie/IBAN entries. Planning only, nothing built.

@@ -30,6 +30,7 @@ import type {
 } from "../types";
 import {
   DEFAULT_CALLBACK_PHONE,
+  LEAD_CALLBACK_REQUEST_FIELDS,
   LEAD_HISTORY_FIELDS,
   LEAD_PAGE_SIZE_DEFAULT,
   LEAD_PAGE_SIZE_MAX,
@@ -106,6 +107,8 @@ function emptyLead(id: string, token: string, now: string): Lead {
     document_number: null,
     document_expiry: null,
     document_issuer: null,
+    callback_requested_at: null,
+    callback_request_text: null,
     chosen_offer_luce_snapshot: null,
     chosen_offer_gas_snapshot: null,
     current_supplier_luce_name: null,
@@ -116,7 +119,16 @@ function emptyLead(id: string, token: string, now: string): Lead {
 /** Never let callers overwrite server-managed columns through lead data. */
 function sanitize(data: LeadData): LeadData {
   const copy: Record<string, unknown> = { ...data };
-  for (const k of ["id", "token", "created_at", "updated_at", "status", "notes", ...LEAD_HISTORY_FIELDS]) {
+  for (const k of [
+    "id",
+    "token",
+    "created_at",
+    "updated_at",
+    "status",
+    "notes",
+    ...LEAD_HISTORY_FIELDS,
+    ...LEAD_CALLBACK_REQUEST_FIELDS,
+  ]) {
     delete copy[k];
   }
   // Same normalization as private.apply_lead_patch (migration 20261023100000).
@@ -311,11 +323,24 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       apply(leadByToken(token), patch);
     },
 
-    async completeLead(token, data): Promise<LeadCompletion> {
+    async completeLead(token, data, options): Promise<LeadCompletion> {
       const lead = leadByToken(token);
+      // Mirrors complete_lead (migration 20261102100000): a present callback text must be a
+      // non-blank string of at most 500 chars; nothing is written when it is invalid.
+      const callbackText = options?.callbackRequestText;
+      if (
+        callbackText !== undefined &&
+        (typeof callbackText !== "string" || callbackText.trim() === "" || [...callbackText].length > 500)
+      ) {
+        throw new Error("invalid_callback_request");
+      }
       apply(lead, data);
       lead.step_reached = "completed";
       lead.status = "new";
+      if (callbackText !== undefined) {
+        lead.callback_requested_at = new Date().toISOString();
+        lead.callback_request_text = callbackText;
+      }
       // Mirrors complete_lead: the settings recipient + callback number are returned with the ref.
       return {
         id: lead.id,
@@ -583,6 +608,11 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
 
     async listUnverifiedActiveOffers() {
       return (await repo.listAllOffers()).filter((o) => o.active && !o.price_verified);
+    },
+
+    async hasCallbackRequestColumns() {
+      // The in-memory lead shape always has the callback request columns.
+      return true;
     },
 
     async getSettings() {

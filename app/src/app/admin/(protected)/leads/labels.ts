@@ -106,3 +106,22 @@ export const DOCUMENT_MIME_LABELS: Record<string, string> = {
   "image/jpeg": "Immagine JPEG",
   "application/pdf": "PDF",
 };
+
+/**
+ * Callback request shown on the lead detail (T15.1, SPEC #28):
+ * - "requested": the customer pressed "Richiamami" (timestamp + text recorded);
+ * - "not_recorded": completed lead without a record (completed before migration
+ *   20261102100000, or by the old app): shown as "Non registrata";
+ * - "pending": lead not completed yet: shown as "—".
+ */
+export type CallbackRequestState = "requested" | "not_recorded" | "pending";
+
+export function callbackRequestState(lead: {
+  step_reached: LeadStepReached;
+  callback_requested_at: string | null;
+}): CallbackRequestState {
+  if (lead.callback_requested_at) return "requested";
+  return lead.step_reached === "completed" ? "not_recorded" : "pending";
+}
+
+export const CALLBACK_NOT_RECORDED_LABEL = "Non registrata";

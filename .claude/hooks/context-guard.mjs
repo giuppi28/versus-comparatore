@@ -7,7 +7,7 @@ import path from 'node:path';
 
 const WARN = Number(process.env.CTX_WARN_PCT ?? 30);
 const STOP = Number(process.env.CTX_STOP_PCT ?? 35);
-const WINDOW = Number(process.env.CTX_WINDOW_TOKENS ?? 200000); // fallback only
+const WINDOW = Number(process.env.CTX_WINDOW_TOKENS ?? 1000000); // fallback only (1M-token context)
 const DIR = path.join(os.tmpdir(), 'claude-ctx');
 
 let input;

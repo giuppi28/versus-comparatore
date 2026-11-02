@@ -49,6 +49,7 @@ import {
   checkPatchActivation,
   italianToday,
 } from "./completion";
+import { CALLBACK_REQUEST_TEXT } from "./callback-request";
 import { notifyNewLead, type NotifyNewLead } from "./notify";
 // Registers the server-only LEAD_API_SECRET reader used by the Supabase lead RPCs.
 import "./secret";
@@ -398,7 +399,9 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
       const refFields = await checkCompletionReferences(repo, data);
       if (Object.keys(refFields).length > 0) throw validationError(refFields);
 
-      const ref = await repo.completeLead(token, data);
+      // The submit is the explicit callback request (SPEC #28): the text recorded with it is the
+      // server constant shown above the button. The strict body schema rejects any client copy.
+      const ref = await repo.completeLead(token, data, { callbackRequestText: CALLBACK_REQUEST_TEXT });
       const completedAt = (deps.now?.() ?? new Date()).toISOString();
       try {
         await deps.notify({ id: ref.id, data, completedAt, notificationEmail: ref.notification_email });

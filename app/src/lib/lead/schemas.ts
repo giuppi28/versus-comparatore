@@ -158,7 +158,7 @@ const activationFields = {
   pdr: validated(validatePdr).nullable(),
 
   // Step B, optional (Phase 12, PRD §10 / PHASE12_BRIEF E3–E4). Formats here; the
-  // cross-field rules (holder required + CF ↔ holder name, document all-or-nothing,
+  // cross-field rules (holder required + CF ↔ holder name, document fields independent,
   // expiry not in the past) are in completion.ts.
   /** Normalised (upper case, no spaces/dots/hyphens), country length + mod-97. */
   iban: optionalValidated(validateIban).nullable(),

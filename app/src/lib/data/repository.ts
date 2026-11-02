@@ -8,6 +8,7 @@ import type {
   LeadPage,
   LeadQuery,
   LeadCompletion,
+  LeadCompletionOptions,
   LeadDeletion,
   LeadDocument,
   LeadDocumentFile,
@@ -238,9 +239,11 @@ export interface Repository {
   updateLead(token: string, patch: LeadData): Promise<void>;
   /**
    * Final submit: writes `data`, sets step_reached = completed, status = new.
+   * With `options.callbackRequestText` also records the callback request
+   * (callback_requested_at = now, callback_request_text; SPEC #28).
    * Also returns settings.notification_email (null when not set).
    */
-  completeLead(token: string, data: LeadData): Promise<LeadCompletion>;
+  completeLead(token: string, data: LeadData, options?: LeadCompletionOptions): Promise<LeadCompletion>;
 
   // ---- Public (no session, no secret) ----
   /**
@@ -351,6 +354,11 @@ export interface Repository {
   saveOffer(input: OfferInput): Promise<Offer>;
   /** Go-live checklist: active offers (of active suppliers or not) with price_verified = false. */
   listUnverifiedActiveOffers(): Promise<OfferWithSupplier[]>;
+  /**
+   * Go-live checklist: true when the data layer can read leads.callback_requested_at
+   * (migration 20261102100000 applied; SPEC #28). Never throws: any error means false.
+   */
+  hasCallbackRequestColumns(): Promise<boolean>;
 
   // Settings
   getSettings(): Promise<Settings>;

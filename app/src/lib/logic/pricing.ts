@@ -49,7 +49,7 @@ export interface RankOptions {
 }
 
 type RankableOffer = PricedOffer &
-  Pick<Offer, "supplier_id" | "name" | "id" | "price_type" | "featured_audience">;
+  Pick<Offer, "supplier_id" | "name" | "id" | "price_type" | "featured_audience" | "iban_required">;
 
 /** True when the admin forced this offer to the top for `audience` (Casa / Partita IVA / Entrambi). */
 export function isForcedFeatured(offer: Pick<Offer, "featured_audience">, audience: Audience): boolean {
@@ -62,8 +62,9 @@ export function isForcedFeatured(offer: Pick<Offer, "featured_audience">, audien
  *      ones by monthly cost ascending, then variable ones by spread ascending;
  *   2. the other fixed offers by monthly cost ascending;
  *   3. the other variable offers by spread (energy_price) ascending.
- * Ties are broken by offer name (Italian collation), then id, so the order is fully
- * deterministic. Does not mutate the input.
+ * Ties on monthly cost (cents) between non-forced fixed offers go to the offer without
+ * `iban_required` first (SPEC decision #26); other ties are broken by offer name (Italian
+ * collation), then id, so the order is fully deterministic. Does not mutate the input.
  */
 export function rankOffers<T extends RankableOffer>(
   offers: readonly T[],
@@ -90,6 +91,12 @@ export function rankOffers<T extends RankableOffer>(
       const ka = a.monthlyCost !== null ? Math.round(a.monthlyCost * 100) : Math.round(a.offer.energy_price * 1e6);
       const kb = b.monthlyCost !== null ? Math.round(b.monthlyCost * 100) : Math.round(b.offer.energy_price * 1e6);
       if (ka !== kb) return ka - kb;
+      // Equal monthly cost, non-forced fixed offers: IBAN-free first (decision #26).
+      if (ga === 1 && va === 0) {
+        const ia = a.offer.iban_required ? 1 : 0;
+        const ib = b.offer.iban_required ? 1 : 0;
+        if (ia !== ib) return ia - ib;
+      }
       const byName = a.offer.name.localeCompare(b.offer.name, "it");
       if (byName !== 0) return byName;
       return a.offer.id.localeCompare(b.offer.id);

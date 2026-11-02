@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "versus-prod-local",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "app", "run", "start", "--", "-p", "3100"],
+      "port": 3100
+    },
+    {
+      "name": "versus-mock-dev",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["NEXT_PUBLIC_DATA_SOURCE=mock", "RESEND_API_KEY=", "npm", "--prefix", "app", "run", "dev", "--", "--port", "3101"],
+      "port": 3101
+    }
+  ]
+}
