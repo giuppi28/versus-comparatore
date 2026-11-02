@@ -168,7 +168,7 @@ export function PaymentFields({
   );
 }
 
-/** "Documento d'identità (facoltativo)": data fields (all-or-nothing) + immediate file upload. */
+/** "Documento d'identità (facoltativo)": data fields (each optional) + immediate file upload. */
 export function DocumentFields({
   state,
   update,
@@ -234,7 +234,7 @@ export function DocumentFields({
   return (
     <div className="space-y-5">
       <p className="text-sm text-ink-muted">
-        Compila tutti i campi, oppure carica il file.
+        Facoltativo: puoi compilare i dati del documento, caricare il file, oppure saltare questa sezione.
       </p>
       <div className="grid gap-5 sm:grid-cols-2">
         <Select

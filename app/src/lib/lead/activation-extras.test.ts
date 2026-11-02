@@ -127,12 +127,16 @@ describe("identity document data (complete)", () => {
     });
   });
 
-  it("all-or-nothing: the missing ones are required", () => {
-    expect(complete({ document_number: "AB12345" }).fields).toEqual({
-      document_type: "required",
-      document_expiry: "required",
-      document_issuer: "required",
+  it("independent: one field only is fine, the others become null", () => {
+    const r = complete({ document_type: "patente" });
+    expect(r.fields).toEqual({});
+    expect(r.data).toMatchObject({
+      document_type: "patente",
+      document_number: null,
+      document_expiry: null,
+      document_issuer: null,
     });
+    expect(complete({ document_expiry: "2020-01-01" }).fields).toEqual({ document_expiry: "past" });
   });
 
   it("expiry today is fine, yesterday is past", () => {

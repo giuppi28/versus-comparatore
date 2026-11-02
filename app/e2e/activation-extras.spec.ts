@@ -185,15 +185,16 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     );
   });
 
-  test("document: partial data error", async ({ page }) => {
+  test("document: fields optional and independent, filled past expiry still errors", async ({ page }) => {
     await openStepB(page, flowState());
-    await field(page, "document_number").fill("AB12345");
-    await page.getByTestId("activation-submit").click();
-    await expect(page.getByText("Completa i dati del documento.")).toHaveCount(3);
     await field(page, "document_type").selectOption("patente");
     await field(page, "document_expiry").fill("2020-01-01");
-    await field(page, "document_issuer").fill("MIT-UCO");
+    await page.getByTestId("activation-submit").click();
     await expect(page.getByText("Il documento è scaduto: controlla la data di scadenza.")).toBeVisible();
+    await expect(page.getByText("Completa i dati del documento.")).toHaveCount(0);
+    await field(page, "document_expiry").fill("");
+    await page.getByTestId("activation-submit").click();
+    await expect(page.getByText("Il documento è scaduto: controlla la data di scadenza.")).toHaveCount(0);
     await expect(page.getByText("Completa i dati del documento.")).toHaveCount(0);
   });
 
