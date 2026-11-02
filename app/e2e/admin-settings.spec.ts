@@ -134,6 +134,10 @@ test.describe("admin settings and go-live checklist", () => {
       await expect(check).toHaveAttribute("data-ok", "false");
       // Mock data source never counts as ready.
       await expect(page.locator('[data-check="data-source"]')).toHaveAttribute("data-ok", "false");
+      await expect(page.locator('[data-check="company-data"]')).toHaveAttribute("data-ok", "false");
+      // Mock leads always have the callback request columns (T15.1).
+      await expect(page.locator('[data-check="callback-migration"]')).toHaveAttribute("data-ok", "true");
+      await expect(page.locator('[data-check="callback-migration"]')).toContainText("Migrazione richiesta di richiamo applicata");
       // Manual items: shown prominently, never auto-checked, never part of the automatic status.
       const manual = page.getByTestId("manual-checks");
       await expect(manual.getByRole("heading", { name: "Verifiche manuali" })).toBeVisible();

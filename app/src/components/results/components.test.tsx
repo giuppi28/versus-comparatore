@@ -37,6 +37,15 @@ describe("OfferCard", () => {
     expect(screen.getByTestId("offer-cta")).toHaveTextContent("Attiva online in 1 minuto");
   });
 
+  it("fixed offer shows the annual estimate derived from the monthly cost; variable has none", () => {
+    const { unmount } = render(<OfferCard offer={edison} commodity="luce" monthlyCost={50} onActivate={() => {}} />);
+    expect(screen.getByTestId("offer-annual").textContent).toMatch(/^circa .*600,00.* all'anno, IVA esclusa$/);
+    unmount();
+    const trend = MOCK_OFFERS.map((o) => withSupplier(o.id)).find((o) => o.price_type === "variable")!;
+    render(<OfferCard offer={trend} commodity="luce" monthlyCost={null} onActivate={() => {}} />);
+    expect(screen.queryByTestId("offer-annual")).toBeNull();
+  });
+
   it("hides band and promo when the offer has none, expands the details", () => {
     const sorgenia = withSupplier("offer-aldo-01");
     render(<OfferCard offer={sorgenia} commodity="luce" monthlyCost={50} onActivate={() => {}} />);

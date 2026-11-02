@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "Informativa sulla privacy | VERSUS",
   description:
     "Come VERSUS tratta i tuoi dati personali quando confronti le offerte luce e gas: dati raccolti, finalità, base giuridica, conservazione e diritti.",
-  robots: { index: true },
+  robots: { index: false, follow: false },
 };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -45,10 +45,10 @@ const RIGHTS = [
   "accedere ai tuoi dati e ottenerne copia;",
   "chiederne la rettifica o l’aggiornamento;",
   "chiederne la cancellazione;",
-  "chiedere la limitazione del trattamento od opporti ad esso;",
+  "chiedere la limitazione del trattamento;",
+  "opporti al trattamento basato sul legittimo interesse del titolare (art. 21 GDPR);",
   "ricevere i tuoi dati in un formato strutturato (portabilità);",
-  "revocare in qualsiasi momento il consenso prestato, senza pregiudicare la liceità del trattamento effettuato prima della revoca;",
-  "proporre reclamo al Garante per la protezione dei dati personali (www.garanteprivacy.it).",
+  "proporre reclamo al Garante per la protezione dei dati personali (garanteprivacy.it).",
 ];
 
 /** Privacy notice (PRD §13.1). Facts still pending from the client are shown as bracketed placeholders. */
@@ -86,7 +86,14 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            <Section title="2. Dati raccolti">
+            <Section title="2. Responsabile del trattamento">
+              <p>
+                Il titolare si avvale di SiteXP per la gestione tecnica del sito, in qualità di
+                responsabile del trattamento. Contatto: info@sitexp.it.
+              </p>
+            </Section>
+
+            <Section title="3. Dati raccolti">
               <p>Attraverso il comparatore raccogliamo i seguenti dati che ci fornisci direttamente:</p>
               <ul className="list-disc space-y-1 pl-6">
                 {DATA_COLLECTED.map((item) => (
@@ -121,44 +128,62 @@ export default function PrivacyPage() {
                   comunicati al fornitore che hai selezionato. I file caricati sono cancellati
                   insieme alla tua richiesta.
                 </p>
-                <p>Periodo di conservazione: [DA COMPLETARE].</p>
+                <p>Periodo di conservazione: [Periodo di conservazione dei dati].</p>
               </div>
             </Section>
 
-            <Section title="3. Finalità del trattamento">
-              <p>Trattiamo i tuoi dati per:</p>
-              <ul className="list-disc space-y-1 pl-6">
-                <li>mostrarti le offerte luce e gas più adatte alle tue esigenze;</li>
+            <Section title="4. Finalità e basi giuridiche">
+              <ul className="list-disc space-y-2 pl-6">
                 <li>
-                  permetterti di essere ricontattato per completare l’attivazione dell’offerta che
-                  hai scelto;
+                  confrontare le offerte luce e gas, gestire la richiesta di attivazione e il
+                  ricontatto che richiedi con «Richiamami»: esecuzione di misure precontrattuali
+                  adottate su tua richiesta (art. 6, par. 1, lett. b, GDPR);
                 </li>
-                <li>adempiere agli obblighi di legge connessi a tale attività.</li>
+                <li>
+                  adempimenti di legge, in particolare fiscali, e richieste delle autorità: obbligo
+                  legale (art. 6, par. 1, lett. c, GDPR);
+                </li>
+                <li>
+                  sicurezza del sito e prevenzione di abusi (limiti alle richieste per indirizzo IP,
+                  log tecnici): legittimo interesse del titolare (art. 6, par. 1, lett. f, GDPR).
+                </li>
               </ul>
-            </Section>
-
-            <Section title="4. Base giuridica">
               <p>
-                Il trattamento si fonda sul tuo consenso, che puoi prestare al momento dell’invio dei
-                dati (art. 6, par. 1, lett. a, GDPR), e sull’esecuzione di misure precontrattuali
-                adottate su tua richiesta (art. 6, par. 1, lett. b, GDPR). Il conferimento dei dati
-                di contatto e dei dati della fornitura è necessario per completare la richiesta di
-                attivazione; l&apos;IBAN è necessario solo per le offerte che lo richiedono, mentre
-                documento d&apos;identità e bolletta restano facoltativi.
+                Non utilizziamo i tuoi dati per finalità di marketing: il modulo non prevede alcun
+                consenso a comunicazioni promozionali.
               </p>
             </Section>
 
             <Section title="5. Destinatari dei dati">
+              <ul className="list-disc space-y-1 pl-6">
+                <li>
+                  il venditore dell&apos;offerta che hai scelto, per attivare la fornitura;
+                </li>
+                <li>SiteXP, responsabile del trattamento (gestione tecnica del sito);</li>
+                <li>
+                  fornitori tecnici di SiteXP, in qualità di sub-responsabili: Vercel Inc. (hosting,
+                  Stati Uniti; server delle funzioni a Francoforte), Supabase (database e
+                  archiviazione dei file, server a Francoforte, Germania) e Resend (invio
+                  dell&apos;email di notifica della richiesta al titolare, Stati Uniti);
+                </li>
+                <li>
+                  eventuale call center esterno incaricato dal titolare: [Call center esterno: nome o
+                  &quot;nessuno&quot;].
+                </li>
+              </ul>
+              <p>I dati non sono diffusi.</p>
+            </Section>
+
+            <Section title="6. Trasferimenti extra-UE">
               <p>
-                I dati sono trattati dal titolare e da soggetti da lui incaricati o nominati
-                responsabili del trattamento (ad esempio fornitori di servizi tecnici e di
-                comunicazione). Per completare l’attivazione, i dati necessari possono essere
-                comunicati al fornitore di energia dell’offerta che hai scelto. I dati non sono
-                diffusi.
+                Vercel e Resend sono società statunitensi. Il trasferimento avviene sulla base della
+                decisione di adeguatezza UE-USA (EU-US Data Privacy Framework, decisione della
+                Commissione europea del 10 luglio 2023) per le società certificate e, in ogni caso,
+                delle clausole contrattuali tipo approvate dalla Commissione europea.
               </p>
             </Section>
 
-            <Section title="6. Conservazione">
+            <Section title="7. Conservazione">
               <p>
                 Conserviamo i tuoi dati per il tempo strettamente necessario alle finalità indicate e,
                 in ogni caso, per un periodo non superiore a [Periodo di conservazione dei dati].
@@ -166,7 +191,7 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            <Section title="7. Cookie">
+            <Section title="8. Cookie">
               <p>
                 Questo sito utilizza solo cookie tecnici, necessari al funzionamento del servizio.
                 Non utilizziamo cookie di analisi, di profilazione o pubblicitari, né strumenti di
@@ -185,20 +210,25 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            <Section title="8. Diritti dell’interessato">
+            <Section title="9. Diritti dell’interessato">
               <p>In qualsiasi momento hai il diritto di:</p>
               <ul className="list-disc space-y-1 pl-6">
                 {RIGHTS.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
+              <p>
+                Per esercitare i tuoi diritti scrivi a [Indirizzo email di contatto privacy] oppure a
+                [Indirizzo completo del titolare].
+              </p>
             </Section>
 
-            <Section title="9. Contatti">
+            <Section title="10. Conferimento dei dati">
               <p>
-                Per esercitare i tuoi diritti o per ricevere informazioni sul trattamento dei tuoi dati
-                scrivi a [Indirizzo email di contatto privacy] oppure a [Indirizzo completo del
-                titolare].
+                Nome, cognome, telefono, email, indirizzo e codici POD/PDR sono necessari per
+                confrontare e attivare l&apos;offerta: senza, la richiesta non può essere completata.
+                L&apos;IBAN è necessario solo per le offerte che lo indicano. Il documento
+                d&apos;identità e la bolletta sono facoltativi.
               </p>
             </Section>
 

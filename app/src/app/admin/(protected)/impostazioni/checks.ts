@@ -12,7 +12,11 @@ export interface GoLiveInputs {
   resendKeyPresent: boolean;
   resendFromPresent: boolean;
   siteUrlPresent: boolean;
+  /** Company legal data for the footer is complete (`isComplete()` of lib/legal/company). */
+  companyDataComplete: boolean;
   dataSource: "mock" | "supabase";
+  /** The data layer can read leads.callback_requested_at (migration 20261102100000; SPEC #28). */
+  callbackMigrationApplied: boolean;
 }
 
 export interface GoLiveCheck {
@@ -72,6 +76,14 @@ export function computeGoLiveChecks(i: GoLiveInputs): GoLiveCheck[] {
       detail: i.siteUrlPresent ? "Indirizzo configurato." : "Mancante: l'email non contiene il link al lead.",
     },
     {
+      id: "company-data",
+      label: "Dati dell'impresa nel footer",
+      ok: i.companyDataComplete,
+      detail: i.companyDataComplete
+        ? "Ragione sociale, sede, email e Partita IVA presenti."
+        : "Mancano ragione sociale, sede legale, email o Partita IVA in src/lib/legal/company.ts: il footer non li mostra.",
+    },
+    {
       id: "data-source",
       label: "Dati su Supabase",
       ok: i.dataSource === "supabase",
@@ -79,6 +91,14 @@ export function computeGoLiveChecks(i: GoLiveInputs): GoLiveCheck[] {
         i.dataSource === "supabase"
           ? "Il sito usa il database Supabase."
           : "Il sito usa dati di prova in memoria (NEXT_PUBLIC_DATA_SOURCE).",
+    },
+    {
+      id: "callback-migration",
+      label: "Migrazione richiesta di richiamo applicata",
+      ok: i.callbackMigrationApplied,
+      detail: i.callbackMigrationApplied
+        ? "Data, ora e testo della richiesta di richiamo vengono registrati su ogni lead completato."
+        : "Migrazione 20261102100000_lead_callback_request.sql non applicata: la richiesta di richiamo non viene registrata e, in produzione, l'invio finale dei lead non va a buon fine.",
     },
   );
   return checks;
@@ -109,6 +129,7 @@ export const PRIVACY_PLACEHOLDERS = [
   "[Indirizzo completo del titolare]",
   "[Partita IVA del titolare]",
   "[Indirizzo email di contatto privacy]",
+  "[Call center esterno: nome o \"nessuno\"]",
   "[Periodo di conservazione dei dati]",
   "[Data di aggiornamento]",
 ] as const;

@@ -1,10 +1,10 @@
 # HANDOFF — VERSUS
-Updated: 2026-10-28 · Phase: 14b — small fixes (privacy IBAN text, tie rule, IBAN notice) · Branch: dev · Last commit: see `git log -1`
+Updated: 2026-11-02 · Phase: 15 — legal compliance (callback request, footer/privacy, results footnote) · Branch: dev · Last commit: see `git log -1`
 
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-Phase 14b complete (T14b.1–T14b.3). Giuseppe: browser check (gas casa order + badge, IBAN notice on card/modal at 1440/390, /privacy IBAN section), then push dev and merge when ready. No APPLY pending. T13.11 stays blocked (POD codes).
+Phase 15 complete (T15.1–T15.4). Giuseppe: OK to the reviewer for `## APPLY: 20261102100000_lead_callback_request.sql` (QUESTIONS.md) — hard precondition before merging `dev` into `main`; browser check of "Richiamami" + sentence (step B), annual line + footnote (results), /privacy, at 1440/390; then push dev. Aldo's data still needed for footer (`src/lib/legal/company.ts`) and /privacy placeholders. T13.11 stays blocked (POD codes).
 
 ## Status
 - Production (`main`, https://versus-comparatore.vercel.app) = Phases 1–14 (PR #4, merge ae6e137). All Phase 14 migrations applied and verified on the real DB (20261027100000, 20261027110000 via connector; 20261027120000 by Giuseppe in the SQL editor before the merge). No pending APPLY.
@@ -27,6 +27,9 @@ Phase 14b complete (T14b.1–T14b.3). Giuseppe: browser check (gas casa order + 
 - Check HEIC upload on iPhone Safari (not testable in Chromium).
 
 ## Later (low-priority)
+- Callback proof is deleted with the lead: define a retention rule when Aldo sets retention periods (SPEC).
+- New-lead email to Aldo does not mention the callback request; real-DB security suite and matrix `flow.ts` have no callback checks yet.
+- Page 1 checkbox still says "Acconsento…": Giuseppe to decide on "presa visione" wording.
 - `/privacy` "Dati raccolti" IBAN bullet parenthetical is wordy (could be "obbligatori solo per le offerte che lo richiedono").
 - `matrix/validation.spec.ts` refresh test needs at least one IBAN-free gas casa card (true for current data); otherwise unclear timeout.
 - Bill dialog: no "Rivedi dati letti" to reopen it after closing.
@@ -41,6 +44,7 @@ Phase 14b complete (T14b.1–T14b.3). Giuseppe: browser check (gas casa order + 
 - Accepted residual exposure in the 1-minute document-removal window (QUESTIONS.md APPLY 20261023110000).
 
 ## Log (current phase)
+- 2026-11-02 Phase 15 (decisions #28–#31, source: Claude Doc "VERSUS — Approfondimento normativo"): T15.1 "Richiamami" + explicit callback request recorded (`callback_requested_at`/`callback_request_text`, immutable trigger, prod no-retry, admin "Non registrata", go-live item); T15.2 footer legal data from `company.ts` (all null until Aldo) + /privacy completed, noindex; T15.3 annual estimate + results footnote; T15.4 copy.spec allow-list. Reviews: critical 0 high / 1 medium (fixed) / 3 low (2 fixed, retention → later); level-1 0 high / 2 medium (fixed). Checks: typecheck ✓ lint ✓ Vitest 1314 ✓ build ✓ e2e 330 passed / 2 skipped ✓ matrix 423 + 8 ✓.
 - 2026-10-28 Phase 14 live (PR #4, ae6e137), migrations applied (QUESTIONS.md answers committed). Closed by Giuseppe, no code: CF from the bill stays in step A; vCard OK on real phones. GOTCHAS "preview offers inactive until merge" removed. Phase 14b decisions #25–#27 + tasks — ccea008.
 - 2026-10-28 T14b.1 done: equal monthly cost → IBAN-free fixed offer first (badge follows); Vitest 1286 — a4ff579.
 - 2026-10-28 T14b.2 done: /privacy IBAN text (required only for offers that state it; ID + bill optional), IBAN notice text-ink font-medium on neutral box; acceptance-phase12 + results e2e 51 passed / 1 skipped — ce0acad.

@@ -123,6 +123,10 @@ export const LEAD_HISTORY_FIELDS = [
 ] as const;
 export type LeadHistoryField = (typeof LEAD_HISTORY_FIELDS)[number];
 
+/** Lead columns written only by complete_lead from a server constant (SPEC #28). */
+export const LEAD_CALLBACK_REQUEST_FIELDS = ["callback_requested_at", "callback_request_text"] as const;
+export type LeadCallbackRequestField = (typeof LEAD_CALLBACK_REQUEST_FIELDS)[number];
+
 /**
  * `current_supplier_*` hold a suppliers.id (including the special rows
  * "Servizio di Tutela / Tutele Graduali", "Altro fornitore", "Non lo so").
@@ -199,6 +203,13 @@ export interface Lead {
   /** Issuing authority (Ente di rilascio). */
   document_issuer: string | null;
 
+  // Explicit callback request (SPEC #28, migration 20261102100000). Set only by
+  // complete_lead (server route constant), never by the customer flow data.
+  /** ISO timestamp of the "Richiamami" submit; null for leads completed before T15.1 / in progress. */
+  callback_requested_at: string | null;
+  /** Exact sentence shown above the "Richiamami" button (CALLBACK_REQUEST_TEXT). */
+  callback_request_text: string | null;
+
   // History kept when the referenced offer / supplier is deleted (DB triggers, Phase 11).
   // Show them when the live chosen_offer_* / current_supplier_* is null.
   /** Copy of the chosen luce offer, written when that offer was deleted. */
@@ -213,7 +224,10 @@ export interface Lead {
 
 /** Fields the customer flow may write (everything except server-managed columns). */
 export type LeadData = Partial<
-  Omit<Lead, "id" | "token" | "created_at" | "updated_at" | "status" | "notes" | LeadHistoryField>
+  Omit<
+    Lead,
+    "id" | "token" | "created_at" | "updated_at" | "status" | "notes" | LeadHistoryField | LeadCallbackRequestField
+  >
 >;
 
 /** Reference returned by create/complete: the row id and the secret token. */
@@ -230,6 +244,15 @@ export interface LeadCompletion extends LeadRef {
   notification_email: string | null;
   /** settings.callback_phone (DEFAULT_CALLBACK_PHONE when the DB returns none). */
   callback_phone: string;
+}
+
+/**
+ * Server-side completion options. `callbackRequestText` records the explicit callback request
+ * (leads.callback_requested_at = now, leads.callback_request_text = the text); the lead route
+ * passes the CALLBACK_REQUEST_TEXT constant, never client input. Omitted = nothing recorded.
+ */
+export interface LeadCompletionOptions {
+  callbackRequestText?: string;
 }
 
 /** Default "Numero da cui chiamiamo" (settings.callback_phone default in the DB). */

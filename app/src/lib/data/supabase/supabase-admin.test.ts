@@ -97,6 +97,20 @@ describe("supabase repository admin", () => {
     expect(eqs).toEqual([["active", true], ["price_verified", false]]);
   });
 
+  it("hasCallbackRequestColumns: zero-row select of leads.callback_requested_at; any error → false", async () => {
+    const ok = clientFor([{ data: [] }]);
+    expect(await createSupabaseRepository(ok.client).hasCallbackRequestColumns()).toBe(true);
+    expect(ok.from).toHaveBeenCalledWith("leads");
+    expect(ok.builders[0].calls).toEqual([
+      ["select", ["callback_requested_at"]],
+      ["limit", [0]],
+    ]);
+    const missing = clientFor([{ data: null, error: { message: "column leads.callback_requested_at does not exist", code: "42703" } }]);
+    expect(await createSupabaseRepository(missing.client).hasCallbackRequestColumns()).toBe(false);
+    const thrown = { from: vi.fn(() => { throw new Error("network"); }) } as unknown as SupabaseClient;
+    expect(await createSupabaseRepository(thrown).hasCallbackRequestColumns()).toBe(false);
+  });
+
   it("queryLeads builds filters, one OR per search term, sanitizes input, paginates", async () => {
     const { client, builders } = clientFor([{ data: [{ id: "l1" }], count: 41 }]);
     const page = await createSupabaseRepository(client).queryLeads({

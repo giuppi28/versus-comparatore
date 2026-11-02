@@ -17,7 +17,9 @@ import {
   DOCUMENT_TYPE_LABELS,
   HOUSING_TITLE_LABELS,
   SERVICE_TYPE_LABELS,
+  CALLBACK_NOT_RECORDED_LABEL,
   applianceLabel,
+  callbackRequestState,
   formatDate,
   formatDateTime,
   formatEuro,
@@ -249,6 +251,27 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
           <Group title="Consensi" testId="group-consensi">
             <Field label="Privacy" value={consent(lead, "privacy_consent")} />
             <Field label="Marketing" value={consent(lead, "marketing_consent")} />
+            <div className="min-w-0 sm:col-span-2" data-testid="lead-callback-request">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Richiesta di richiamo</dt>
+              <dd className="break-words font-medium">
+                {lead.callback_requested_at ? (
+                  <span className="flex flex-col gap-1">
+                    <span data-testid="lead-callback-requested-at">{formatDateTime(lead.callback_requested_at)}</span>
+                    {lead.callback_request_text && (
+                      <span data-testid="lead-callback-request-text" className="text-sm font-normal text-ink-muted">
+                        {lead.callback_request_text}
+                      </span>
+                    )}
+                  </span>
+                ) : callbackRequestState(lead) === "not_recorded" ? (
+                  <span data-testid="lead-callback-not-recorded" className="text-ink-subtle">
+                    {CALLBACK_NOT_RECORDED_LABEL}
+                  </span>
+                ) : (
+                  <span className="text-ink-subtle">—</span>
+                )}
+              </dd>
+            </div>
           </Group>
         </div>
 

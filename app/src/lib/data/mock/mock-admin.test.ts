@@ -212,6 +212,10 @@ describe("offers admin", () => {
     expect((await repo.listUnverifiedActiveOffers()).map((x) => x.id)).toEqual([o.id]);
   });
 
+  it("hasCallbackRequestColumns: mock leads always have the callback request columns", async () => {
+    expect(await repo.hasCallbackRequestColumns()).toBe(true);
+  });
+
   it("flags with undefined values change nothing", async () => {
     const [o] = await repo.listAllOffers();
     const u = await repo.setOfferFlags(o.id, { active: undefined });

@@ -196,6 +196,9 @@ export function OfferCard({ offer, commodity, monthlyCost, featured = false, cho
                 {formatEuro(monthlyCost)}
               </p>
               <p className="text-xs text-ink-subtle">al mese, IVA esclusa</p>
+              <p data-testid="offer-annual" className="mt-0.5 text-xs text-ink-subtle">
+                circa {formatEuro(monthlyCost * 12)} all&apos;anno, IVA esclusa
+              </p>
             </div>
           )}
           <Button size="lg" fullWidth onClick={onActivate} data-testid="offer-cta">

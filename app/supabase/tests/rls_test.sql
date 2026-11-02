@@ -1216,6 +1216,179 @@ begin
   if not ok then raise exception 'FAIL: confirm of a second bill (got %)', err; end if;
 end $$;
 
+-- =====================================================================================
+-- PHASE 15 (T15.1): explicit callback request recorded by complete_lead
+-- =====================================================================================
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  v    jsonb;
+  w    jsonb;
+  ok   boolean;
+  err  text;
+  s    text := 'rls-test-secret-not-the-real-one';
+  base jsonb := '{"privacy_consent":true,"commodity":"luce","customer_type":"casa","first_name":"Rita","last_name":"Galli","phone":"3330003333","comune_istat":"999999","service_type":"subentro","tax_code":"NRELNE80A41H501X","housing_title":"inquilino","cap":"99999","address":"Via Po","street_number":"6","is_resident":true,"chosen_offer_luce":"00000000-0000-4000-8000-00000000c001"}';
+  txt  text := 'Premendo «Richiamami» chiedi di essere ricontattato da un consulente VERSUS al numero di telefono che hai indicato, per attivare l''offerta scelta.';
+begin
+  -- not a writable lead field: create_lead / update_lead reject it
+  ok := false; begin perform public.create_lead(s, base || jsonb_build_object('callback_request_text', txt)); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: create_lead accepted callback_request_text (got %)', err; end if;
+  v := public.create_lead(s, base);
+  perform set_config('rls.r_id', v ->> 'id', true);
+  ok := false; begin perform public.update_lead(s, v ->> 'token', jsonb_build_object('callback_request_text', txt)); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: update_lead accepted callback_request_text (got %)', err; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', jsonb_build_object('callback_requested_at', now())); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: update_lead accepted callback_requested_at (got %)', err; end if;
+
+  -- invalid values on completion: rejected, the lead stays in progress
+  ok := false; begin perform public.complete_lead(s, v ->> 'token', '{"callback_request_text":""}'); exception when others then ok := sqlerrm = 'invalid_callback_request'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: empty callback text (got %)', err; end if;
+  ok := false; begin perform public.complete_lead(s, v ->> 'token', '{"callback_request_text":"   "}'); exception when others then ok := sqlerrm = 'invalid_callback_request'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: blank callback text (got %)', err; end if;
+  ok := false; begin perform public.complete_lead(s, v ->> 'token', '{"callback_request_text":" \t\n "}'); exception when others then ok := sqlerrm = 'invalid_callback_request'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: whitespace-only callback text (got %)', err; end if;
+  ok := false; begin perform public.complete_lead(s, v ->> 'token', '{"callback_request_text":null}'); exception when others then ok := sqlerrm = 'invalid_callback_request'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: JSON null callback text (got %)', err; end if;
+  ok := false; begin perform public.complete_lead(s, v ->> 'token', '{"callback_request_text":42}'); exception when others then ok := sqlerrm = 'invalid_callback_request'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: numeric callback text (got %)', err; end if;
+  ok := false; begin perform public.complete_lead(s, v ->> 'token', jsonb_build_object('callback_request_text', repeat('x', 501))); exception when others then ok := sqlerrm = 'invalid_callback_request'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: 501-char callback text (got %)', err; end if;
+  -- the secret is still checked first
+  ok := false; begin perform public.complete_lead('wrong-secret', v ->> 'token', jsonb_build_object('callback_request_text', txt)); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: callback completion with wrong secret (got %)', err; end if;
+  -- other keys are still validated by the lead patch
+  ok := false; begin perform public.complete_lead(s, v ->> 'token', jsonb_build_object('callback_request_text', txt, 'status', 'closed')); exception when others then ok := sqlerrm like '%invalid_field%'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: callback completion with a forbidden key (got %)', err; end if;
+  -- missing required field still fails, even with a valid callback text
+  w := public.create_lead(s, '{"privacy_consent":true,"commodity":"luce"}');
+  ok := false; begin perform public.complete_lead(s, w ->> 'token', jsonb_build_object('callback_request_text', txt)); exception when others then ok := sqlerrm like '%missing_field%'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: callback completion with missing fields (got %)', err; end if;
+
+  -- valid: 500 chars is the maximum; the lead is completed and the result keeps its shape
+  w := public.complete_lead(s, v ->> 'token', jsonb_build_object('callback_request_text', txt, 'marketing_consent', false));
+  if (w ->> 'id') <> (v ->> 'id') or not (w ? 'notification_email') or not (w ? 'callback_phone') or (select count(*) from jsonb_object_keys(w)) <> 4 then
+    raise exception 'FAIL: callback complete_lead result %', w;
+  end if;
+  ok := false; begin perform public.complete_lead(s, v ->> 'token', jsonb_build_object('callback_request_text', txt)); exception when others then ok := sqlerrm like '%lead_not_found%'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: callback completion twice (got %)', err; end if;
+
+  -- 500 chars accepted; old-app call without the key leaves both columns null
+  v := public.create_lead(s, base);
+  perform set_config('rls.r2_id', v ->> 'id', true);
+  perform public.complete_lead(s, v ->> 'token', jsonb_build_object('callback_request_text', repeat('y', 500)));
+  v := public.create_lead(s, base);
+  perform set_config('rls.r3_id', v ->> 'id', true);
+  perform public.complete_lead(s, v ->> 'token', '{}');
+
+  -- anon still has no direct access to the new columns
+  ok := false; begin perform callback_request_text from public.leads limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon can read leads.callback_request_text'; end if;
+  raise notice 'ok: phase 15 callback request (anon)';
+end $$;
+
+reset role;
+do $$
+declare
+  l  public.leads;
+  ok boolean;
+  err text;
+  txt text := 'Premendo «Richiamami» chiedi di essere ricontattato da un consulente VERSUS al numero di telefono che hai indicato, per attivare l''offerta scelta.';
+begin
+  select * into l from public.leads where id = current_setting('rls.r_id')::uuid;
+  if l.step_reached <> 'completed' or l.callback_request_text is distinct from txt
+     or l.callback_requested_at is null or l.callback_requested_at <> now() or l.marketing_consent is distinct from false then
+    raise exception 'FAIL: callback request not recorded (% / % / %)', l.step_reached, l.callback_requested_at, l.callback_request_text;
+  end if;
+  select * into l from public.leads where id = current_setting('rls.r2_id')::uuid;
+  if l.callback_request_text is distinct from repeat('y', 500) or l.callback_requested_at is null then
+    raise exception 'FAIL: 500-char callback text not stored';
+  end if;
+  select * into l from public.leads where id = current_setting('rls.r3_id')::uuid;
+  if l.step_reached <> 'completed' or l.callback_requested_at is not null or l.callback_request_text is not null then
+    raise exception 'FAIL: completion without the key set the callback columns';
+  end if;
+  -- table constraints (on r3, no request recorded yet): text length and both-or-neither
+  ok := false; begin update public.leads set callback_requested_at = now(), callback_request_text = repeat('z', 501) where id = current_setting('rls.r3_id')::uuid; exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: 501-char callback_request_text accepted by the table'; end if;
+  ok := false; begin update public.leads set callback_requested_at = now(), callback_request_text = '' where id = current_setting('rls.r3_id')::uuid; exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: empty callback_request_text accepted by the table'; end if;
+  ok := false; begin update public.leads set callback_request_text = 'x' where id = current_setting('rls.r3_id')::uuid; exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: callback text without timestamp accepted by the table'; end if;
+  ok := false; begin update public.leads set callback_requested_at = now() where id = current_setting('rls.r3_id')::uuid; exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: callback timestamp without text accepted by the table'; end if;
+  -- trigger: a recorded request (r2) is immutable, even for the table owner
+  ok := false; begin update public.leads set callback_request_text = 'z' where id = current_setting('rls.r2_id')::uuid; exception when others then ok := sqlerrm = 'callback_request_immutable' and sqlstate = '55000'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: recorded callback text changed (got %)', err; end if;
+  ok := false; begin update public.leads set callback_requested_at = callback_requested_at - interval '1 hour' where id = current_setting('rls.r2_id')::uuid; exception when others then ok := sqlerrm = 'callback_request_immutable'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: recorded callback timestamp changed (got %)', err; end if;
+  ok := false; begin update public.leads set callback_requested_at = null, callback_request_text = null where id = current_setting('rls.r2_id')::uuid; exception when others then ok := sqlerrm = 'callback_request_immutable'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: recorded callback request cleared (got %)', err; end if;
+  -- same values and other columns stay updatable
+  update public.leads set callback_request_text = callback_request_text, callback_requested_at = callback_requested_at, notes = 'Nota' where id = current_setting('rls.r2_id')::uuid;
+  select * into l from public.leads where id = current_setting('rls.r2_id')::uuid;
+  if l.notes is distinct from 'Nota' or l.callback_request_text is distinct from repeat('y', 500) then
+    raise exception 'FAIL: update of other columns on a recorded callback request';
+  end if;
+  -- a lead without a recorded request is not blocked by the trigger (pair set together);
+  -- once set, it is immutable too
+  update public.leads set callback_requested_at = now(), callback_request_text = 'x' where id = current_setting('rls.r3_id')::uuid;
+  ok := false; begin update public.leads set callback_requested_at = null, callback_request_text = null where id = current_setting('rls.r3_id')::uuid; exception when others then ok := sqlerrm = 'callback_request_immutable'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: callback request set by update not immutable (got %)', err; end if;
+  -- trigger definition: BEFORE UPDATE row trigger, enabled, invoker function with empty search_path
+  if not exists (
+    select 1 from pg_trigger t join pg_proc p on p.oid = t.tgfoid
+     where t.tgrelid = 'public.leads'::regclass and t.tgname = 'leads_callback_request_immutable'
+       and not t.tgisinternal and t.tgenabled = 'O'
+       and (t.tgtype & 1) = 1      -- row
+       and (t.tgtype & 2) = 2      -- before
+       and (t.tgtype & 16) = 16    -- update
+       and p.oid = 'private.leads_callback_request_immutable()'::regprocedure
+       and not p.prosecdef and 'search_path=""' = any (p.proconfig)
+  ) then
+    raise exception 'FAIL: leads_callback_request_immutable trigger missing or misconfigured';
+  end if;
+  if (select count(*) from pg_trigger where tgrelid = 'public.leads'::regclass and tgname = 'leads_callback_request_immutable') <> 1 then
+    raise exception 'FAIL: leads_callback_request_immutable trigger duplicated';
+  end if;
+  if has_function_privilege('anon', 'private.leads_callback_request_immutable()', 'execute')
+     or has_function_privilege('authenticated', 'private.leads_callback_request_immutable()', 'execute') then
+    raise exception 'FAIL: trigger function executable by anon/authenticated';
+  end if;
+  -- complete_lead keeps its security properties
+  if not exists (
+    select 1 from pg_proc p
+     where p.oid = 'public.complete_lead(text, text, jsonb)'::regprocedure
+       and p.prosecdef and 'search_path=""' = any (p.proconfig)
+       and has_function_privilege('anon', p.oid, 'execute')
+       and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where a.grantee = 0)
+  ) then
+    raise exception 'FAIL: complete_lead lost security definer / search_path / grants';
+  end if;
+  raise notice 'ok: phase 15 callback request (verified as postgres)';
+end $$;
+
+-- admin session (aal2: the test admin has a verified factor by now): status / notes editable
+-- on a lead with a recorded request; the request is not
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}';
+do $$
+declare
+  ok  boolean;
+  err text;
+  n   integer;
+begin
+  if not public.is_admin() then raise exception 'FAIL: phase 15 admin block is not admin'; end if;
+  update public.leads set status = 'contacted', notes = 'Richiamato' where id = current_setting('rls.r_id')::uuid;
+  get diagnostics n = row_count;
+  if n <> 1 then raise exception 'FAIL: admin could not update status/notes of a lead with a callback request'; end if;
+  ok := false; begin update public.leads set callback_request_text = 'Testo modificato' where id = current_setting('rls.r_id')::uuid; exception when others then ok := sqlerrm = 'callback_request_immutable'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: admin changed the recorded callback text (got %)', err; end if;
+  ok := false; begin update public.leads set callback_requested_at = now() - interval '1 day' where id = current_setting('rls.r_id')::uuid; exception when others then ok := sqlerrm = 'callback_request_immutable'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: admin changed the recorded callback timestamp (got %)', err; end if;
+  raise notice 'ok: phase 15 callback request immutable (admin)';
+end $$;
+
 reset role;
 do $$ begin raise notice 'ALL RLS TESTS PASSED'; end $$;
 rollback;

@@ -7,6 +7,8 @@
  * the modal, inline errors) are checked. Snapshots taken on /grazie are excluded from the "no
  * callback" rules: the thank-you page is the ONLY place where the callback is mentioned (PRD §11).
  */
+import { CALLBACK_REQUEST_BUTTON_LABEL, CALLBACK_REQUEST_TEXT } from "../../src/lib/lead/callback-request";
+import { RESULTS_FOOTNOTE } from "../../src/components/results/ResultsView";
 import { MATRIX, type MatrixCase } from "./cases";
 import {
   checkThankYou,
@@ -54,6 +56,25 @@ interface Snapshot {
   text: string;
 }
 
+/**
+ * Allow-list (SPEC #28/#31): the ONLY call wording permitted before /grazie, per page. These exact
+ * strings (longest first, whitespace-normalised, case-insensitive) are stripped from the snapshot text before the
+ * forbidden-word check, so any other call wording on the same page still fails.
+ */
+const squash = (t: string) => t.replace(/\s+/g, " ").trim();
+const ALLOWED_CALL_COPY: Record<string, string[]> = {
+  "/attivazione": [CALLBACK_REQUEST_TEXT, CALLBACK_REQUEST_BUTTON_LABEL],
+  "/offerte": [RESULTS_FOOTNOTE],
+};
+function stripAllowed(s: Snapshot): string {
+  let text = squash(s.text);
+  // Case-insensitive: the button label is rendered with CSS uppercase, so innerText yields "RICHIAMAMI".
+  for (const allowed of ALLOWED_CALL_COPY[s.path] ?? []) {
+    text = text.replace(new RegExp(squash(allowed).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), " ");
+  }
+  return text;
+}
+
 async function record(page: Page): Promise<Snapshot[]> {
   const seen: Snapshot[] = [];
   const keys = new Set<string>();
@@ -96,11 +117,12 @@ function offenders(snapshots: Snapshot[], rules: Array<[string, RegExp]>, skipPa
   const out: string[] = [];
   for (const s of snapshots) {
     if (skipPath && s.path === skipPath) continue;
+    const text = rules === CALLBACK_WORDING ? stripAllowed(s) : s.text;
     for (const [name, re] of rules) {
-      const m = re.exec(s.text);
+      const m = re.exec(text);
       if (m) {
         const at = Math.max(0, m.index - 40);
-        out.push(`[${s.path}] "${name}" -> …${s.text.slice(at, m.index + 60).replace(/\s+/g, " ")}…`);
+        out.push(`[${s.path}] "${name}" -> …${text.slice(at, m.index + 60).replace(/\s+/g, " ")}…`);
       }
     }
   }
@@ -329,13 +351,20 @@ test.describe("copy and brand rules", () => {
     await page.waitForTimeout(300);
     await expect.poll(() => seen.length).toBeGreaterThan(1);
     expect(offenders(seen, BRAND_WORDING), "brand wording").toEqual([]);
-    // PRD §13.1: the privacy notice states the contact purpose; no call-centre / callback wording at all.
-    const strict = CALLBACK_WORDING.filter(([name]) => name !== "ricontatt*");
+    // PRD §13.1 + SPEC #29: the privacy notice states the contact purpose («Richiamami») and may name
+    // an external call centre as a recipient; the remaining call wording stays forbidden.
+    const strict = CALLBACK_WORDING.filter(
+      ([name]) => !["ricontatt*", "chiama*", "richiam*", "call center"].includes(name),
+    );
     expect(offenders(seen, strict), "call-centre wording on /privacy").toEqual([]);
     await page.goto("/privacy");
     await expect(page.getByRole("heading", { level: 2, name: /Cookie/ })).toBeVisible();
     const body = await page.locator("main").innerText();
     for (const needle of ["versus_lead", "versus_lead_step", "sessionStorage", "codice fiscale", "IBAN"]) {
+      expect(body, `privacy mentions ${needle}`).toContain(needle);
+    }
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    for (const needle of ["art. 6, par. 1, lett. f", "Vercel Inc.", "Supabase", "Resend", "EU-US Data Privacy Framework", "garanteprivacy.it", "info@sitexp.it"]) {
       expect(body, `privacy mentions ${needle}`).toContain(needle);
     }
     await page.goto("/");
@@ -358,6 +387,18 @@ test.describe("copy and brand rules", () => {
     ];
     expect(offenders(sample, CALLBACK_WORDING, "/grazie").length).toBe(2); // operatore, chiam*
     expect(offenders(sample, BRAND_WORDING).length).toBe(6);
+    // Allow-list: the exact permitted strings pass on their page, other call wording next to them fails.
+    const allowedOk: Snapshot[] = [
+      { path: "/attivazione", text: `${CALLBACK_REQUEST_TEXT}\n${CALLBACK_REQUEST_BUTTON_LABEL}` },
+      { path: "/offerte", text: RESULTS_FOOTNOTE },
+    ];
+    expect(offenders(allowedOk, CALLBACK_WORDING, "/grazie")).toEqual([]);
+    const allowedPlusExtra: Snapshot[] = [
+      { path: "/attivazione", text: `${CALLBACK_REQUEST_TEXT}\nTi chiameremo presto` },
+      { path: "/offerte", text: `${RESULTS_FOOTNOTE} Un operatore ti richiama.` },
+      { path: "/", text: CALLBACK_REQUEST_BUTTON_LABEL }, // allowed only on /attivazione
+    ];
+    expect(offenders(allowedPlusExtra, CALLBACK_WORDING, "/grazie").length).toBeGreaterThanOrEqual(4);
     await page.setContent('<div style="background:#f79009;width:50px;height:50px">x</div><p style="color:rgb(255,122,0)">y</p><div style="background:#0a8045">z</div>');
     expect((await orangeElements(page)).length).toBe(2);
   });

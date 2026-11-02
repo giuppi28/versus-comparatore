@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { RESULTS_FOOTNOTE } from "../src/components/results/ResultsView";
 import { MOCK_OFFERS } from "../src/lib/data/mock/data";
 import { annualFromMonthly, formatEuro, monthlyCost, monthlyFromAnnual, rankOffers } from "../src/lib/logic/pricing";
 
@@ -235,6 +236,8 @@ test.describe("results page", () => {
     const card = page.locator(`[data-testid="offer-card"][data-offer-id="${sentra.id}"]`);
     await expect(card).toHaveAttribute("data-monthly-cost", String(Math.round(cost * 100)));
     await expect(card.getByTestId("offer-monthly")).toHaveText(formatEuro(cost));
+    await expect(card.getByTestId("offer-annual")).toHaveText(`circa ${formatEuro(cost * 12)} all'anno, IVA esclusa`);
+    await expect(page.getByTestId("results-footnote")).toContainText(RESULTS_FOOTNOTE);
     await expect(card.getByTestId("offer-locked")).toHaveText("Bloccato 12 mesi");
     await expect(card.getByTestId("offer-cta")).toHaveText("Attiva online in 1 minuto");
     await card.getByTestId("offer-estimate-tooltip").click();
@@ -472,6 +475,7 @@ test.describe("results page", () => {
     const irenCard = page.locator(`[data-testid="offer-card"][data-offer-id="${iren.id}"]`);
     await expect(irenCard.getByTestId("offer-price")).toHaveText(/^PUN \+ 0,01\s€\/kWh$/);
     await expect(irenCard.getByTestId("offer-monthly")).toHaveText("Varia con il PUN");
+    await expect(irenCard.getByTestId("offer-annual")).toHaveCount(0);
     await expect(irenCard.getByTestId("offer-locked")).toHaveCount(0);
     await expect(irenCard).not.toContainText("Bloccato");
     await expect(irenCard.getByTestId("offer-iban-notice")).toHaveCount(0);

@@ -53,6 +53,8 @@ import {
  * - rpc create_lead(p_secret text, p_data jsonb)                  -> { id, token }
  * - rpc update_lead(p_secret text, p_token text, p_patch jsonb)   -> void
  * - rpc complete_lead(p_secret text, p_token text, p_data jsonb)  -> { id, token, notification_email }
+ *   (T15.1, migration 20261102100000: optional p_data key callback_request_text sets
+ *   leads.callback_requested_at = now() + leads.callback_request_text; error invalid_callback_request)
  *   (a single object or a one-row array are both accepted). p_secret = server-only
  *   lead API secret (env var, see @/lib/lead/secret; migration 20261015140000); the DB raises `invalid_secret`
  *   (SQLSTATE 28000, HTTP 403) before any other check when it does not match.
@@ -135,6 +137,16 @@ function fail(error: { message: string; code?: string }, ctx?: "supplier" | "off
   if (/invalid_document/i.test(error.message)) throw new InvalidLeadDocumentError("type");
   if (/document_not_found/i.test(error.message)) throw new LeadDocumentNotFoundError();
   throw new Error(error.message);
+}
+
+/** complete_lead before migration 20261102100000: the callback key is not a known lead field. */
+function isUnknownCallbackField(error: { message: string }): boolean {
+  return /invalid_field:\s*callback_request_text\b/i.test(error.message);
+}
+
+/** Vercel production deployment (read at call time so tests can stub it). */
+function isVercelProduction(): boolean {
+  return process.env.VERCEL_ENV === "production";
 }
 
 /** PostgREST / Postgres "relation does not exist" (migration not applied yet). */
@@ -231,6 +243,9 @@ function toLead(row: unknown): Lead {
     document_number: text(r.document_number),
     document_expiry: text(r.document_expiry),
     document_issuer: text(r.document_issuer),
+    // Migration 20261102100000 (T15.1); null before it is applied.
+    callback_requested_at: text(r.callback_requested_at),
+    callback_request_text: text(r.callback_request_text),
     chosen_offer_luce_snapshot: snapshot(r.chosen_offer_luce_snapshot),
     chosen_offer_gas_snapshot: snapshot(r.chosen_offer_gas_snapshot),
     current_supplier_luce_name: text(r.current_supplier_luce_name),
@@ -427,12 +442,31 @@ export function createSupabaseRepository(
       if (error) fail(error, "lead");
     },
 
-    async completeLead(token, data) {
-      const { data: res, error } = await client.rpc("complete_lead", {
-        p_secret: leadSecret(),
-        p_token: token,
-        p_data: data,
-      });
+    async completeLead(token, data, options) {
+      const secret = leadSecret();
+      const call = (p_data: Record<string, unknown>) =>
+        client.rpc("complete_lead", { p_secret: secret, p_token: token, p_data });
+      const callbackText = options?.callbackRequestText;
+      let { data: res, error } = await call(
+        callbackText === undefined ? data : { ...data, callback_request_text: callbackText },
+      );
+      // Before migration 20261102100000 the DB rejects the key (`invalid_field:
+      // callback_request_text`, whole call rolled back). Outside Vercel production (local,
+      // tests, previews sharing the DB while the migration is pending) retry without it and
+      // log loudly. In production the error propagates: the completion fails rather than
+      // silently losing the proof of the callback request (SPEC #28).
+      if (error && callbackText !== undefined && isUnknownCallbackField(error)) {
+        if (isVercelProduction()) {
+          console.error(
+            "[lead] complete_lead does not accept callback_request_text (migration 20261102100000 not applied): completion refused in production",
+          );
+        } else {
+          console.error(
+            "[lead] complete_lead does not accept callback_request_text (migration 20261102100000 not applied): callback request NOT recorded",
+          );
+          ({ data: res, error } = await call(data));
+        }
+      }
       if (error) fail(error, "lead");
       return toCompletion(res);
     },
@@ -834,6 +868,17 @@ export function createSupabaseRepository(
         .eq("price_verified", false);
       if (error) fail(error);
       return (data ?? []).map(toOfferWithSupplier);
+    },
+
+    async hasCallbackRequestColumns() {
+      // Admin session under RLS. limit(0) reads no row, but PostgREST/Postgres still
+      // reject the select when the column does not exist (migration not applied).
+      try {
+        const { error } = await client.from("leads").select("callback_requested_at").limit(0);
+        return !error;
+      } catch {
+        return false;
+      }
     },
 
     async getSettings() {

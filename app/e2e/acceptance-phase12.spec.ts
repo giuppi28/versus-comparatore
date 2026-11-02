@@ -5,7 +5,8 @@
  * PDF + removal, E privacy). Runs on desktop (1440) and mobile (390) projects.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { page1Data, VALID_POD } from "../src/lib/lead/test-fixtures";
+import { CALLBACK_REQUEST_TEXT } from "../src/lib/lead/callback-request";
+import { completeData, page1Data, VALID_POD } from "../src/lib/lead/test-fixtures";
 
 const FLOW_KEY = "versus.flow.v1";
 const STEP_KEY = "versus.activation.step.v1";
@@ -293,6 +294,11 @@ test.describe("D. admin lead detail", () => {
     await expect(page).toHaveURL(/\/admin\/leads\/[^/?]+$/);
     const leadUrl = page.url();
 
+    // In-progress lead: no callback request yet (T15.1).
+    await expect(page.getByTestId("lead-callback-request")).toContainText("Richiesta di richiamo");
+    await expect(page.getByTestId("lead-callback-request").locator("dd")).toHaveText("—");
+    // ("Non registrata" is only for completed leads without a record: unit-tested in labels.test.ts.)
+    await expect(page.getByTestId("lead-callback-not-recorded")).toHaveCount(0);
     await expect(page.getByTestId("group-pagamento")).toContainText("IT60 X054 2811 1010 0000 0123 456");
     await expect(page.getByTestId("group-documento")).toContainText("CA12345AB");
     await expect(page.getByTestId("lead-document")).toHaveCount(1);
@@ -313,6 +319,44 @@ test.describe("D. admin lead detail", () => {
     // File removal on lead delete is asserted at repository level (mock-documents.test.ts:86); here the lead is gone.
     const gone = await page.goto(leadUrl);
     expect(gone?.status()).toBe(404);
+  });
+});
+
+test.describe("T15.1 callback request (SPEC #28)", () => {
+  test("completed lead: admin detail shows the request date/time and the exact sentence", async ({ page, playwright }, testInfo) => {
+    const baseURL = String(testInfo.project.use.baseURL);
+    const phone = `339${String(Math.floor(Math.random() * 1e7)).padStart(7, "0")}`;
+    const ctx = await playwright.request.newContext({
+      baseURL, extraHTTPHeaders: { Origin: baseURL, "x-forwarded-for": `10.5.${rnd()}.${rnd()}` },
+    });
+    const created = await ctx.post("/api/lead", { data: { data: page1Data({ phone }) } });
+    expect(created.status(), await created.text()).toBeLessThan(300);
+    // A client-supplied text is refused: the recorded sentence is a server constant.
+    const forged = await ctx.post("/api/lead/complete", {
+      data: { data: completeData({ phone, callback_request_text: "Testo del client" } as never) },
+    });
+    expect(forged.status()).toBe(422);
+    const done = await ctx.post("/api/lead/complete", { data: { data: completeData({ phone }) } });
+    expect(done.status(), await done.text()).toBe(200);
+    await ctx.dispose();
+
+    await login(page);
+    await page.goto(`/admin/leads?tab=tutti&q=${phone}`);
+    await page.locator('[data-testid="lead-item"]:visible').first().getByRole("link").first().click();
+    await expect(page).toHaveURL(/\/admin\/leads\/[^/?]+$/);
+    const box = page.getByTestId("lead-callback-request");
+    await expect(box).toContainText("Richiesta di richiamo");
+    const today = new Intl.DateTimeFormat("it-IT", {
+      day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Rome",
+    }).format(new Date());
+    await expect(page.getByTestId("lead-callback-requested-at")).toHaveText(/^\d{2}\/\d{2}\/\d{4},? \d{2}:\d{2}$/);
+    await expect(page.getByTestId("lead-callback-requested-at")).toContainText(today);
+    await expect(page.getByTestId("lead-callback-request-text")).toHaveText(CALLBACK_REQUEST_TEXT);
+    await expect(page.getByTestId("lead-callback-not-recorded")).toHaveCount(0);
+
+    await page.getByTestId("lead-delete").click();
+    await page.getByTestId("confirm-dialog-confirm").click();
+    await expect(page).toHaveURL(/\/admin\/leads\?deleted=1$/);
   });
 });
 
