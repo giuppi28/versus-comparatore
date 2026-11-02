@@ -7,7 +7,7 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
 - [x] Supabase → Authentication → Sign In / Providers: disattiva "Allow new users to sign up" (verificato 2026-11-02: `disable_signup = true`, provider email attivo).
 - [~] Supabase → Authentication: "Leaked password protection" — non disponibile sul piano Free (solo Pro, verificato 2026-11-02). Compensare con password lunga e unica per Aldo + TOTP obbligatorio. L'avviso resta negli Advisors.
 - [x] Vercel → Settings → Cron Jobs: il keep-alive di Supabase è elencato e ha girato (verificato dai log Supabase: 2026-11-02 04:58 UTC, GET comuni 200).
-- [ ] Controllo del sito a 390 px e su desktop; cookie del lead `HttpOnly; Secure` (DevTools → Application → Cookies).
+- [x] Controllo del sito a 390 px e su desktop; cookie del lead `HttpOnly; Secure` (verificato 2026-11-02 in produzione: cookie invisibili a JS con lead attivo, `secure` attivo con NODE_ENV=production; home e /privacy a 375 px senza scroll orizzontale; risultati e passo B a 375 px verificati in locale).
 - [ ] Caricamento di una foto HEIC da iPhone Safari.
 - [ ] «Salva il nostro numero» dal telefono: apre la scheda contatto (su desktop scarica un file `.vcf`, è normale).
 - [ ] Stampa del PDF per Aldo.
@@ -37,7 +37,7 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
 - [ ] Numero reale per i richiami in `/admin/impostazioni`.
 - [ ] `/admin/impostazioni` mostra "Pronto per la pubblicazione".
 - [ ] Lead di prova finale sul dominio: email ad Aldo arrivata, richiamo registrato.
-- [ ] Pulizia lead di prova: `859362c5-3670-427c-98e1-0cef27aa95c5`, `3e987e81-8a3d-49b0-a10c-f0c554ee29fe`, `b361d409-e2c6-4099-a063-1471444a2f05`, quelli `TEST-SECURITY` e quelli di prova in produzione.
+- [ ] Pulizia lead di prova: `859362c5-3670-427c-98e1-0cef27aa95c5`, `3e987e81-8a3d-49b0-a10c-f0c554ee29fe`, `b361d409-e2c6-4099-a063-1471444a2f05`, `c6bde4d1-1dd7-4622-93dd-33856e6c41d4` (TEST-SECURITY), quelli `TEST-SECURITY` e quelli di prova in produzione.
 - [ ] Supabase → Advisors → Security: solo gli avvisi già noti (funzioni SECURITY DEFINER dei lead, `is_admin`).
 
 ## D. Decisioni tue
