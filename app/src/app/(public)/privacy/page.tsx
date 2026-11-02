@@ -225,7 +225,7 @@ export default function PrivacyPage() {
 
             <Section title="10. Conferimento dei dati">
               <p>
-                Nome, cognome, telefono, email, indirizzo e codici POD/PDR sono necessari per
+                Nome, cognome, telefono, codice fiscale, indirizzo e codici POD/PDR sono necessari per
                 confrontare e attivare l&apos;offerta: senza, la richiesta non può essere completata.
                 L&apos;IBAN è necessario solo per le offerte che lo indicano. Il documento
                 d&apos;identità e la bolletta sono facoltativi.
