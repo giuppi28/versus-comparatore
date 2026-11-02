@@ -4,6 +4,7 @@ Updated: 2026-11-02 · Phase: 15 — legal compliance (callback request, footer/
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
+**Giuseppe 2026-11-02 (before /clear):** wants the orchestrator to do everything incl. publishing `dev` to GitHub, but the project bash-guard hook blocks that command for agents, so Giuseppe runs it himself (or changes the hook). APPLY 20261102100000: OK given ("Sì, applicala", recorded in QUESTIONS.md) — the claude.ai reviewer applies it, then merge.
 Phase 15 complete (T15.1–T15.4). Giuseppe: OK to the reviewer for `## APPLY: 20261102100000_lead_callback_request.sql` (QUESTIONS.md) — hard precondition before merging `dev` into `main`; browser check of "Richiamami" + sentence (step B), annual line + footnote (results), /privacy, at 1440/390; then push dev. Aldo's data still needed for footer (`src/lib/legal/company.ts`) and /privacy placeholders. T13.11 stays blocked (POD codes).
 
 ## Status
