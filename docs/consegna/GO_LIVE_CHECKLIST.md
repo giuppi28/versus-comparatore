@@ -9,7 +9,7 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
 - [x] Vercel → Settings → Cron Jobs: il keep-alive di Supabase è elencato e ha girato (verificato dai log Supabase: 2026-11-02 04:58 UTC, GET comuni 200).
 - [x] Controllo del sito a 390 px e su desktop; cookie del lead `HttpOnly; Secure` (verificato 2026-11-02 in produzione: cookie invisibili a JS con lead attivo, `secure` attivo con NODE_ENV=production; home e /privacy a 375 px senza scroll orizzontale; risultati e passo B a 375 px verificati in locale).
 - [x] Caricamento di una foto HEIC da iPhone Safari (verificato 2026-11-03: lead `29760ea3-c0ac-4d7d-8927-ea985bbd65aa`, documento salvato come `.jpg` `image/jpeg`, 409 KB; i dati del documento non vengono letti dalla foto, è previsto: solo la bolletta PDF viene letta).
-- [ ] «Salva il nostro numero» dal telefono: apre la scheda contatto (su desktop scarica un file `.vcf`, è normale).
+- [x] «Salva il nostro numero» dal telefono: apre la scheda contatto (su desktop scarica un file `.vcf`, è normale) (verificato da Giuseppe 2026-11-03).
 - [ ] Stampa del PDF per Aldo.
 
 ## B. Durante l'incontro (insieme ad Aldo, pagina 5 del PDF)
