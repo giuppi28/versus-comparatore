@@ -364,7 +364,7 @@ test.describe("copy and brand rules", () => {
       expect(body, `privacy mentions ${needle}`).toContain(needle);
     }
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-    for (const needle of ["art. 6, par. 1, lett. f", "Vercel Inc.", "Supabase", "Resend", "EU-US Data Privacy Framework", "garanteprivacy.it", "info@sitexp.it"]) {
+    for (const needle of ["art. 6, par. 1, lett. f", "Vercel Inc.", "Supabase", "Resend", "EU-US Data Privacy Framework", "garanteprivacy.it", "info@sitexp.it", "KEHILA S.r.l.s.", "info@versuscomparatorelucegas.it"]) {
       expect(body, `privacy mentions ${needle}`).toContain(needle);
     }
     await page.goto("/");
@@ -374,9 +374,8 @@ test.describe("copy and brand rules", () => {
     await expectNoOrange(page, "privacy", orange);
     expect(orange).toEqual([]);
     const privacy = seen.filter((s) => s.path === "/privacy").map((s) => s.text).join("\n");
-    // Placeholders such as "[Indirizzo email di contatto privacy]" must be replaced before go-live.
-    const placeholders = privacy.match(/\[[^\]]{3,}\]/g) ?? [];
-    test.info().annotations.push({ type: "privacy placeholders to replace before go-live", description: JSON.stringify([...new Set(placeholders)]) });
+    // No bracketed placeholder may remain (T16.1: controller data filled in).
+    expect(privacy.match(/\[[^\]]{3,}\]/g) ?? [], "privacy placeholders").toEqual([]);
   });
 
 

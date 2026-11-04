@@ -123,17 +123,6 @@ export interface ManualCheck {
   doneNote?: string;
 }
 
-/** Placeholders still to be replaced in the /privacy page (owned elsewhere; kept in sync by hand). */
-export const PRIVACY_PLACEHOLDERS = [
-  "[Ragione sociale del titolare]",
-  "[Indirizzo completo del titolare]",
-  "[Partita IVA del titolare]",
-  "[Indirizzo email di contatto privacy]",
-  "[Call center esterno: nome o \"nessuno\"]",
-  "[Periodo di conservazione dei dati]",
-  "[Data di aggiornamento]",
-] as const;
-
 export const MANUAL_CHECKS: readonly ManualCheck[] = [
   {
     id: "manual-signup-disabled",
@@ -146,11 +135,13 @@ export const MANUAL_CHECKS: readonly ManualCheck[] = [
     label: "Account amministratore di Aldo creato e inserito in public.admins",
     detail:
       "Authentication → Users → Add user (email di Aldo, Auto Confirm), poi nel SQL editor: insert into public.admins (user_id) select id from auth.users where email = '<email di Aldo>';",
+    doneNote: "Account di Aldo creato da Giuseppe (04/11/2026).",
   },
   {
     id: "manual-privacy-placeholders",
     label: "Informativa privacy: sostituire i segnaposto con i dati del titolare",
-    detail: `Nella pagina /privacy sostituire: ${PRIVACY_PLACEHOLDERS.join(", ")}.`,
+    detail: "Nella pagina /privacy i dati del titolare (KEHILA S.r.l.s.) provengono da src/lib/legal/company.ts.",
+    doneNote: "Completato il 04/11/2026: dati di KEHILA S.r.l.s. inseriti.",
   },
   {
     id: "manual-bootstrap-dropped",

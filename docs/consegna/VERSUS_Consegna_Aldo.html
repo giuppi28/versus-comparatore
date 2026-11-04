@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>VERSUS — Documento di consegna</title>
+<style>
+  @page { size: A4; margin: 18mm 18mm 20mm; }
+  :root { --brand: #0a8045; --brand-dark: #0a6a3a; --brand-50: #effaf4; --ink: #14181f; --muted: #555e6c; --line: #dfe3e8; }
+  * { box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  h1 { font-size: 30pt; line-height: 1.1; margin: 0 0 8mm; letter-spacing: -0.5px; }
+  h2 { font-size: 17pt; margin: 0 0 2mm; color: var(--ink); }
+  .kicker { color: var(--brand); font-weight: 700; font-size: 9pt; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2mm; }
+  .rule { height: 3px; width: 22mm; background: var(--brand); margin: 3mm 0 6mm; border-radius: 2px; }
+  p { margin: 0 0 3mm; }
+  ol, ul { margin: 0 0 3mm; padding-left: 5mm; }
+  li { margin-bottom: 2.2mm; }
+  b { color: var(--ink); }
+  .muted { color: var(--muted); }
+  code { font-family: Menlo, monospace; font-size: 9.5pt; background: var(--brand-50); padding: 0 1.2mm; border-radius: 1mm; }
+  .card { border: 1px solid var(--line); border-radius: 4mm; padding: 4mm 5mm; margin-bottom: 4mm; }
+  .card h3 { margin: 0 0 1.5mm; font-size: 11.5pt; color: var(--brand-dark); }
+  .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+  /* cover */
+  .cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .cover img { width: 70mm; }
+  .cover .band { background: var(--brand-50); border-left: 4px solid var(--brand); border-radius: 3mm; padding: 6mm 7mm; }
+  .cover .title { font-size: 34pt; font-weight: 800; line-height: 1.05; margin: 0 0 4mm; }
+  .cover .sub { font-size: 14pt; color: var(--brand-dark); margin: 0; }
+  .cover .foot { color: var(--muted); font-size: 10pt; }
+  /* checklist */
+  .check { list-style: none; padding: 0; }
+  .check li { display: flex; gap: 3.5mm; align-items: flex-start; padding: 2.4mm 0; border-bottom: 1px solid var(--line); margin: 0; }
+  .box { flex: 0 0 4.6mm; height: 4.6mm; border: 1.6px solid var(--brand); border-radius: 1mm; margin-top: 0.6mm; }
+  .notes { margin-top: 5mm; }
+  .line { border-bottom: 1px solid #b9c0c9; height: 8mm; }
+  .sign { display: flex; gap: 10mm; margin-top: 8mm; }
+  .sign div { flex: 1; border-top: 1px solid var(--ink); padding-top: 1.5mm; font-size: 9pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- 1. Cover -->
+<section class="page cover">
+  <img src="../../app/public/brand/versus_logo_nero.svg" alt="VERSUS">
+  <div class="band">
+    <p class="title">Comparatore<br>luce e gas</p>
+    <p class="sub">Documento di consegna</p>
+  </div>
+  <p class="foot">Preparato da Giuseppe Pappalardo — SiteXP<br>Novembre 2026</p>
+</section>
+
+<!-- 2. Customer flow -->
+<section class="page">
+  <div class="kicker">Il sito</div>
+  <h2>Come funziona per il cliente</h2>
+  <div class="rule"></div>
+
+  <div class="card"><h3>1. Confronto</h3>
+    <p>Il cliente sceglie Luce, Gas o Luce + Gas, Casa o Partita IVA e il tipo di richiesta (cambio fornitore, subentro, voltura, primo allaccio). Il sito stima i consumi dalle sue risposte, oppure usa quelli che inserisce lui.</p></div>
+
+  <div class="card"><h3>2. Risultati</h3>
+    <p>Prima le offerte «In evidenza» scelte da te, poi quelle a prezzo fisso dalla più economica, poi quelle a prezzo variabile (PUN). Per ogni offerta: spesa mensile e stima annua, IVA esclusa. Le offerte del fornitore attuale del cliente non vengono mostrate. In fondo, una nota spiega come sono ordinate le offerte e che VERSUS opera come agente.</p></div>
+
+  <div class="card"><h3>3. Attivazione online in due passaggi</h3>
+    <p><b>Passaggio A:</b> dati dell'intestatario. <b>Passaggio B:</b> indirizzo, POD/PDR, IBAN, documento d'identità e bolletta in PDF.</p>
+    <p>IBAN e documento sono facoltativi, salvo le offerte che richiedono l'IBAN. Dalla bolletta il sito legge da solo POD, PDR e codice fiscale.</p></div>
+
+  <div class="card"><h3>4. «Richiamami»</h3>
+    <p>Il cliente chiude la richiesta premendo «Richiamami». Il sito registra data, ora e frase accettata: è la prova che è stato il cliente a chiedere di essere chiamato (art. 51 del Codice del consumo).</p></div>
+
+  <div class="card"><h3>5. Pagina di ringraziamento</h3>
+    <p>Mostra il numero da cui lo chiamerà il consulente e il pulsante «Salva il nostro numero».</p></div>
+</section>
+
+<!-- 3. Admin area -->
+<section class="page">
+  <div class="kicker">Area riservata</div>
+  <h2>La tua area riservata (<code>/admin</code>)</h2>
+  <div class="rule"></div>
+
+  <div class="card"><h3>Accesso</h3>
+    <p>Email, password e codice dell'app di autenticazione sul telefono.</p></div>
+
+  <div class="card"><h3>Lead</h3>
+    <ul>
+      <li>Tutte le richieste, completate e abbandonate.</li>
+      <li>Stato (nuovo, contattato, in lavorazione, chiuso) e note interne.</li>
+      <li>Offerta scelta, IBAN, documenti, bolletta e richiesta di richiamo (non modificabile).</li>
+      <li>Puoi cancellare un lead: si cancellano anche i suoi file.</li>
+    </ul></div>
+
+  <div class="card"><h3>Offerte</h3>
+    <ul>
+      <li>Crei, modifichi, attivi o disattivi ed elimini le offerte.</li>
+      <li>Prezzo fisso o variabile (PUN + spread), quota fissa mensile o annua, mesi di prezzo bloccato, vantaggi, IBAN obbligatorio, «In evidenza» (casa, business o entrambi).</li>
+      <li>Ogni offerta attiva deve avere «Prezzo verificato» spuntato.</li>
+    </ul></div>
+
+  <div class="card"><h3>Fornitori</h3>
+    <p>Nome, logo, attivo o disattivo.</p></div>
+
+  <div class="card"><h3>Impostazioni</h3>
+    <ul>
+      <li>Email su cui ricevi i nuovi lead e pulsante «Invia email di prova».</li>
+      <li>Numero per i richiami.</li>
+      <li>Checklist che indica quando il sito è pronto.</li>
+    </ul></div>
+
+  <div class="card"><h3>Email</h3>
+    <p>Ricevi un'email per ogni richiesta completata.</p></div>
+</section>
+
+<!-- 4. What we need -->
+<section class="page">
+  <div class="kicker">Da preparare</div>
+  <h2>Cosa ci serve da te</h2>
+  <div class="rule"></div>
+
+  <div class="card"><h3>Dati aziendali</h3>
+    <p>Obbligatori nel footer e nella privacy: ragione sociale, sede legale, Partita IVA, numero REA. Se sei una S.r.l.: capitale sociale versato, ufficio del registro imprese e, se è il caso, socio unico.</p></div>
+
+  <div class="card"><h3>Privacy</h3>
+    <ul>
+      <li>Un'email per le richieste privacy.</li>
+      <li>Per quanto tempo conservare i dati dei clienti (anche IBAN e documenti).</li>
+      <li>Se usi un call center esterno, il suo nome.</li>
+    </ul></div>
+
+  <div class="card"><h3>Contatti operativi</h3>
+    <p>L'email su cui ricevere i lead e il numero da cui chiamerà il consulente.</p></div>
+
+  <div class="card"><h3>Codici dei distributori</h3>
+    <p>Conferma dei prefissi POD IT002 (areti), IT011 (inrete), IT012 (unareti), IT020 (ireti).</p></div>
+
+  <div class="card"><h3>Offerte</h3>
+    <p>Controllo finale di prezzi e condizioni di tutte le offerte attive.</p></div>
+</section>
+
+<!-- 5. Checklist together -->
+<section class="page">
+  <div class="kicker">Da fare insieme</div>
+  <h2>Checklist dell'incontro</h2>
+  <div class="rule"></div>
+
+  <ul class="check">
+    <li><span class="box"></span><span><b>Acquistare il dominio:</b> scegliere il nome (es. <code>versus-energia.it</code>) e registrarlo intestato a te o alla tua società.</span></li>
+    <li><span class="box"></span><span>Creare il tuo account admin e attivare il codice di accesso sull'app del telefono (Google Authenticator o simile).</span></li>
+    <li><span class="box"></span><span>Inserire nelle Impostazioni l'email per i lead e il numero per i richiami.</span></li>
+    <li><span class="box"></span><span>Inviare l'email di prova e controllare che arrivi.</span></li>
+    <li><span class="box"></span><span>Consegnare i dati aziendali e privacy (pagina 4).</span></li>
+    <li><span class="box"></span><span>Decidere il periodo di conservazione dei dati.</span></li>
+    <li><span class="box"></span><span>Indicare il call center esterno, oppure «nessuno».</span></li>
+    <li><span class="box"></span><span>Confermare i codici dei distributori.</span></li>
+    <li><span class="box"></span><span>Rivedere insieme le offerte attive, spuntare «Prezzo verificato» e scegliere quelle «In evidenza».</span></li>
+    <li><span class="box"></span><span>Decidere il piano di hosting: il piano gratuito di Vercel non è consentito per uso commerciale, il piano Pro sì.</span></li>
+    <li><span class="box"></span><span>Fare insieme una richiesta di prova completa dal telefono e vederla arrivare nell'area admin e per email.</span></li>
+    <li><span class="box"></span><span>Salvare sul tuo telefono il numero VERSUS dalla pagina di ringraziamento.</span></li>
+  </ul>
+
+  <div class="notes">
+    <p class="muted">Note</p>
+    <div class="line"></div><div class="line"></div><div class="line"></div>
+  </div>
+
+  <div class="sign">
+    <div>Data e firma — Aldo</div>
+    <div>Data e firma — Giuseppe Pappalardo</div>
+  </div>
+</section>
+
+</body>
+</html>
