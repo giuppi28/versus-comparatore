@@ -13,7 +13,7 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
 - [x] Stampa del PDF per Aldo (2026-11-03; PDF allineato al sorgente .html).
 
 ## B. Durante l'incontro (insieme ad Aldo, pagina 5 del PDF)
-- [ ] Dominio acquistato: annota registrar e accesso al pannello DNS.
+- [x] Dominio acquistato su IONOS (2026-11-04).
 - [ ] Account di Aldo creato in Supabase → Authentication → Users, poi nell'SQL Editor:
   ```sql
   insert into public.admins (user_id) select id from auth.users where email = '<email di Aldo>';
@@ -25,7 +25,7 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
 
 ## C. Dopo l'incontro
 - [ ] Dati di Aldo a Claude: inserimento in `app/src/lib/legal/company.ts` e `/privacy` (nessun testo tra parentesi quadre deve restare); T13.11 chiuso con i codici POD.
-- [ ] Dominio:
+- [ ] Dominio (passo passo: `docs/consegna/DOMINIO_IONOS_VERCEL.md`):
   - [ ] Vercel → Settings → Domains: aggiungi il dominio, crea i record DNS dal registrar, attendi "Valid Configuration".
   - [ ] Vercel: `NEXT_PUBLIC_SITE_URL` = `https://<dominio>` e nuovo deploy.
   - [ ] Supabase → Authentication → URL Configuration: Site URL e Redirect URLs sul dominio.
