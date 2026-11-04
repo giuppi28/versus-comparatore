@@ -36,7 +36,7 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
   - [x] `/admin/impostazioni` → "Invia email di prova": arriva (Giuseppe, 2026-11-04).
 - [x] Email di notifica = `info@versuscomparatorelucegas.it`, sia in `/admin/impostazioni` sia in `NOTIFICATION_EMAIL` su Vercel.
 - [ ] Numero reale per i richiami in `/admin/impostazioni`: lo inserisce Aldo. **Da fare prima di portare traffico al sito:** oggi è `+39 095 123 4567`, visibile ai clienti, e la checklist del gestionale non lo controlla.
-- [ ] `/admin/impostazioni` mostra "Pronto per la pubblicazione" (da guardare sulla pagina: i dati letti dal database il 2026-11-04 sono in regola, ma la pagina non è stata vista da Claude).
+- [x] `/admin/impostazioni` mostra "Pronto per la pubblicazione" (confermato da Giuseppe, 2026-11-04).
 - [x] Lead di prova finale sul dominio: email arrivata su info@ (Giuseppe), richiamo registrato (`8a9589a7-b946-4b5b-a50d-70d89aacf0e7`, 2026-11-04).
 - [x] Pulizia lead di prova: lead `8a9589a7-b946-4b5b-a50d-70d89aacf0e7` eliminato da Giuseppe (2026-11-04); nel database 0 lead e 0 file.
 - [x] Supabase → Advisors → Security: solo gli avvisi già noti (funzioni SECURITY DEFINER dei lead, `is_admin`, `app_secrets`, password compromesse) (2026-11-04).
