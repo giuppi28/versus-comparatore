@@ -7,8 +7,8 @@ Storico: dominio nuovo, nessuna copia su Wayback Machine → **nessun vecchio UR
 Scelta consigliata per la SEO: **un solo indirizzo canonico `https://versuscomparatorelucegas.it`** (senza www). `www.versuscomparatorelucegas.it` e `versus-comparatore.vercel.app` rimandano lì con redirect permanente.
 
 ## 1. Vercel — aggiungi il dominio (prima di toccare IONOS)
-- [ ] Vercel → progetto `versus-comparatore` → Settings → Domains → Add → `versuscomparatorelucegas.it`, ambiente **Production**.
-- [ ] Alla domanda sul www scegli **"Add www.versuscomparatorelucegas.it and redirect it to versuscomparatorelucegas.it"** (redirect 308).
+- [x] Vercel → progetto `versus-comparatore` → Settings → Domains → Add → `versuscomparatorelucegas.it`, ambiente **Production**. (fatto il 2026-11-04 da Claude Code via Vercel MCP)
+- [x] `www.versuscomparatorelucegas.it` aggiunto con redirect 308 verso `versuscomparatorelucegas.it` (2026-11-04).
 - [ ] Valori raccomandati da Vercel per questo progetto (letti il 2026-11-04; se la schermata di Vercel mostra altro, vale Vercel):
   - `A` `@` → `216.198.79.1` **e** `A` `@` → `64.29.17.1` (due record);
   - `CNAME` `www` → `43d622a61e774c70.vercel-dns-017.com`.
