@@ -36,8 +36,8 @@ Fatto da Giuseppe il 2026-11-04 (verificato 19:29 su tutti e 4 i nameserver IONO
 - [ ] TTL: lascia quello di IONOS (1 ora). La propagazione richiede da pochi minuti a qualche ora.
 
 ## 3. Verifica
-- [ ] Vercel → Domains: `versuscomparatorelucegas.it` e `www.versuscomparatorelucegas.it` su **Valid Configuration**, certificato emesso.
-- [ ] `https://versuscomparatorelucegas.it` apre il sito; `http://versuscomparatorelucegas.it`, `https://www.versuscomparatorelucegas.it` e `http://www.versuscomparatorelucegas.it` finiscono su `https://versuscomparatorelucegas.it` con **un solo** redirect 308.
+- [x] Vercel → Domains: `versuscomparatorelucegas.it` e `www.versuscomparatorelucegas.it` su **Valid Configuration**, certificato emesso (2026-11-04: emissione automatica non partita dopo 10 min, richiesta a mano via Vercel MCP `issue_cert` → Let's Encrypt, rinnovo automatico).
+- [x] `https://versuscomparatorelucegas.it` → 200 (HSTS attivo). `http://` apex, `https://www` e `https://www/<percorso>?query` → un solo 308 verso `https://versuscomparatorelucegas.it/<percorso>?query`. `http://www` fa due salti (→ `https://www` → apex): comportamento standard di Vercel, accettabile.
 - [x] Da terminale: `dig +short versuscomparatorelucegas.it A` = `216.198.79.1` e `64.29.17.1`, `dig +short versuscomparatorelucegas.it AAAA` = vuoto, `dig +short www.versuscomparatorelucegas.it CNAME` = `43d622a61e774c70.vercel-dns-017.com.`
 
 ## 4. Aggiornamenti dopo il dominio
