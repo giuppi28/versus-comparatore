@@ -134,7 +134,7 @@ test.describe("admin settings and go-live checklist", () => {
       await expect(check).toHaveAttribute("data-ok", "false");
       // Mock data source never counts as ready.
       await expect(page.locator('[data-check="data-source"]')).toHaveAttribute("data-ok", "false");
-      await expect(page.locator('[data-check="company-data"]')).toHaveAttribute("data-ok", "false");
+      await expect(page.locator('[data-check="company-data"]')).toHaveAttribute("data-ok", "true");
       // Mock leads always have the callback request columns (T15.1).
       await expect(page.locator('[data-check="callback-migration"]')).toHaveAttribute("data-ok", "true");
       await expect(page.locator('[data-check="callback-migration"]')).toContainText("Migrazione richiesta di richiamo applicata");
@@ -142,15 +142,15 @@ test.describe("admin settings and go-live checklist", () => {
       const manual = page.getByTestId("manual-checks");
       await expect(manual.getByRole("heading", { name: "Verifiche manuali" })).toBeVisible();
       await expect(manual.locator("[data-manual]")).toHaveCount(4);
-      await expect(manual.getByText("Da verificare manualmente")).toHaveCount(3);
-      await expect(manual.locator('[data-manual]:not([data-done])')).toHaveCount(3);
+      await expect(manual.getByText("Da verificare manualmente")).toHaveCount(1);
+      await expect(manual.locator('[data-manual]:not([data-done])')).toHaveCount(1);
       await expect(manual).toContainText("Registrazione pubblica disattivata in Supabase Auth");
       await expect(manual).toContainText("Authentication → Sign In / Providers");
       await expect(manual).toContainText("Allow new users to sign up");
       await expect(manual).toContainText("Account amministratore di Aldo creato e inserito in public.admins");
       await expect(manual).toContainText("Informativa privacy: sostituire i segnaposto");
-      await expect(manual).toContainText("[Ragione sociale del titolare]");
-      await expect(manual).toContainText("[Data di aggiornamento]");
+      await expect(manual).toContainText("Completato il 04/11/2026: dati di KEHILA S.r.l.s. inseriti.");
+      await expect(manual).toContainText("Account di Aldo creato da Giuseppe (04/11/2026).");
       const done = page.locator('[data-check="manual-bootstrap-dropped"]');
       await expect(done).toHaveAttribute("data-done", "true");
       await expect(done).toContainText("public.bootstrap_load_comuni");

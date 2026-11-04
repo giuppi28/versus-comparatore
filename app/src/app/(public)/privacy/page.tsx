@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/brand";
+import { COMPANY } from "@/lib/legal/company";
 
 export const metadata: Metadata = {
   title: "Informativa sulla privacy | VERSUS",
@@ -51,7 +52,17 @@ const RIGHTS = [
   "proporre reclamo al Garante per la protezione dei dati personali (garanteprivacy.it).",
 ];
 
-/** Privacy notice (PRD §13.1). Facts still pending from the client are shown as bracketed placeholders. */
+const LINK_CLASS = "font-medium text-brand-700 underline underline-offset-4 hover:text-brand-600";
+
+function PrivacyEmail() {
+  return (
+    <a href={`mailto:${COMPANY.email}`} className={LINK_CLASS}>
+      {COMPANY.email}
+    </a>
+  );
+}
+
+/** Privacy notice (PRD §13.1). Controller data comes from `COMPANY` (single source). */
 export default function PrivacyPage() {
   return (
     <>
@@ -80,9 +91,9 @@ export default function PrivacyPage() {
           <article className="flex flex-col gap-8 rounded-card border border-line bg-surface p-5 text-base leading-relaxed text-ink sm:p-8">
             <Section title="1. Titolare del trattamento">
               <p>
-                Il titolare del trattamento è [Ragione sociale del titolare], con sede in [Indirizzo
-                completo del titolare], P.IVA [Partita IVA del titolare]. Per qualsiasi richiesta
-                puoi scrivere a [Indirizzo email di contatto privacy].
+                Il titolare del trattamento è {COMPANY.ragioneSociale}, con sede legale in{" "}
+                {COMPANY.sedeLegale}, P.IVA {COMPANY.partitaIva}. Per qualsiasi richiesta puoi
+                scrivere a <PrivacyEmail />.
               </p>
             </Section>
 
@@ -128,7 +139,10 @@ export default function PrivacyPage() {
                   comunicati al fornitore che hai selezionato. I file caricati sono cancellati
                   insieme alla tua richiesta.
                 </p>
-                <p>Periodo di conservazione: [Periodo di conservazione dei dati].</p>
+                <p>
+                  Periodo di conservazione: fino alla conclusione della richiesta di attivazione e, se
+                  l&apos;offerta viene attivata, 10 anni dall&apos;attivazione (vedi punto 7).
+                </p>
               </div>
             </Section>
 
@@ -166,11 +180,11 @@ export default function PrivacyPage() {
                   archiviazione dei file, server a Francoforte, Germania) e Resend (invio
                   dell&apos;email di notifica della richiesta al titolare, Stati Uniti);
                 </li>
-                <li>
-                  eventuale call center esterno incaricato dal titolare: [Call center esterno: nome o
-                  &quot;nessuno&quot;].
-                </li>
               </ul>
+              <p>
+                Il ricontatto telefonico che richiedi con «Richiamami» è effettuato direttamente dal
+                titolare, senza call center esterni.
+              </p>
               <p>I dati non sono diffusi.</p>
             </Section>
 
@@ -185,9 +199,10 @@ export default function PrivacyPage() {
 
             <Section title="7. Conservazione">
               <p>
-                Conserviamo i tuoi dati per il tempo strettamente necessario alle finalità indicate e,
-                in ogni caso, per un periodo non superiore a [Periodo di conservazione dei dati].
-                Decorso tale termine i dati vengono cancellati o resi anonimi.
+                Conserviamo i tuoi dati fino alla conclusione della richiesta di attivazione. Se
+                l&apos;offerta viene attivata, li conserviamo per 10 anni dalla data di attivazione, per
+                adempiere agli obblighi civilistici e fiscali (art. 2220 c.c.). Decorso tale termine i
+                dati vengono cancellati o resi anonimi.
               </p>
             </Section>
 
@@ -218,8 +233,8 @@ export default function PrivacyPage() {
                 ))}
               </ul>
               <p>
-                Per esercitare i tuoi diritti scrivi a [Indirizzo email di contatto privacy] oppure a
-                [Indirizzo completo del titolare].
+                Per esercitare i tuoi diritti scrivi a <PrivacyEmail /> oppure a {COMPANY.ragioneSociale},{" "}
+                {COMPANY.sedeLegale}.
               </p>
             </Section>
 
@@ -232,7 +247,7 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            <p className="text-sm text-ink-muted">Ultimo aggiornamento: [Data di aggiornamento].</p>
+            <p className="text-sm text-ink-muted">Ultimo aggiornamento: 4 novembre 2026.</p>
           </article>
 
           <div className="py-8">

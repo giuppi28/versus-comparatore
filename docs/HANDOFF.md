@@ -4,6 +4,8 @@ Updated: 2026-11-04 · Phase: 16 — company legal data, Resend on domain, final
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
+**2026-11-04 — T16.1 + T16.2 done** (KEHILA S.r.l.s. legal data in footer and /privacy, SPEC #33). **Resume at T16.3**: Giuseppe follows `docs/consegna/DOMINIO_IONOS_VERCEL.md` §4–§5 (Resend on the apex domain, Vercel env, Supabase URLs), then T16.4–T16.7. Commit not pushed yet (Giuseppe pushes `dev`).
+
 **2026-11-04 (before /clear) — RESUME HERE: Phase 16 in `docs/TASKS.md` (T16.1–T16.7).** Giuseppe will paste/attach the company **visura camerale** and say "continua": the goal is to finish everything (legal footer + /privacy from the visura and the legal doc, Resend on `versuscomparatorelucegas.it` with sender/notifications `info@versuscomparatorelucegas.it`, admin settings, final lead on the domain with the email arriving). Giuseppe helps with Resend/IONOS/Vercel steps when asked (secrets only in Vercel, never in chat). First message of the session: one short question list for what the visura lacks (see Phase 16 header). Hard limits unchanged: no push/merge/deploy, no DB writes or deletes by Claude (the auto-mode classifier also refuses `apply_migration`: Giuseppe uses the SQL editor), `.env*` untouched. Local `.env.local` has no `LEAD_API_SECRET`, so real-DB lead tests happen on the preview/production, not locally. Uncommitted domain-doc edits from the 2026-11-04 domain session were committed with this handoff.
 SEO/GEO pass (below) moves after Phase 16.
 

@@ -45,12 +45,23 @@ Fatto da Giuseppe il 2026-11-04 (verificato 19:29 su tutti e 4 i nameserver IONO
 - [ ] Supabase → Authentication → URL Configuration: Site URL = `https://versuscomparatorelucegas.it`; Redirect URLs = `https://versuscomparatorelucegas.it/**` (tieni anche `https://versus-comparatore.vercel.app/**` finché il redirect del punto 6 non è attivo).
 - [ ] `/admin/login` sul nuovo dominio: login + TOTP funzionano.
 
-## 5. Resend (email del nuovo lead ad Aldo) su sottodominio
-- [ ] resend.com → Domains → Add → `mail.versuscomparatorelucegas.it`, regione **EU (Ireland)**.
-- [ ] Su IONOS aggiungi **esattamente** i record che Resend mostra (di solito: `TXT resend._domainkey.mail`, `MX send.mail`, `TXT send.mail` con `v=spf1 include:amazonses.com ~all`). Non tocca l'SPF della posta IONOS sul dominio principale.
-- [ ] Resend: dominio **Verified** → API key "Sending access" limitata a quel dominio.
-- [ ] Vercel: `RESEND_API_KEY`, `RESEND_FROM` = `VERSUS <notifiche@mail.versuscomparatorelucegas.it>` → Redeploy.
-- [ ] `/admin/impostazioni` → "Invia email di prova": arriva (controlla anche lo spam).
+## 5. Resend (email del nuovo lead ad Aldo) sul dominio principale
+Decisione 2026-11-04 (T16.3): mittente e destinatario = `info@versuscomparatorelucegas.it`, dominio principale (non più il sottodominio `mail.`). Stato DNS prima di iniziare (dig 2026-11-04): MX `mx00`/`mx01.ionos.it`, SPF `v=spf1 include:_spf-eu.ionos.com ~all`, DMARC `p=none` (IONOS) — **restano tutti come sono**.
+- [ ] resend.com → **Domains** → **Add Domain** → `versuscomparatorelucegas.it`, regione **Ireland (eu-west-1)**.
+- [ ] Resend mostra 3 record. Su IONOS (Domini e SSL → `versuscomparatorelucegas.it` → DNS → Aggiungi record) inseriscili **copiando i valori da Resend**; in IONOS il campo "Nome host" va scritto **senza** il dominio finale:
+  - `TXT` · host `resend._domainkey` · valore `p=MIGf…` (DKIM, lunghissimo: copialo intero)
+  - `MX` · host `send` · valore `feedback-smtp.eu-west-1.amazonses.com` · priorità `10`
+  - `TXT` · host `send` · valore `v=spf1 include:amazonses.com ~all`
+  Non modificare né cancellare MX, SPF e DMARC sul `@`: la casella info@ di IONOS continua a ricevere. Se IONOS propone di "sostituire" un record esistente, rifiuta.
+- [ ] Resend → **Verify DNS Records** → stato **Verified** (di solito pochi minuti; fino a qualche ora). Verifica da terminale: `dig +short TXT resend._domainkey.versuscomparatorelucegas.it`, `dig +short MX send.versuscomparatorelucegas.it`, `dig +short TXT send.versuscomparatorelucegas.it`.
+- [ ] Resend → **API Keys** → Create → nome `versus-production`, permesso **Sending access**, dominio `versuscomparatorelucegas.it`. Copia la chiave **solo** in Vercel (mai in chat o nei file).
+- [ ] Vercel → Settings → Environment Variables (Production **e** Preview):
+  - `RESEND_API_KEY` = la chiave (Sensitive)
+  - `RESEND_FROM` = `VERSUS <info@versuscomparatorelucegas.it>`
+  - `NOTIFICATION_EMAIL` = `info@versuscomparatorelucegas.it`
+  - `NEXT_PUBLIC_SITE_URL` = `https://versuscomparatorelucegas.it` (vedi §4)
+  → **Redeploy** dell'ultimo deployment di produzione.
+- [ ] `/admin/impostazioni` sul dominio → email di notifica `info@versuscomparatorelucegas.it`, numero di richiamo reale → "Invia email di prova": arriva su info@ (controlla anche lo spam).
 
 ## 6. SEO e GEO — redirect e indicizzazione
 Situazione oggi in produzione: niente `robots.txt` (404), niente `sitemap.xml` (404), nessun `canonical`/`metadataBase`, nessuna immagine social, nessun dato strutturato; `/offerte` e `/grazie` sono indicizzabili (sono pagine personali del flusso). Lavoro di codice da fare **dopo** che il dominio è attivo:

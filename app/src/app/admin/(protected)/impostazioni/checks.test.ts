@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   MANUAL_CHECKS,
-  PRIVACY_PLACEHOLDERS,
   computeGoLiveChecks,
   isReadyForGoLive,
   type GoLiveInputs,
@@ -88,7 +87,7 @@ describe("go-live checks", () => {
     expect(isReadyForGoLive(checks)).toBe(true);
   });
 
-  it("lists the manual go-live items (three pending, one already done)", () => {
+  it("lists the manual go-live items (one pending, three already done)", () => {
     expect(MANUAL_CHECKS.map((m) => m.id)).toEqual([
       "manual-signup-disabled",
       "manual-admin-account",
@@ -98,19 +97,16 @@ describe("go-live checks", () => {
     expect(MANUAL_CHECKS[0].detail).toContain("Allow new users to sign up");
     expect(MANUAL_CHECKS[0].detail).toContain("Authentication → Sign In / Providers");
     expect(MANUAL_CHECKS[1].detail).toContain("public.admins");
-    expect(MANUAL_CHECKS.filter((m) => !m.doneNote).map((m) => m.id)).toEqual([
-      "manual-signup-disabled",
-      "manual-admin-account",
-      "manual-privacy-placeholders",
-    ]);
+    expect(MANUAL_CHECKS.filter((m) => !m.doneNote).map((m) => m.id)).toEqual(["manual-signup-disabled"]);
   });
 
-  it("lists every privacy placeholder in the pending privacy item", () => {
-    expect(PRIVACY_PLACEHOLDERS).toHaveLength(7);
-    const privacy = MANUAL_CHECKS.find((m) => m.id === "manual-privacy-placeholders")!;
-    expect(privacy.doneNote).toBeUndefined();
-    for (const ph of PRIVACY_PLACEHOLDERS) expect(privacy.detail).toContain(ph);
-    expect(PRIVACY_PLACEHOLDERS).toContain('[Call center esterno: nome o "nessuno"]');
+  it("shows the privacy and admin account items as done", () => {
+    expect(MANUAL_CHECKS.find((m) => m.id === "manual-privacy-placeholders")!.doneNote).toBe(
+      "Completato il 04/11/2026: dati di KEHILA S.r.l.s. inseriti.",
+    );
+    expect(MANUAL_CHECKS.find((m) => m.id === "manual-admin-account")!.doneNote).toBe(
+      "Account di Aldo creato da Giuseppe (04/11/2026).",
+    );
   });
 
   it("shows the bootstrap function item as done by the reviewer", () => {
