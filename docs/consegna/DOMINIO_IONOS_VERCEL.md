@@ -9,11 +9,12 @@ Scelta consigliata per la SEO: **un solo indirizzo canonico `https://versuscompa
 ## 1. Vercel — aggiungi il dominio (prima di toccare IONOS)
 - [x] Vercel → progetto `versus-comparatore` → Settings → Domains → Add → `versuscomparatorelucegas.it`, ambiente **Production**. (fatto il 2026-11-04 da Claude Code via Vercel MCP)
 - [x] `www.versuscomparatorelucegas.it` aggiunto con redirect 308 verso `versuscomparatorelucegas.it` (2026-11-04).
-- [ ] Valori raccomandati da Vercel per questo progetto (letti il 2026-11-04; se la schermata di Vercel mostra altro, vale Vercel):
+- [x] Valori raccomandati da Vercel per questo progetto (letti il 2026-11-04; se la schermata di Vercel mostra altro, vale Vercel):
   - `A` `@` → `216.198.79.1` **e** `A` `@` → `64.29.17.1` (due record);
   - `CNAME` `www` → `43d622a61e774c70.vercel-dns-017.com`.
 
 ## 2. IONOS — record DNS (Domini e SSL → `versuscomparatorelucegas.it` → DNS)
+Fatto da Giuseppe il 2026-11-04 (verificato 19:29 su tutti e 4 i nameserver IONOS e su 8.8.8.8). Nota: i record "Default Site" non hanno il cestino; modificando l'`A` IONOS scollega il sito predefinito e rimuove da solo `AAAA` e `_dep_ws_mutex`.
 
 | Record attuale | Azione | Perché |
 |---|---|---|
@@ -29,15 +30,15 @@ Scelta consigliata per la SEO: **un solo indirizzo canonico `https://versuscompa
 | `CNAME autodiscover` | Lascia | Configurazione automatica dei client di posta |
 | *(nuovo)* `CNAME www` | **Aggiungi** → `43d622a61e774c70.vercel-dns-017.com` | Oggi `www` non ha record |
 
-- [ ] Se IONOS chiede di "scollegare il dominio dal sito predefinito" quando modifichi l'`A`, conferma.
-- [ ] Se aggiungendo `www` IONOS dice che esiste già: vai in **Sottodomini → www** e lì elimina i suoi `A`/`AAAA`, poi crea il `CNAME` (un `CNAME` non può convivere con altri record sullo stesso nome).
+- [x] Se IONOS chiede di "scollegare il dominio dal sito predefinito" quando modifichi l'`A`, conferma.
+- [x] Se aggiungendo `www` IONOS dice che esiste già: vai in **Sottodomini → www** e lì elimina i suoi `A`/`AAAA`, poi crea il `CNAME` (un `CNAME` non può convivere con altri record sullo stesso nome).
 - [x] Nessun record `CAA` (verificato 2026-11-04): il certificato HTTPS di Vercel non è bloccato.
 - [ ] TTL: lascia quello di IONOS (1 ora). La propagazione richiede da pochi minuti a qualche ora.
 
 ## 3. Verifica
 - [ ] Vercel → Domains: `versuscomparatorelucegas.it` e `www.versuscomparatorelucegas.it` su **Valid Configuration**, certificato emesso.
 - [ ] `https://versuscomparatorelucegas.it` apre il sito; `http://versuscomparatorelucegas.it`, `https://www.versuscomparatorelucegas.it` e `http://www.versuscomparatorelucegas.it` finiscono su `https://versuscomparatorelucegas.it` con **un solo** redirect 308.
-- [ ] Da terminale: `dig +short versuscomparatorelucegas.it A` = `216.198.79.1` e `64.29.17.1`, `dig +short versuscomparatorelucegas.it AAAA` = vuoto, `dig +short www.versuscomparatorelucegas.it CNAME` = `43d622a61e774c70.vercel-dns-017.com.`
+- [x] Da terminale: `dig +short versuscomparatorelucegas.it A` = `216.198.79.1` e `64.29.17.1`, `dig +short versuscomparatorelucegas.it AAAA` = vuoto, `dig +short www.versuscomparatorelucegas.it CNAME` = `43d622a61e774c70.vercel-dns-017.com.`
 
 ## 4. Aggiornamenti dopo il dominio
 - [ ] Vercel → Settings → Environment Variables: `NEXT_PUBLIC_SITE_URL` = `https://versuscomparatorelucegas.it` (Production, senza `/` finale) → **Redeploy** (il valore entra nella build).
