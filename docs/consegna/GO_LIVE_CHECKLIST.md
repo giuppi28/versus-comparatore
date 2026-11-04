@@ -20,7 +20,8 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
   ```
 - [ ] TOTP attivato sul telefono di Aldo.
 - [ ] Raccolti: dati aziendali, email privacy, periodo di conservazione, call center esterno, conferma codici POD.
-- [ ] Offerte attive con "Prezzo verificato" spuntato; scelte quelle "In evidenza".
+- [x] Offerte attive con "Prezzo verificato" spuntato (42 su 42, 2026-11-04: confrontate con il listino del 27 ottobre; le 2 Enel gas spuntate da Claude con l'ok di Giuseppe); scelte quelle "In evidenza".
+- [ ] Aldo conferma che i prezzi del listino sono ancora validi, e i valori che il listino non contiene: quota fissa 0 €, attivazione 0 €, altri costi 0, blocco 12 mesi sulle offerte a prezzo fisso.
 - [ ] Decisione su Vercel Pro.
 
 ## C. Dopo l'incontro
@@ -34,10 +35,10 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
   - [x] Vercel: `RESEND_API_KEY` e `RESEND_FROM` impostati, nuovo deploy.
   - [x] `/admin/impostazioni` → "Invia email di prova": arriva (Giuseppe, 2026-11-04).
 - [x] Email di notifica = `info@versuscomparatorelucegas.it`, sia in `/admin/impostazioni` sia in `NOTIFICATION_EMAIL` su Vercel.
-- [ ] Numero reale per i richiami in `/admin/impostazioni`.
-- [ ] `/admin/impostazioni` mostra "Pronto per la pubblicazione".
+- [ ] Numero reale per i richiami in `/admin/impostazioni`: lo inserisce Aldo. **Da fare prima di portare traffico al sito:** oggi è `+39 095 123 4567`, visibile ai clienti, e la checklist del gestionale non lo controlla.
+- [ ] `/admin/impostazioni` mostra "Pronto per la pubblicazione" (da guardare sulla pagina: i dati letti dal database il 2026-11-04 sono in regola, ma la pagina non è stata vista da Claude).
 - [x] Lead di prova finale sul dominio: email arrivata su info@ (Giuseppe), richiamo registrato (`8a9589a7-b946-4b5b-a50d-70d89aacf0e7`, 2026-11-04).
-- [ ] Pulizia lead di prova: il 2026-11-04 nel database c'è solo `8a9589a7-b946-4b5b-a50d-70d89aacf0e7` e nessun file in archivio: eliminarlo da `/admin/leads`.
+- [x] Pulizia lead di prova: lead `8a9589a7-b946-4b5b-a50d-70d89aacf0e7` eliminato da Giuseppe (2026-11-04); nel database 0 lead e 0 file.
 - [x] Supabase → Advisors → Security: solo gli avvisi già noti (funzioni SECURITY DEFINER dei lead, `is_admin`, `app_secrets`, password compromesse) (2026-11-04).
 
 ## D. Decisioni tue
