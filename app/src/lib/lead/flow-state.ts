@@ -19,7 +19,7 @@ import type {
   SqmRange,
   Voltage,
 } from "@/lib/data/types";
-import { validatePhone } from "@/lib/logic/validators";
+import { validateEmail, validatePhone } from "@/lib/logic/validators";
 import type { UploadedLeadDocument } from "./api-types";
 import { monthlyCost } from "@/lib/logic/pricing";
 import {
@@ -121,6 +121,8 @@ export interface FlowState {
   firstName: string;
   lastName: string;
   phone: string;
+  /** Customer email (raw input). Blank for flows begun before Phase 18. */
+  email: string;
   /** Ragione sociale, Partita IVA only. */
   companyName: string;
   comune: FlowComune | null;
@@ -194,6 +196,7 @@ export const INITIAL_FLOW_STATE: FlowState = Object.freeze({
   firstName: "",
   lastName: "",
   phone: "",
+  email: "",
   companyName: "",
   comune: null,
   privacyConsent: false,
@@ -416,6 +419,7 @@ function page1Data(state: FlowState): Omit<LeadPatchData, "step_reached"> {
     first_name: trimmed(state.firstName),
     last_name: trimmed(state.lastName),
     phone: validOrUndefined(state.phone, validatePhone),
+    email: validOrUndefined(state.email, validateEmail),
     company_name: business ? trimmed(state.companyName) : undefined,
     comune_istat: state.comune?.istat,
     service_type: state.serviceType ?? undefined,
@@ -482,6 +486,7 @@ export function toLeadCompleteData(state: FlowState): LeadCompleteData {
     first_name: trimmed(state.firstName),
     last_name: trimmed(state.lastName),
     phone: trimmed(state.phone),
+    email: trimmed(state.email),
     tax_code: trimmed(a.taxCode),
     vat_number: business ? trimmed(a.vatNumber) : undefined,
     housing_title: a.housingTitle ?? undefined,

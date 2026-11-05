@@ -58,6 +58,7 @@ function flow(patch: FlowPatch = {}): FlowState {
     firstName: "Mario",
     lastName: "Rossi",
     phone: "333 123 4567",
+    email: "mario.rossi@example.it",
     comune: { istat: "015146", name: "Milano", province: "MI", caps: ["20121", "20122"], climate_zone: "E" },
     serviceType: "cambio_fornitore",
     currentSupplierLuce: "enel-energia",
@@ -91,6 +92,15 @@ describe("validateStepA", () => {
     expect(Object.keys(errors).sort()).toEqual(["first_name", "housing_title", "last_name", "phone", "tax_code"]);
     expect(errors.first_name).toBe("Inserisci il nome.");
     expect(errors.tax_code).toBe("Inserisci il codice fiscale.");
+  });
+
+  it("email: blank is allowed (flow begun before Phase 18), invalid is an error, padded/capitalised is fine", () => {
+    expect(validateStepA(flow({ email: "" })).email).toBeUndefined();
+    expect(validateStepA(flow({ email: "   " })).email).toBeUndefined();
+    expect(validateStepA(flow({ email: "mario@" })).email).toMatch(/email valido/);
+    expect(validateStepA(flow({ email: " Mario.Rossi@Example.IT " })).email).toBeUndefined();
+    expect(stepOfField("email")).toBe("A");
+    expect(messageForFieldCode("email", "format")).toMatch(/email valido/);
   });
 
   it("flags a malformed, a bad-checksum and a name-mismatched codice fiscale", () => {

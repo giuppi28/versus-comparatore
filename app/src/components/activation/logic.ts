@@ -22,6 +22,7 @@ import {
   IBAN_MESSAGES,
   PARTITA_IVA_MESSAGES,
   PDR_MESSAGES,
+  EMAIL_MESSAGES,
   PHONE_MESSAGES,
   POD_MESSAGES,
   normalizeIban,
@@ -29,6 +30,7 @@ import {
   validateIban,
   validatePartitaIva,
   validatePdr,
+  validateEmail,
   validatePhone,
   validatePod,
 } from "@/lib/logic/validators";
@@ -41,6 +43,7 @@ const STEP_A_FIELDS = new Set([
   "first_name",
   "last_name",
   "phone",
+  "email",
   "tax_code",
   "vat_number",
   "company_name",
@@ -76,6 +79,7 @@ const GENERIC_MESSAGES: Record<string, string> = {
 /** Per-field tables for the codes produced by the shared validators. */
 const VALIDATOR_MESSAGES: Record<string, Record<string, string>> = {
   phone: PHONE_MESSAGES,
+  email: EMAIL_MESSAGES,
   tax_code: CODICE_FISCALE_MESSAGES,
   vat_number: PARTITA_IVA_MESSAGES,
   pod: POD_MESSAGES,
@@ -259,6 +263,9 @@ export function validateStepA(state: FlowState): FieldErrors {
   if (!filled(state.firstName)) errors.first_name = FIELD_REQUIRED_MESSAGES.first_name;
   if (!filled(state.lastName)) errors.last_name = FIELD_REQUIRED_MESSAGES.last_name;
   set("phone", codeMessage("phone", validatePhone(state.phone)));
+  // Email is required on Page 1, but a customer who began before it existed arrives here with a
+  // blank one: blank is allowed in this step, a typed-but-invalid address is an error.
+  if (filled(state.email)) set("email", codeMessage("email", validateEmail(state.email)));
   set(
     "tax_code",
     codeMessage(
@@ -452,6 +459,7 @@ export function normalizeForSubmit(state: FlowState): FlowState {
     firstName: state.firstName.trim(),
     lastName: state.lastName.trim(),
     phone: state.phone.trim(),
+    email: state.email.trim(),
     companyName: state.companyName.trim(),
     activation: normalizeActivation(state),
   };

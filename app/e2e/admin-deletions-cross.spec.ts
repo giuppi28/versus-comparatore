@@ -146,6 +146,7 @@ async function runPage1BusinessGas(page: Page, currentSupplierGas: string): Prom
   await page.getByTestId("first-name").fill("Carlo");
   await page.getByTestId("last-name").fill(surname);
   await page.getByTestId("phone").fill(`3${Math.floor(Math.random() * 1e9).toString().padStart(9, "0")}`);
+  await page.getByTestId("email").fill(`cross.${surname.toLowerCase()}@example.it`);
   await chooseComune(page, "Milano");
   await page.getByTestId("manual-smc").fill("720");
   await page.getByTestId("supplier-gas").selectOption(currentSupplierGas);

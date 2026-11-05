@@ -70,6 +70,7 @@ test.describe("screenshots: Page 1", () => {
     await page.getByTestId("first-name").fill("Mario");
     await page.getByTestId("last-name").fill("Rossi");
     await page.getByTestId("phone").fill("333 123 4567");
+    await page.getByTestId("email").fill("mario.rossi@example.it");
     await chooseComune(page, "Milano");
     await page.getByTestId("privacy-consent").check();
     await expect(page.getByTestId("estimate-gas")).toBeVisible();

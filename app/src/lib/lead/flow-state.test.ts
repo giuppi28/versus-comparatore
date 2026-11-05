@@ -37,6 +37,7 @@ function filledState(overrides: Partial<FlowState> = {}): FlowState {
     firstName: " Mario ",
     lastName: "Rossi",
     phone: "333 123 4567",
+    email: " Mario.Rossi@Example.IT ",
     comune: { istat: "015146", name: "Milano", province: "MI", caps: ["20121"], climate_zone: "E" },
     privacyConsent: true,
     serviceType: "cambio_fornitore",
@@ -222,13 +223,20 @@ describe("lead payload mappers", () => {
       commodity: "dual",
       first_name: "Mario",
       phone: "3331234567",
+      email: "mario.rossi@example.it",
       comune_istat: "015146",
       current_supplier_gas: "iren",
     });
     expect(data).not.toHaveProperty("chosen_offer_luce");
     expect(data).not.toHaveProperty("company_name");
-    // The server schema requires the email on create; flow-state does not collect it yet (UI task).
-    expect(createBodySchema.safeParse({ data: { ...data, email: "a@b.it" } }).success).toBe(true);
+    expect(createBodySchema.safeParse({ data }).success).toBe(true);
+  });
+
+  it("create payload without a valid email is rejected by the server schema (email: required)", () => {
+    const data = toLeadCreateData(filledState({ email: "" }));
+    expect(data).not.toHaveProperty("email");
+    expect(createBodySchema.safeParse({ data }).success).toBe(false);
+    expect(toLeadCreateData(filledState({ email: "nope" }))).not.toHaveProperty("email");
   });
 
   it("create payload omits invalid phone and empty strings", () => {
@@ -272,5 +280,19 @@ describe("lead payload mappers", () => {
   it("complete payload sends raw invalid values so the server can report them", () => {
     const s = filledState({ phone: "12" });
     expect(toLeadCompleteData(s).phone).toBe("12");
+  });
+
+  it("complete payload: email as typed (trimmed) so the server reports it; blank is omitted", () => {
+    expect(toLeadCompleteData(filledState({ email: " x@y " })).email).toBe("x@y");
+    expect(toLeadCompleteData(filledState({ email: "  " }))).not.toHaveProperty("email");
+  });
+
+  it("a saved flow from before Phase 18 loads with a blank email", () => {
+    const storage = new Map<string, string>();
+    const fake = { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => void storage.set(k, v) } as unknown as Storage;
+    const { email: _e, ...old } = filledState();
+    void _e;
+    storage.set(FLOW_STORAGE_KEY, JSON.stringify(old));
+    expect(loadFlowState(fake).email).toBe("");
   });
 });

@@ -63,6 +63,7 @@ export function PaymentFields({
           required={required}
           hint={required ? "Obbligatorio: l'offerta scelta si attiva solo con pagamento IBAN" : "Facoltativo, se vuoi pagare con addebito sul conto"}
           autoCapitalize="characters"
+          // Sensitive: keep it out of the browser's saved-values history (shared devices).
           autoComplete="off"
           spellCheck={false}
           maxLength={42}
@@ -106,7 +107,7 @@ export function PaymentFields({
                   label="Nome dell'intestatario"
                   name="iban_holder_first_name"
                   required
-                  autoComplete="off"
+                  autoComplete="section-intestatario given-name"
                   value={a.ibanHolderFirstName}
                   error={errorFor("iban_holder_first_name")}
                   onChange={(e) => {
@@ -121,7 +122,7 @@ export function PaymentFields({
                   label="Cognome dell'intestatario"
                   name="iban_holder_last_name"
                   required
-                  autoComplete="off"
+                  autoComplete="section-intestatario family-name"
                   value={a.ibanHolderLastName}
                   error={errorFor("iban_holder_last_name")}
                   onChange={(e) => {
@@ -138,7 +139,7 @@ export function PaymentFields({
                 name="iban_holder_tax_code"
                 required
                 autoCapitalize="characters"
-                autoComplete="off"
+                autoComplete="on"
                 spellCheck={false}
                 maxLength={16}
                 className="sm:max-w-sm"
@@ -263,6 +264,8 @@ export function DocumentFields({
           label="Numero del documento"
           name="document_number"
           autoCapitalize="characters"
+          // Identity-document data (number, expiry, issuer) is sensitive: never kept in the
+          // browser's saved-values history, so autocomplete stays off on these three fields.
           autoComplete="off"
           spellCheck={false}
           maxLength={30}
@@ -280,6 +283,7 @@ export function DocumentFields({
           label="Data di scadenza"
           name="document_expiry"
           type="date"
+          autoComplete="off"
           min="1900-01-01"
           max="2100-12-31"
           value={a.documentExpiry}

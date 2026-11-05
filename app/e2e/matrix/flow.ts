@@ -67,18 +67,26 @@ export async function chooseComune(page: Page, query: string) {
 export interface Identity {
   /** Unique national mobile number (10 digits, starts with 3): the lead's search key. */
   phone: string;
+  /** Unique customer email (lower-case, derived from the phone). */
+  email: string;
   pod: string;
   pdr: string;
 }
 
 export function newIdentity(): Identity {
   const digits = (n: number) => Array.from({ length: n }, () => randomInt(0, 10)).join("");
-  return { phone: `3${digits(9)}`, pod: `IT001E${digits(8)}`, pdr: digits(14) };
+  const phone = `3${digits(9)}`;
+  return { phone, email: `lead.${phone}@example.it`, pod: `IT001E${digits(8)}`, pdr: digits(14) };
 }
 
 function phoneAsTyped(phone: string, format: MatrixCase["phoneFormat"]): string {
   const spaced = `${phone.slice(0, 3)} ${phone.slice(3, 6)} ${phone.slice(6)}`;
   return format === "plain" ? phone : format === "spaced" ? spaced : `+39 ${spaced}`;
+}
+
+/** Email as typed: the "spaced" case adds capitals and padding (autofill / keyboards); stored lower-case. */
+function emailAsTyped(email: string, format: MatrixCase["phoneFormat"]): string {
+  return format === "spaced" ? ` ${email.replace(/^lead/, "Lead").replace(/@example/, "@Example")} ` : email;
 }
 
 const groupFmt = new Intl.NumberFormat("it-IT", { maximumFractionDigits: 0, useGrouping: "always" });
@@ -164,6 +172,7 @@ export async function fillPage1(page: Page, c: MatrixCase, d: Derived, id: Ident
   await page.getByTestId("first-name").fill(c.person.first);
   await page.getByTestId("last-name").fill(c.person.last);
   await page.getByTestId("phone").fill(phoneAsTyped(id.phone, c.phoneFormat));
+  await page.getByTestId("email").fill(emailAsTyped(id.email, c.phoneFormat));
   await chooseComune(page, c.comune);
 
   // ---- Block F ----
@@ -241,6 +250,7 @@ export async function fillPage1(page: Page, c: MatrixCase, d: Derived, id: Ident
     first_name: c.person.first,
     last_name: c.person.last,
     phone: id.phone,
+    email: id.email,
     comune_istat: comuneOf(c).istat_code,
     service_type: c.hasGas === false && c.commodity === "gas" ? "primo_allaccio" : c.service,
     manual_consumption: d.manual,
@@ -413,7 +423,7 @@ export async function fillActivation(
   await expect(field(page, "first_name")).toHaveValue(c.person.first);
   await expect(field(page, "last_name")).toHaveValue(c.person.last);
   await expect(field(page, "phone")).toHaveValue(phoneAsTyped(id.phone, c.phoneFormat));
-  await expect(field(page, "email")).toHaveCount(0);
+  await expect(field(page, "email")).toHaveValue(emailAsTyped(id.email, c.phoneFormat));
   if (c.customer === "business") {
     await expect(field(page, "company_name")).toHaveValue(c.company!);
     await field(page, "vat_number").fill(c.vat!);
@@ -582,6 +592,7 @@ export function expectCompletedLead(
   same(f["Nome"], c.person.first, "Nome");
   same(f["Cognome"], c.person.last, "Cognome");
   same(f["Telefono"], id.phone, "Telefono");
+  same(f["Email"], id.email, "Email");
   same(f["Tipo cliente"], CUSTOMER_TYPE_LABELS[c.customer], "Tipo cliente");
   if (business) {
     same(f["Ragione sociale"], c.company, "Ragione sociale");

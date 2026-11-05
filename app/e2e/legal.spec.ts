@@ -31,6 +31,6 @@ test("/privacy has the controller data and no bracketed placeholder", async ({ p
   expect(text).not.toMatch(/\[[^\]]+\]/);
   expect(text).toContain("KEHILA S.r.l.s.");
   expect(text).toContain("Via Umberto 326 B, 95055 San Pietro Clarenza (CT)");
-  expect(text).toContain("Ultimo aggiornamento: 4 novembre 2026.");
+  expect(text).toContain("Ultimo aggiornamento: 5 novembre 2026.");
   await expect(page.locator('article a[href="mailto:info@versuscomparatorelucegas.it"]').first()).toBeVisible();
 });
