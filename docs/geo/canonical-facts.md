@@ -29,4 +29,4 @@ Rule: every listing, schema block, `llms.txt` and page copies these values byte-
 | ⚠ Savings claims | No calculation method defined | Aldo, Giuseppe |
 | ⚠ Social profiles, Wikidata, reviews | None exist; no `sameAs`, no ratings | Giuseppe |
 
-Six suppliers appear in the home logo strip without active offers (Acea Energia, E.ON Energia, Engie, Hera Comm, Iberdrola, Sorgenia): do not name them as compared suppliers in schema or `llms.txt` (T17.3).
+Six suppliers appear in the home logo strip without active offers (Acea Energia, E.ON Energia, Engie, Hera Comm, Iberdrola, Sorgenia): do not name them as compared suppliers in schema, `llms.txt` or new pages. Giuseppe chose on 2026-11-05 to keep all 15 logos on the home (T17.3).

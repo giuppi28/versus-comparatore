@@ -77,7 +77,7 @@ export default async function Page1() {
           />
           <header className="relative mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-8 pt-8 sm:items-center sm:gap-5 sm:px-6 sm:pb-10 sm:pt-12 sm:text-center">
             <h1 className="heading-wide text-hero text-ink">
-              Comparatore{" "}
+              Offerte{" "}
               <br />
               <span className="text-brand-600">luce e gas</span>
             </h1>

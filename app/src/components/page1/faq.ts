@@ -16,4 +16,16 @@ export const FAQ: { q: string; a: string }[] = [
     q: "Le stime di spesa comprendono l'IVA?",
     a: "No, le stime di spesa mostrate sono IVA esclusa.",
   },
+  {
+    q: "Come ordinate le offerte?",
+    a: "Prima quelle «In evidenza», scelte da VERSUS su base commerciale (se non ce ne sono, l'etichetta va all'offerta a prezzo fisso più conveniente); poi le offerte a prezzo fisso, dalla spesa mensile stimata più bassa alla più alta; infine quelle a prezzo variabile.",
+  },
+  {
+    q: "Confrontate tutte le offerte del mercato?",
+    a: "No. Confrontiamo le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato, e non mostriamo le offerte del tuo fornitore attuale.",
+  },
+  {
+    q: "Come viene remunerato VERSUS?",
+    a: "VERSUS opera come agente ed è remunerato dai venditori.",
+  },
 ];
