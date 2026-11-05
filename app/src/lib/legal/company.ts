@@ -31,6 +31,15 @@ export const COMPANY: CompanyData = {
   socioUnico: true,
 };
 
+/** Registered office split for structured data (same address as `COMPANY.sedeLegale`). */
+export const COMPANY_ADDRESS = {
+  streetAddress: "Via Umberto 326 B",
+  postalCode: "95055",
+  addressLocality: "San Pietro Clarenza",
+  addressRegion: "CT",
+  addressCountry: "IT",
+} as const;
+
 const filled = (v: string | null): v is string => !!v && v.trim() !== "";
 
 /** True when every required field is set. */

@@ -48,5 +48,8 @@ Known traps. Read the section relevant to your task before starting. Add new one
 - **pdf.js worker is served from the package, not a CDN, and loaded lazily.** No third-party script for bill reading; loading it eagerly slows every page.
 - **vCard needs a raster PHOTO to show one.** Only SVG icons exist, so the "Salva il nostro numero" contact has no PHOTO until a PNG is added.
 - **No Prettier config.** Never `prettier --write` existing files (reflows to 80 cols, buries the real diff; happened in T13.4, T13.8). Match formatting by hand.
+- **Never redirect `/api/cron/*`.** Vercel cron does not follow redirects and logs nothing for them, so the Supabase keep-alive would stop silently. The vercel.app → domain redirect in `next.config.ts` excludes it.
+- **robots.txt must not block noindex pages.** A blocked crawler cannot read the noindex, so `/offerte`, `/grazie`, `/attivazione` stay crawlable.
+- **Publishable facts live in `docs/geo/canonical-facts.md`.** ⚠ values never ship. Before calling a fact unstated, read the results footnote (`ResultsView.tsx`) and SPEC decision #31.
 - **UI copy rules:** Italian only; no "demo" wording; no phone/call-center/callback mention before the thank-you page; no Facile.it branding.
 - **Local `npm run build` with the mock data source fails on `/admin`** (`MockAuthInProductionError`, guard by design). Verify builds with `NEXT_PUBLIC_DATA_SOURCE=supabase npm run build`. PGlite checks: `PGLITE_DIR=<dir with @electric-sql/pglite@0.5> node supabase/tests/run_local.mjs` (PGlite is not an app dependency).
