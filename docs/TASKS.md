@@ -104,4 +104,4 @@ Giuseppe's decisions 2026-11-05: the site's frontend stays as it is; new pages a
 ## Phase 18 — Customer email and browser autofill, document front/back (agreed with Giuseppe 2026-11-05)
 - [x] T18.1 critical. Customer email in the data layer: nullable `leads.email`, additive migration + `## APPLY:`, lead schemas, handlers, mock repo, Aldo's notification, admin lead data. Must work on the old schema and with the code on `main` until merged. Agent: `backend-builder`. review: 2
 - [x] T18.2 Email field on page 1 next to the phone (required), also in activation step A, standard autofill tokens on every customer field, `/privacy` updated, e2e helpers updated. Agent: `frontend-builder`. review: 1
-- [ ] T18.3 Document front and back in the activation document section. Scope to be set when Giuseppe gives the go-ahead (after T18.1 and T18.2).
+- [x] T18.3 Document front and back in the activation document section: two labelled upload slots (Fronte, Retro), client-side only, no migration, section stays optional. Agent: `frontend-builder`. review: 1
