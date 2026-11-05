@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ALL_SEO_PAGES } from "./pages";
 import { buildLlmsTxt } from "./llms";
 
 const URL = "https://versuscomparatorelucegas.it";
@@ -15,6 +16,14 @@ describe("buildLlmsTxt", () => {
     expect(t).toContain("IVA esclusa");
     expect(t).toContain("- Confrontiamo le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato.");
     expect(t).toContain("- VERSUS opera come agente ed è remunerato dai venditori.");
+  });
+
+  it("lists the 8 SEO pages under Pagine principali, without prices", () => {
+    const t = buildLlmsTxt(URL, null);
+    const section = t.slice(t.indexOf("## Pagine principali"));
+    expect(ALL_SEO_PAGES).toHaveLength(8);
+    for (const p of ALL_SEO_PAGES) expect(section).toContain(`(${URL}${p.path})`);
+    expect(section).not.toMatch(/€|\d,\d{2,4}/);
   });
 
   it("omits the supplier section when unavailable or empty", () => {

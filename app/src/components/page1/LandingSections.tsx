@@ -14,7 +14,7 @@ export interface SupplierLogo {
  * URL (e.g. Supabase Storage) is forced black with a CSS filter. Mirrors `blackLogoUrl` of the loading
  * screen (a "use client" module, so it cannot be called from this server component).
  */
-function blackLogo(url: string): { src: string; needsFilter: boolean } {
+export function blackLogo(url: string): { src: string; needsFilter: boolean } {
   const m = /^\/logos\/([a-z0-9-]+)\.svg$/i.exec(url);
   return m ? { src: `/logos/black/${m[1]}.svg`, needsFilter: false } : { src: url, needsFilter: true };
 }

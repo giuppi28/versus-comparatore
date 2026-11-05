@@ -43,12 +43,13 @@ test.describe("SEO (raw HTML)", () => {
     expect(body).toMatch(/Sitemap: https:\/\/\S+\/sitemap\.xml/);
   });
 
-  test("sitemap.xml lists the home only", async ({ request }) => {
+  test("sitemap.xml lists the home and the 8 SEO pages", async ({ request }) => {
     const res = await request.get("/sitemap.xml");
     expect(res.status()).toBe(200);
     const body = await res.text();
-    expect(body.match(/<loc>/g)).toHaveLength(1);
-    expect(body).not.toContain("lastmod");
+    expect(body.match(/<loc>/g)).toHaveLength(9);
+    // lastmod only on the SEO pages (their reviewedOn), never on the home
+    expect(body.match(/<lastmod>/g)).toHaveLength(8);
   });
 
   test("llms.txt", async ({ request }) => {

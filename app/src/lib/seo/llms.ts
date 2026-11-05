@@ -1,4 +1,5 @@
 import { COMPANY } from "@/lib/legal/company";
+import { ALL_SEO_PAGES } from "./pages";
 
 export const LLMS_LAST_UPDATE = "2026-11-05";
 
@@ -43,6 +44,7 @@ export function buildLlmsTxt(siteUrl: string, suppliers: string[] | null): strin
     "",
     "## Pagine principali",
     `- [Home: confronto offerte luce e gas](${siteUrl}/)`,
+    ...ALL_SEO_PAGES.map((p) => `- [${p.h1}](${siteUrl}${p.path})`),
     `- [Informativa sulla privacy](${siteUrl}/privacy)`,
     "",
   );
