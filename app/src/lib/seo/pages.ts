@@ -5,6 +5,10 @@ import type { OffersSeoPage, SeoPage } from "@/content/seo/types";
 
 export const ALL_SEO_PAGES: SeoPage[] = [...OFFERS_PAGES, ...GUIDE_PAGES];
 
+export function isGuidePage(page: SeoPage): boolean {
+  return GUIDE_PAGES.some((g) => g.path === page.path);
+}
+
 export function getSeoPage(path: string): SeoPage | undefined {
   return ALL_SEO_PAGES.find((p) => p.path === path);
 }
@@ -19,11 +23,13 @@ export function getOffersPage(path: string): OffersSeoPage {
 const OG_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: "VERSUS — comparatore luce e gas" };
 
 export function buildSeoMetadata(page: SeoPage): Metadata {
+  const guide = isGuidePage(page);
   return {
     title: page.title,
     description: page.description,
-    // Owner decision: never rank for "offerte luce e gas". No canonical on a noindex page; crawlable (follow) so the noindex is readable.
-    robots: { index: false, follow: true },
+    // Guides (T17.15): indexable with a self-canonical (absolute via metadataBase). The 4 offers pages stay
+    // noindex, follow with no canonical: Giuseppe never wants them to rank for "offerte luce e gas".
+    ...(guide ? { alternates: { canonical: page.path } } : { robots: { index: false, follow: true } }),
     openGraph: {
       type: "website",
       locale: "it_IT",

@@ -1,7 +1,12 @@
 import type { MetadataRoute } from "next";
+import { GUIDE_PAGES } from "@/content/seo/guides";
 import { SITE_URL } from "@/lib/seo/site";
 
-// Home only: the 8 SEO pages are noindex and a sitemap must not list noindex URLs. No lastModified: no invented dates.
+// Home + the 4 indexable guides (lastModified = the guide's reviewedOn). The 4 offers pages are noindex and a
+// sitemap must not list noindex URLs. The home has no lastModified: no invented dates.
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [{ url: `${SITE_URL}/` }];
+  return [
+    { url: `${SITE_URL}/` },
+    ...GUIDE_PAGES.map((g) => ({ url: `${SITE_URL}${g.path}`, lastModified: g.reviewedOn })),
+  ];
 }
