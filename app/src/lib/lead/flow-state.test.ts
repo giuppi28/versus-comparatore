@@ -227,7 +227,8 @@ describe("lead payload mappers", () => {
     });
     expect(data).not.toHaveProperty("chosen_offer_luce");
     expect(data).not.toHaveProperty("company_name");
-    expect(createBodySchema.safeParse({ data }).success).toBe(true);
+    // The server schema requires the email on create; flow-state does not collect it yet (UI task).
+    expect(createBodySchema.safeParse({ data: { ...data, email: "a@b.it" } }).success).toBe(true);
   });
 
   it("create payload omits invalid phone and empty strings", () => {

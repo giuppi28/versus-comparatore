@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  EMAIL_MESSAGES,
+  validateEmail,
   CODICE_FISCALE_MESSAGES,
   PARTITA_IVA_MESSAGES,
   PDR_MESSAGES,
@@ -221,5 +223,18 @@ describe("validatePhone", () => {
   it("has messages", () => {
     expect(PHONE_MESSAGES.empty).toBeTruthy();
     expect(PHONE_MESSAGES.format).toBeTruthy();
+  });
+});
+
+describe("validateEmail", () => {
+  it("trims and lower-cases", () => {
+    expect(validateEmail("  Mario.Rossi@Example.IT ")).toEqual({ ok: true, value: "mario.rossi@example.it" });
+  });
+  it("reports empty and format errors", () => {
+    expect(validateEmail("   ")).toEqual({ ok: false, error: "empty" });
+    for (const bad of ["mario", "mario@", "@example.it", "mario@example", "ma rio@example.it", "a@b@c.it", `${"a".repeat(250)}@b.it`]) {
+      expect(validateEmail(bad)).toEqual({ ok: false, error: "format" });
+    }
+    expect(EMAIL_MESSAGES.format).toMatch(/email/i);
   });
 });

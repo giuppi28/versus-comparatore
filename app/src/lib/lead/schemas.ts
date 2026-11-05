@@ -22,6 +22,7 @@ import {
   validateIban,
   validatePartitaIva,
   validatePdr,
+  validateEmail,
   validatePhone,
   validatePod,
   type ValidationResult,
@@ -118,6 +119,8 @@ const page1Fields = {
   first_name: text(80).nullable(),
   last_name: text(80).nullable(),
   phone: validated(validatePhone).nullable(),
+  /** Customer email (trimmed, lower-cased). Required on create (see createDataSchema), nullable afterwards. */
+  email: validated(validateEmail).nullable(),
   company_name: text(160).nullable(),
   comune_istat: z.string().regex(/^\d{6}$/).nullable(),
   service_type: z.enum(["cambio_fornitore", "subentro", "voltura", "primo_allaccio"]).nullable(),
@@ -179,10 +182,18 @@ const activationFields = {
 const leadFields = { ...page1Fields, ...activationFields };
 
 /** POST /api/lead — data. privacy_consent must be literally true (checked first → 400). */
-export const createDataSchema = z.strictObject({
-  ...z.object(page1Fields).partial().shape,
-  privacy_consent: z.literal(true),
-});
+export const createDataSchema = z
+  .strictObject({
+    ...z.object(page1Fields).partial().shape,
+    privacy_consent: z.literal(true),
+  })
+  .superRefine((data, ctx) => {
+    // Email is required for NEW leads only (page 1). The DB never requires it: leads created
+    // before it existed stay NULL and must still be patchable and completable.
+    if (data.email === undefined || data.email === null) {
+      ctx.issues.push({ code: "custom", message: "required", input: data.email, path: ["email"] });
+    }
+  });
 
 /** PATCH /api/lead — data. step_reached may be "results" or "offer_chosen" (forward only). */
 export const patchDataSchema = z

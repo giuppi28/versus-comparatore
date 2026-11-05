@@ -11,6 +11,7 @@ export const LEAD_ROW_FIELDS = [
   "step_reached",
   "status",
   "phone",
+  "email",
   "commodity",
   "customer_type",
   "monthly_cost_shown",

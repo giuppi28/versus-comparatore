@@ -140,6 +140,7 @@ export async function sendNewLeadNotification(
       firstName: data.first_name ?? null,
       lastName: data.last_name ?? null,
       phone: data.phone ?? null,
+      email: data.email ?? null,
       commodityLabel: data.commodity ? COMMODITY_LABEL[data.commodity] : null,
       customerTypeLabel: data.customer_type ? CUSTOMER_LABEL[data.customer_type] : null,
       comuneLabel,

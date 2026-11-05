@@ -293,7 +293,10 @@ export function LeadList({
                         {leadDisplayName(lead)}
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3">{dash(lead.phone)}</td>
+                    <td className="px-3 py-3">
+                      <div className="whitespace-nowrap">{dash(lead.phone)}</div>
+                      <div className="break-all text-xs text-ink-muted">{dash(lead.email)}</div>
+                    </td>
                     <td className="px-3 py-3">
                       <div>{lead.commodity ? COMMODITY_LABELS[lead.commodity] : "—"}</div>
                       <div className="text-xs text-ink-muted">
@@ -337,6 +340,7 @@ export function LeadList({
                   </Link>
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <Item label="Telefono" value={dash(lead.phone)} />
+                    <Item label="Email" value={dash(lead.email)} />
                     <Item
                       label="Richiesta"
                       value={`${lead.commodity ? COMMODITY_LABELS[lead.commodity] : "—"} · ${
