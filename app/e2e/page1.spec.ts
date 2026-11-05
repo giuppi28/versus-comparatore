@@ -547,10 +547,35 @@ test.describe("Page 1 — lead creation and submit", () => {
   test("consent creation sends only what is valid so far (no personal data needed)", async ({ page }) => {
     await open(page);
     const request = page.waitForRequest((r) => r.url().endsWith("/api/lead") && r.method() === "POST");
-    await consent(page);
+    const response = await consent(page);
+    expect(response.status()).toBe(201);
     const body = (await request).postDataJSON();
     // Cambio fornitore is preselected, so it is part of what is "valid so far".
     expect(body).toEqual({ data: { privacy_consent: true, service_type: "cambio_fornitore" } });
+  });
+
+  test("a partial or invalid email at the consent tick does not fail the creation", async ({ page }) => {
+    await open(page);
+    await page.getByTestId("email").fill("mario@");
+    const response = await consent(page);
+    expect(response.status()).toBe(201);
+    expect(response.request().postDataJSON().data).not.toHaveProperty("email");
+    await expect(page.getByTestId("consent-error")).toHaveCount(0);
+  });
+
+  test("consent first, email typed afterwards: the email reaches the lead on submit (PATCH)", async ({ page }) => {
+    await open(page);
+    await pick(page, "commodity-luce", "customer-casa", "service-subentro", "people-2");
+    const created = await consent(page);
+    expect(created.status()).toBe(201);
+    expect(created.request().postDataJSON().data).not.toHaveProperty("email");
+    await fillPersonal(page);
+    const patched = page.waitForResponse((r) => r.url().endsWith("/api/lead") && r.request().method() === "PATCH");
+    await page.getByTestId("submit").click();
+    const res = await patched;
+    expect(res.status()).toBe(200);
+    expect(res.request().postDataJSON().data.email).toBe("mario.rossi@example.it");
+    await expect(page).toHaveURL(/\/offerte$/);
   });
 
   test("API errors are shown inline (429 → 'Troppe richieste, riprova tra poco.')", async ({ page }) => {

@@ -232,10 +232,10 @@ describe("lead payload mappers", () => {
     expect(createBodySchema.safeParse({ data }).success).toBe(true);
   });
 
-  it("create payload without a valid email is rejected by the server schema (email: required)", () => {
+  it("create payload omits a blank or invalid email and still passes the server schema (created at the consent tick)", () => {
     const data = toLeadCreateData(filledState({ email: "" }));
     expect(data).not.toHaveProperty("email");
-    expect(createBodySchema.safeParse({ data }).success).toBe(false);
+    expect(createBodySchema.safeParse({ data }).success).toBe(true);
     expect(toLeadCreateData(filledState({ email: "nope" }))).not.toHaveProperty("email");
   });
 

@@ -23,7 +23,8 @@ describe("createBodySchema", () => {
     expect(r.data?.data.phone).toBe("3331234567");
   });
 
-  it("accepts consent + email only (the other Page 1 fields are optional)", () => {
+  it("accepts consent only: the email is optional on create, like the phone", () => {
+    expect(createBodySchema.safeParse({ data: { privacy_consent: true } }).success).toBe(true);
     expect(createBodySchema.safeParse({ data: { privacy_consent: true, email: "a@b.it" } }).success).toBe(true);
   });
 
@@ -32,12 +33,7 @@ describe("createBodySchema", () => {
     expect(r.data?.data.email).toBe("mario.rossi@example.it");
   });
 
-  it("requires the email when a lead is created", () => {
-    expect(errors(createBodySchema, { data: { privacy_consent: true } })).toEqual({ email: "required" });
-    expect(errors(createBodySchema, { data: { privacy_consent: true, email: null } })).toEqual({ email: "required" });
-  });
-
-  it("rejects an empty or malformed email on create", () => {
+  it("validates a present email on create (empty or malformed is refused)", () => {
     expect(errors(createBodySchema, { data: page1Data({ email: "" }) })).toEqual({ email: "empty" });
     expect(errors(createBodySchema, { data: page1Data({ email: "mario@" }) })).toEqual({ email: "format" });
     expect(errors(createBodySchema, { data: page1Data({ email: `${"a".repeat(250)}@b.it` }) })).toEqual({ email: "format" });

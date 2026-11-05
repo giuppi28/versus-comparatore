@@ -119,7 +119,7 @@ const page1Fields = {
   first_name: text(80).nullable(),
   last_name: text(80).nullable(),
   phone: validated(validatePhone).nullable(),
-  /** Customer email (trimmed, lower-cased). Required on create (see createDataSchema), nullable afterwards. */
+  /** Customer email (trimmed, lower-cased). Optional everywhere on the server (like phone): the lead is created at the consent tick, before any personal data; the page 1 form requires it. */
   email: validated(validateEmail).nullable(),
   company_name: text(160).nullable(),
   comune_istat: z.string().regex(/^\d{6}$/).nullable(),
@@ -182,18 +182,10 @@ const activationFields = {
 const leadFields = { ...page1Fields, ...activationFields };
 
 /** POST /api/lead — data. privacy_consent must be literally true (checked first → 400). */
-export const createDataSchema = z
-  .strictObject({
-    ...z.object(page1Fields).partial().shape,
-    privacy_consent: z.literal(true),
-  })
-  .superRefine((data, ctx) => {
-    // Email is required for NEW leads only (page 1). The DB never requires it: leads created
-    // before it existed stay NULL and must still be patchable and completable.
-    if (data.email === undefined || data.email === null) {
-      ctx.issues.push({ code: "custom", message: "required", input: data.email, path: ["email"] });
-    }
-  });
+export const createDataSchema = z.strictObject({
+  ...z.object(page1Fields).partial().shape,
+  privacy_consent: z.literal(true),
+});
 
 /** PATCH /api/lead — data. step_reached may be "results" or "offer_chosen" (forward only). */
 export const patchDataSchema = z
