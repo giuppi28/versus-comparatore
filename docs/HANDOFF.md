@@ -42,7 +42,7 @@ Phase 15 complete (T15.1–T15.4). Giuseppe: OK to the reviewer for `## APPLY: 2
 - Custom domain on Vercel.
 - Vercel Pro decision (Hobby is non-commercial use; see `app/DEPLOY.md` D1).
 - MFA (TOTP) for the admin accounts.
-- GitHub repo visibility (currently private) — decide and keep private unless there is a reason.
+- GitHub repo visibility: PUBLIC, found 2026-11-05 via the unauthenticated GitHub API (CLAUDE.md says private). Giuseppe decides. Secret scan by pattern on current tracked files: nothing found; git history not scanned.
 - Cleanup SQL for security-test leads: `delete from public.leads where first_name like 'TEST-SECURITY%';` (check `storage.objects` for leftover files first).
 - Check HEIC upload on iPhone Safari (not testable in Chromium).
 
