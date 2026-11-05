@@ -18,12 +18,12 @@ Rule: every listing, schema block, `llms.txt` and page copies these values byte-
 | ✅ Market coverage | "Confrontiamo le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato" | Live results footnote, SPEC decision #31 |
 | ✅ How VERSUS is paid | "VERSUS opera come agente ed è remunerato dai venditori." | Live results footnote, SPEC decision #31 |
 | ✅ Ordering | "In evidenza" offers first (commercial choice of VERSUS), then fixed offers by estimated monthly cost, then variable offers | Live results footnote, SPEC decision #18, #31 |
+| ✅ Active offer prices | As stored in the DB, 38 active offers; read them from the DB, never hard-code them | Aldo's approval reported by Giuseppe, 2026-11-05 |
 | ✅ Suppliers with active offers on 2026-11-05 | A2A Energia, Asti Energy, Edison Energia, Enegan, Enel Energia, Eni Plenitude, Estra Energia, Iren, Sentra Energia | Live `/offerte` payload; always read this list from the DB, never hard-code it |
 
 ## Unconfirmed: do not publish
 | Fact | Why | Who |
 |---|---|---|
-| ⚠ Offer prices are current | Source list dated 2026-10-27; Aldo's confirmation still open (`docs/HANDOFF.md`) | Aldo |
 | ⚠ Fees and 12-month lock | Values not in Aldo's list | Aldo |
 | ⚠ Telephone number | Current value +39 095 123 4567 is a placeholder; number also barred from UI before the thank-you page | Aldo |
 | ⚠ Savings claims | No calculation method defined | Aldo, Giuseppe |
