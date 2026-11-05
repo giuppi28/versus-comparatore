@@ -65,12 +65,13 @@ Decisione 2026-11-04 (T16.3): mittente e destinatario = `info@versuscomparatorel
 
 ## 6. SEO e GEO — redirect e indicizzazione
 Situazione oggi in produzione: niente `robots.txt` (404), niente `sitemap.xml` (404), nessun `canonical`/`metadataBase`, nessuna immagine social, nessun dato strutturato; `/offerte` e `/grazie` sono indicizzabili (sono pagine personali del flusso). Lavoro di codice da fare **dopo** che il dominio è attivo:
-- [ ] Redirect 308 `versus-comparatore.vercel.app/*` → `https://versuscomparatorelucegas.it/*` (solo quell'host esatto; le preview restano com'erano). Evita due copie del sito su Google.
-- [ ] `metadataBase` + `canonical` su ogni pagina pubblica, dal valore di `NEXT_PUBLIC_SITE_URL`.
-- [ ] `robots.txt` (blocca `/admin`, `/api`, `/attivazione`, `/offerte`, `/grazie`) e `sitemap.xml` (home; `/privacy` resta `noindex` come deciso).
-- [ ] `noindex` su `/offerte` e `/grazie`.
-- [ ] Immagine social (Open Graph 1200×630) e titolo/descrizione per condivisioni WhatsApp/Facebook.
-- [ ] JSON-LD `Organization` + `WebSite` (+ `FAQPage` per le FAQ della home) quando ci sono i dati aziendali di Aldo (`company.ts`).
-- [ ] `llms.txt` per gli assistenti AI (cosa fa VERSUS, per chi, come funziona, chi è il titolare).
+Codice pronto su `dev` (T17.1, 2026-11-05); in produzione solo dopo il merge su `main`.
+- [x] Redirect 308 `versus-comparatore.vercel.app/*` → `https://versuscomparatorelucegas.it/*` (solo quell'host esatto; le preview restano com'erano), **escluso `/api/cron/*`**: il cron di Vercel non segue i redirect e il keep-alive di Supabase si fermerebbe senza errori.
+- [x] `metadataBase` + `canonical` dalla variabile `NEXT_PUBLIC_SITE_URL`, con fallback sul dominio.
+- [x] `robots.txt` (blocca solo `/admin` e `/api/`) e `sitemap.xml` (home; `/privacy` resta `noindex` come deciso). `/attivazione`, `/offerte` e `/grazie` non sono bloccate di proposito: un crawler bloccato non può leggere il loro `noindex`.
+- [x] `noindex` su `/offerte` e `/grazie`.
+- [x] Immagine social (Open Graph 1200×630) e titolo/descrizione per condivisioni WhatsApp/Facebook.
+- [x] JSON-LD `Organization` + `WebSite` + `Service` + `FAQPage` sulla home, dai dati di `company.ts`.
+- [x] `llms.txt` per gli assistenti AI (cosa fa VERSUS, per chi, come funziona, chi è il titolare, fornitori con offerte attive letti dal database).
 - [ ] Google Search Console: proprietà **Dominio** verificata con record `TXT @` su IONOS (convive con l'SPF), invio della sitemap. Stesso per Bing Webmaster Tools (importa da Search Console).
 - [x] Storico del dominio: registrato il 2026-11-04, nessuna copia su Wayback Machine → nessun redirect 301 da vecchi URL.

@@ -692,10 +692,25 @@ test.describe("activation form", () => {
       await fillStepA(page, { cf: CF_GIULIA_BIANCHI, piva: PIVA });
       await page.getByTestId("activation-next").click();
       await expect(page.getByTestId("activation-step-b")).toBeVisible();
-      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-      const box = await page.getByTestId("activation-summary").boundingBox();
-      expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
-      expect(box?.y ?? 9999).toBeLessThan(60);
+      // Check it while the user fills the form: from the top to the last scroll position where
+      // the sticky box is still free. Past that point (the very page bottom, under the legal
+      // footer) the browser pushes it up with the end of its grid container: normal behaviour.
+      const lastFree = await page.evaluate(() => {
+        const aside = document.querySelector('[data-testid="activation-summary"]')!.parentElement!;
+        const gridBottom = aside.parentElement!.getBoundingClientRect().bottom + window.scrollY;
+        return gridBottom - aside.getBoundingClientRect().height - parseFloat(getComputedStyle(aside).top);
+      });
+      expect(lastFree, "the form must be long enough to scroll").toBeGreaterThan(300);
+      for (const y of [lastFree * 0.5, lastFree]) {
+        await page.evaluate((top) => window.scrollTo(0, top), y);
+        await expect
+          .poll(async () => (await page.getByTestId("activation-summary").boundingBox())?.y ?? -1)
+          .toBeGreaterThanOrEqual(0);
+        const box = await page.getByTestId("activation-summary").boundingBox();
+        expect(box?.y ?? 9999).toBeLessThan(60);
+        // The whole summary (offer and price at the top, total at the bottom) is on screen.
+        expect((box?.y ?? 0) + (box?.height ?? 9999)).toBeLessThanOrEqual(page.viewportSize()!.height);
+      }
     }
   });
 });

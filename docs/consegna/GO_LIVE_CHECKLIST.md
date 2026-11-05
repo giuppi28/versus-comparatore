@@ -20,25 +20,26 @@ Dettagli tecnici completi: `app/DEPLOY.md` §10. PDF per Aldo: `docs/consegna/VE
   ```
 - [ ] TOTP attivato sul telefono di Aldo.
 - [ ] Raccolti: dati aziendali, email privacy, periodo di conservazione, call center esterno, conferma codici POD.
-- [ ] Offerte attive con "Prezzo verificato" spuntato; scelte quelle "In evidenza".
+- [x] Offerte attive con "Prezzo verificato" spuntato (42 su 42, 2026-11-04: confrontate con il listino del 27 ottobre; le 2 Enel gas spuntate da Claude con l'ok di Giuseppe); scelte quelle "In evidenza".
+- [ ] Aldo conferma che i prezzi del listino sono ancora validi, e i valori che il listino non contiene: quota fissa 0 €, attivazione 0 €, altri costi 0, blocco 12 mesi sulle offerte a prezzo fisso.
 - [ ] Decisione su Vercel Pro.
 
 ## C. Dopo l'incontro
-- [ ] Dati di Aldo a Claude: inserimento in `app/src/lib/legal/company.ts` e `/privacy` (nessun testo tra parentesi quadre deve restare); T13.11 chiuso con i codici POD.
-- [ ] Dominio (passo passo: `docs/consegna/DOMINIO_IONOS_VERCEL.md`):
-  - [ ] Vercel → Settings → Domains: aggiungi il dominio, crea i record DNS dal registrar, attendi "Valid Configuration".
-  - [ ] Vercel: `NEXT_PUBLIC_SITE_URL` = `https://<dominio>` e nuovo deploy.
-  - [ ] Supabase → Authentication → URL Configuration: Site URL e Redirect URLs sul dominio.
-- [ ] Resend:
-  - [ ] Dominio di invio verificato (SPF/DKIM, meglio un sottodominio come `mail.<dominio>`).
-  - [ ] Vercel: `RESEND_API_KEY` e `RESEND_FROM` impostati, nuovo deploy.
-  - [ ] `/admin/impostazioni` → "Invia email di prova": arriva.
-- [ ] Email di notifica = quella di Aldo, sia in `/admin/impostazioni` sia in `NOTIFICATION_EMAIL` su Vercel.
-- [ ] Numero reale per i richiami in `/admin/impostazioni`.
-- [ ] `/admin/impostazioni` mostra "Pronto per la pubblicazione".
-- [ ] Lead di prova finale sul dominio: email ad Aldo arrivata, richiamo registrato.
-- [ ] Pulizia lead di prova: `859362c5-3670-427c-98e1-0cef27aa95c5`, `3e987e81-8a3d-49b0-a10c-f0c554ee29fe`, `b361d409-e2c6-4099-a063-1471444a2f05`, `c6bde4d1-1dd7-4622-93dd-33856e6c41d4` (TEST-SECURITY), `29760ea3-c0ac-4d7d-8927-ea985bbd65aa` (HEIC, con file in storage), quelli `TEST-SECURITY` e quelli di prova in produzione.
-- [ ] Supabase → Advisors → Security: solo gli avvisi già noti (funzioni SECURITY DEFINER dei lead, `is_admin`).
+- [x] Dati di KEHILA S.r.l.s. in `app/src/lib/legal/company.ts` e `/privacy`, nessun testo tra parentesi quadre (2026-11-04). T13.11 resta aperto: codici POD da aggiornare più avanti con i lead reali.
+- [x] Dominio (passo passo: `docs/consegna/DOMINIO_IONOS_VERCEL.md`):
+  - [x] Vercel → Settings → Domains: aggiungi il dominio, crea i record DNS dal registrar, attendi "Valid Configuration".
+  - [x] Vercel: `NEXT_PUBLIC_SITE_URL` = `https://<dominio>` e nuovo deploy.
+  - [x] Supabase → Authentication → URL Configuration: Site URL e Redirect URLs sul dominio (confermato da Giuseppe, non visibile a Claude; login sul dominio funzionante).
+- [x] Resend:
+  - [x] Dominio di invio verificato (SPF/DKIM) sul dominio principale (decisione T16.3).
+  - [x] Vercel: `RESEND_API_KEY` e `RESEND_FROM` impostati, nuovo deploy.
+  - [x] `/admin/impostazioni` → "Invia email di prova": arriva (Giuseppe, 2026-11-04).
+- [x] Email di notifica = `info@versuscomparatorelucegas.it`, sia in `/admin/impostazioni` sia in `NOTIFICATION_EMAIL` su Vercel.
+- [ ] Numero reale per i richiami in `/admin/impostazioni`: lo inserisce Aldo. **Da fare prima di portare traffico al sito:** oggi è `+39 095 123 4567`, visibile ai clienti, e la checklist del gestionale non lo controlla.
+- [x] `/admin/impostazioni` mostra "Pronto per la pubblicazione" (confermato da Giuseppe, 2026-11-04).
+- [x] Lead di prova finale sul dominio: email arrivata su info@ (Giuseppe), richiamo registrato (`8a9589a7-b946-4b5b-a50d-70d89aacf0e7`, 2026-11-04).
+- [x] Pulizia lead di prova: lead `8a9589a7-b946-4b5b-a50d-70d89aacf0e7` eliminato da Giuseppe (2026-11-04); nel database 0 lead e 0 file.
+- [x] Supabase → Advisors → Security: solo gli avvisi già noti (funzioni SECURITY DEFINER dei lead, `is_admin`, `app_secrets`, password compromesse) (2026-11-04).
 
 ## D. Decisioni tue
 - [ ] Visibilità del repo GitHub (oggi privato).

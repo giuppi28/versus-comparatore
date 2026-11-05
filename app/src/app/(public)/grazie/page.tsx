@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { DEFAULT_CALLBACK_PHONE, getRepository } from "@/lib/data";
 import GrazieClient from "./GrazieClient";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 // Read the admin-configured callback number on every request, never from a static cache.
 export const dynamic = "force-dynamic";

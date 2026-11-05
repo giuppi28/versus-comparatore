@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { SiteHeader } from "@/components/brand";
 import { BulbIllustration } from "@/components/brand/decor";
 import { Page1Form, type SupplierOption } from "@/components/page1";
@@ -5,6 +6,31 @@ import { LandingSections, type SupplierLogo } from "@/components/page1/LandingSe
 import { getRepository } from "@/lib/data";
 import { resolveLogoUrl } from "@/lib/data/logo";
 import { isRealSupplier } from "@/lib/data/types";
+import { buildJsonLd, serializeJsonLd } from "@/lib/seo/jsonld";
+import { SITE_URL } from "@/lib/seo/site";
+
+const TITLE = "Offerte luce e gas: confronto gratuito online | VERSUS";
+// Page-level openGraph/twitter replace the layout's, so the file-convention image is referenced explicitly.
+const OG_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: "VERSUS — comparatore luce e gas" };
+
+const DESCRIPTION =
+  "Confronta gratis le offerte luce e gas per casa e partita IVA: rispondi a poche domande, scegli l'offerta e attivala online.";
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    locale: "it_IT",
+    siteName: "VERSUS",
+    url: "/",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: [OG_IMAGE],
+  },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION, images: [OG_IMAGE] },
+};
 
 // Supplier list is editable from the admin area: never bake it in at build time.
 export const dynamic = "force-dynamic";
@@ -35,6 +61,10 @@ export default async function Page1() {
   const [suppliers, logos] = await Promise.all([loadSupplierOptions(), loadSupplierLogos()]);
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildJsonLd(SITE_URL)) }}
+      />
       <SiteHeader homeLink={false} />
       <main className="flex-1 pb-section">
         {/* Hero: overflow-hidden crops the bulb; the form below never sits under it. */}
@@ -47,7 +77,7 @@ export default async function Page1() {
           />
           <header className="relative mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-8 pt-8 sm:items-center sm:gap-5 sm:px-6 sm:pb-10 sm:pt-12 sm:text-center">
             <h1 className="heading-wide text-hero text-ink">
-              Comparatore{" "}
+              Offerte{" "}
               <br />
               <span className="text-brand-600">luce e gas</span>
             </h1>

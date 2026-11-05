@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { Archivo, Inter } from "next/font/google";
+import { SITE_URL } from "@/lib/seo/site";
 import "./globals.css";
 
 // Self-hosted at build time by next/font: no runtime request to Google.
@@ -18,10 +19,22 @@ const archivo = Archivo({
   variable: "--font-archivo",
 });
 
+const TITLE = "VERSUS — comparatore luce e gas";
+const DESCRIPTION =
+  "Confronta le offerte luce e gas per la tua casa o la tua attività e scegli la più conveniente.";
+
 export const metadata: Metadata = {
-  title: "VERSUS — comparatore luce e gas",
-  description:
-    "Confronta le offerte luce e gas per la tua casa o la tua attività e scegli la più conveniente.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    locale: "it_IT",
+    siteName: "VERSUS",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 export const viewport: Viewport = {

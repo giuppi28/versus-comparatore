@@ -123,7 +123,7 @@ test.describe("Page 1 — structure and copy", () => {
     else await expect(bulb).toBeHidden();
     await expect(bulb).toHaveCSS("pointer-events", "none");
     // Hero headline keeps the two lines.
-    await expect(page.getByRole("heading", { level: 1 })).toContainText(/comparatore\s+luce e gas/i);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(/offerte\s+luce e gas/i);
 
     // Landing sections below the form: after it, real suppliers only (no placeholders), FAQ is native <details>.
     const sections = page.getByTestId("landing-sections");

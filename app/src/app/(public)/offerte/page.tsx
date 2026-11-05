@@ -7,6 +7,7 @@ import type { Supplier } from "@/lib/data/types";
 export const metadata: Metadata = {
   title: "Le tue offerte — VERSUS",
   description: "Confronta le offerte luce e gas selezionate per i tuoi consumi.",
+  robots: { index: false, follow: false },
 };
 
 // Offers come from the server-side repository on every request, so admin changes
