@@ -494,7 +494,7 @@ test.describe("activation form", () => {
     await page.getByTestId("iban-holder-different").check();
     await expect(field(page, "iban_holder_first_name")).toHaveAttribute("autocomplete", "section-intestatario given-name");
     await expect(field(page, "iban_holder_last_name")).toHaveAttribute("autocomplete", "section-intestatario family-name");
-    await expect(field(page, "iban_holder_tax_code")).toHaveAttribute("autocomplete", "on");
+    await expect(field(page, "iban_holder_tax_code")).toHaveAttribute("autocomplete", "off");
   });
 
   test("step A validation: required fields, CF format, CF mismatch, P.IVA", async ({ page }) => {

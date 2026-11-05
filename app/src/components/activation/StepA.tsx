@@ -46,7 +46,7 @@ export function StepA({
   }
 
   return (
-    <form noValidate onSubmit={submit} data-testid="activation-step-a" className="space-y-8">
+    <form method="post" noValidate onSubmit={submit} data-testid="activation-step-a" className="space-y-8">
       <div>
         <h2 className="heading-section text-ink">Dati intestatario</h2>
         <p className="mt-1 text-base text-ink-muted">

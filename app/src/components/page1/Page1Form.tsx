@@ -232,6 +232,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
 
   return (
     <form
+      method="post"
       noValidate
       onSubmit={onSubmit}
       data-hydrated={hydrated}

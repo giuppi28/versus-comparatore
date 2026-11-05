@@ -423,7 +423,7 @@ export async function fillActivation(
   await expect(field(page, "first_name")).toHaveValue(c.person.first);
   await expect(field(page, "last_name")).toHaveValue(c.person.last);
   await expect(field(page, "phone")).toHaveValue(phoneAsTyped(id.phone, c.phoneFormat));
-  await expect(field(page, "email")).toHaveValue(emailAsTyped(id.email, c.phoneFormat));
+  await expect(field(page, "email")).toHaveValue(emailAsTyped(id.email, c.phoneFormat).trim()); // type="email" strips surrounding spaces
   if (c.customer === "business") {
     await expect(field(page, "company_name")).toHaveValue(c.company!);
     await field(page, "vat_number").fill(c.vat!);

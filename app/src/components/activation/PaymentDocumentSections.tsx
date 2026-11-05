@@ -143,7 +143,8 @@ export function PaymentFields({
                 name="iban_holder_tax_code"
                 required
                 autoCapitalize="characters"
-                autoComplete="on"
+                // Someone else's codice fiscale: never autofilled with the customer's own, never remembered.
+                autoComplete="off"
                 spellCheck={false}
                 maxLength={16}
                 className="sm:max-w-sm"

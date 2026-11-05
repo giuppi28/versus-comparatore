@@ -88,7 +88,7 @@ export function StepB({
   }
 
   return (
-    <form noValidate onSubmit={submit} data-testid="activation-step-b" className="space-y-8">
+    <form method="post" noValidate onSubmit={submit} data-testid="activation-step-b" className="space-y-8">
       <div>
         <h2 className="heading-section text-ink">Fornitura</h2>
         <p className="mt-1 text-base text-ink-muted">Dove attivare la fornitura e i dati del contatore.</p>

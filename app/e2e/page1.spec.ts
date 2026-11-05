@@ -789,3 +789,19 @@ test.describe("Page 1 — layout screenshots", () => {
     await page.screenshot({ path: path.join(SHOTS, `page1-${testInfo.project.name}-business.png`), fullPage: true });
   });
 });
+
+test.describe("page 1 without JavaScript", () => {
+  test("submitting before hydration never puts personal data in the URL", async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+    const page = await context.newPage();
+    await page.goto("/");
+    await page.getByTestId("first-name").fill("Mario");
+    await page.getByTestId("first-name").press("Enter");
+    // The native submit is a POST: the data is in the body, never in the query string.
+    await page.waitForLoadState("load");
+    const url = new URL(page.url());
+    expect(url.search).toBe("");
+    expect(page.url()).not.toContain("Mario");
+    await context.close();
+  });
+});
