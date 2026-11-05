@@ -37,19 +37,17 @@ function jsonLdOf(html: string): { "@graph": Record<string, unknown>[] }[] {
 test.describe("SEO pages (raw HTML)", () => {
   for (const page of ALL) {
     test.describe(page.path, () => {
-      test("metadata, H1, intro, JSON-LD, sitemap", async ({ request }) => {
+      test("noindex+follow, metadata, H1, intro, JSON-LD, not in sitemap", async ({ request }) => {
         const res = await request.get(page.path);
         expect(res.status()).toBe(200);
         const html = await res.text();
 
         expect(decode(html.match(/<title>([\s\S]*?)<\/title>/)![1])).toBe(page.title);
         expect(decode(html.match(/<meta name="description" content="([^"]*)"/)![1])).toBe(page.description);
-        const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)![1];
-        expect(canonical.startsWith("https://")).toBe(true);
-        expect(canonical.endsWith(page.path)).toBe(true);
+        expect(html).not.toMatch(/<link rel="canonical"/);
         expect(html).toMatch(/<meta property="og:image" content="[^"]*opengraph-image/);
         expect(html).toMatch(/<meta name="twitter:image" content="[^"]*opengraph-image/);
-        expect(html).not.toMatch(/<meta name="robots" content="[^"]*noindex/);
+        expect(html).toMatch(/<meta name="robots" content="noindex, follow"/);
 
         const h1s = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/g)].map((m) => decode(m[1].replace(/<[^>]+>/g, "")));
         expect(h1s).toEqual([page.h1]);
@@ -72,7 +70,9 @@ test.describe("SEO pages (raw HTML)", () => {
         expect(JSON.stringify(blocks)).not.toMatch(/Product|AggregateRating|Review|telephone|sameAs/);
 
         const sitemap = await (await request.get("/sitemap.xml")).text();
-        expect(sitemap).toMatch(new RegExp(`<loc>[^<]*${page.path}</loc>`));
+        expect(sitemap).not.toContain(page.path);
+        const robots = await (await request.get("/robots.txt")).text();
+        expect(robots).not.toMatch(new RegExp(`Disallow:\\s*${page.path}`));
       });
 
       test("copy rules in <main>", async ({ request }) => {
@@ -119,6 +119,14 @@ test.describe("SEO pages (raw HTML)", () => {
       }
     });
   }
+
+  test("the home stays indexable with its canonical and is the only sitemap URL", async ({ request }) => {
+    const html = await (await request.get("/")).text();
+    expect(html).toMatch(/<link rel="canonical" href="https:\/\/[^"]+"/);
+    expect(html).not.toMatch(/<meta name="robots" content="[^"]*noindex/);
+    const sitemap = await (await request.get("/sitemap.xml")).text();
+    expect(sitemap.match(/<loc>/g)).toHaveLength(1);
+  });
 
   test("unknown guide slug is a 404", async ({ request }) => {
     expect((await request.get("/guida/non-esiste")).status()).toBe(404);

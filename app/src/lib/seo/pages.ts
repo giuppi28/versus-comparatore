@@ -22,7 +22,8 @@ export function buildSeoMetadata(page: SeoPage): Metadata {
   return {
     title: page.title,
     description: page.description,
-    alternates: { canonical: page.path },
+    // Owner decision: never rank for "offerte luce e gas". No canonical on a noindex page; crawlable (follow) so the noindex is readable.
+    robots: { index: false, follow: true },
     openGraph: {
       type: "website",
       locale: "it_IT",
