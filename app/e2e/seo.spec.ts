@@ -25,6 +25,23 @@ test.describe("SEO (raw HTML)", () => {
     expect(m![1]).not.toContain("telephone");
   });
 
+  test("favicon, icon.svg and apple-icon are served and linked", async ({ request }) => {
+    const files: [string, RegExp][] = [
+      ["/favicon.ico", /image\/(x-icon|vnd\.microsoft\.icon)/],
+      ["/icon.svg", /image\/svg\+xml/],
+      ["/apple-icon.png", /image\/png/],
+    ];
+    for (const [path, type] of files) {
+      const res = await request.get(path);
+      expect(res.status(), path).toBe(200);
+      expect(res.headers()["content-type"], path).toMatch(type);
+    }
+    const html = await (await request.get("/")).text();
+    expect(html).toMatch(/<link rel="icon" href="\/favicon\.ico[^"]*"/);
+    expect(html).toMatch(/<link rel="icon" href="\/icon\.svg[^>]*type="image\/svg\+xml"/);
+    expect(html).toMatch(/<link rel="apple-touch-icon" href="\/apple-icon\.png[^"]*"/);
+  });
+
   for (const path of ["/offerte", "/grazie"]) {
     test(`${path} is noindex`, async ({ request }) => {
       const html = await (await request.get(path)).text();
