@@ -5,7 +5,14 @@
  */
 import type { GasUseId } from "@/config/consumption";
 import type { Commodity, Supplier } from "@/lib/data/types";
-import { toLeadCompleteData, serviceTypeFor, type FlowPatch, type FlowState } from "@/lib/lead/flow-state";
+import {
+  toLeadCompleteData,
+  serviceTypeFor,
+  type DocumentSide,
+  type FlowPatch,
+  type FlowState,
+  type FlowUploadedDocument,
+} from "@/lib/lead/flow-state";
 import {
   DEFAULT_POWER_KW,
   includesGas,
@@ -487,11 +494,44 @@ export function activationRedirect(state: FlowState): string | null {
 }
 
 /** Adds a document to the list in the latest state (safe against overlapping async uploads). */
-export function addDocumentPatch(state: FlowState, doc: FlowState["activation"]["documents"][number]): FlowPatch {
-  return { activation: { documents: [...state.activation.documents, doc] } };
+export function addDocumentPatch(
+  state: FlowState,
+  doc: FlowState["activation"]["documents"][number],
+  side?: DocumentSide,
+): FlowPatch {
+  const added = side ? { ...doc, side } : doc;
+  return { activation: { documents: [...state.activation.documents, added] } };
 }
 
 /** Removes a document from the list in the latest state (safe against overlapping async actions). */
 export function removeDocumentPatch(state: FlowState, id: string): FlowPatch {
   return { activation: { documents: state.activation.documents.filter((d) => d.id !== id) } };
+}
+
+export interface DocumentSlots {
+  front: FlowUploadedDocument | null;
+  back: FlowUploadedDocument | null;
+  /** Never expected (max 2 files); kept so no document is ever hidden. */
+  extra: FlowUploadedDocument[];
+}
+
+/**
+ * Places identity documents (not the bill) in the front/back slots. A document keeps its own
+ * `side` when that slot is still free; the others (saved before the sides existed, or clashing)
+ * take the first free slot, front first. A slot holds one document at most.
+ */
+export function assignDocumentSlots(documents: readonly FlowUploadedDocument[]): DocumentSlots {
+  const slots: DocumentSlots = { front: null, back: null, extra: [] };
+  const rest: FlowUploadedDocument[] = [];
+  for (const d of documents) {
+    if (d.kind === "bill") continue;
+    if ((d.side === "front" || d.side === "back") && !slots[d.side]) slots[d.side] = d;
+    else rest.push(d);
+  }
+  for (const d of rest) {
+    if (!slots.front) slots.front = d;
+    else if (!slots.back) slots.back = d;
+    else slots.extra.push(d);
+  }
+  return slots;
 }

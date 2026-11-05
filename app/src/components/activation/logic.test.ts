@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MOCK_SUPPLIERS } from "@/lib/data";
-import { INITIAL_FLOW_STATE, applyFlowPatch, type FlowPatch, type FlowState } from "@/lib/lead/flow-state";
+import { INITIAL_FLOW_STATE, applyFlowPatch, loadFlowState, saveFlowState, type FlowPatch, type FlowState } from "@/lib/lead/flow-state";
 import {
   VALID_CF,
   VALID_PDR,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/lead/test-fixtures";
 import {
   addDocumentPatch,
+  assignDocumentSlots,
   removeDocumentPatch,
   activationRedirect,
   buildSubmitPayload,
@@ -453,5 +454,69 @@ describe("document list patches (overlapping uploads)", () => {
     expect(state.activation.documents.map((d) => d.id)).toEqual(["id-1", "bill-1"]);
     state = applyFlowPatch(state, removeDocumentPatch(state, "id-1"));
     expect(state.activation.documents.map((d) => d.id)).toEqual(["bill-1"]);
+  });
+});
+
+describe("document front/back slots", () => {
+  const doc = (id: string, side?: "front" | "back", kind = "id_card") =>
+    ({ id, kind, name: id, size_bytes: 1, ...(side ? { side } : {}) }) as unknown as FlowState["activation"]["documents"][number];
+  const ids = (s: ReturnType<typeof assignDocumentSlots>) => [s.front?.id ?? null, s.back?.id ?? null];
+
+  it("addDocumentPatch stores the side on the added document", () => {
+    const state = applyFlowPatch(INITIAL_FLOW_STATE, addDocumentPatch(INITIAL_FLOW_STATE, doc("a"), "back"));
+    expect(state.activation.documents[0].side).toBe("back");
+    const plain = applyFlowPatch(INITIAL_FLOW_STATE, addDocumentPatch(INITIAL_FLOW_STATE, doc("b")));
+    expect(plain.activation.documents[0].side).toBeUndefined();
+  });
+
+  it("a back upload alone shows in the back slot, front stays empty", () => {
+    expect(ids(assignDocumentSlots([doc("a", "back")]))).toEqual([null, "a"]);
+  });
+
+  it("legacy documents without a side fill front first, then back, none hidden", () => {
+    expect(ids(assignDocumentSlots([doc("a")]))).toEqual(["a", null]);
+    const two = assignDocumentSlots([doc("a"), doc("b")]);
+    expect(ids(two)).toEqual(["a", "b"]);
+    expect(two.extra).toEqual([]);
+  });
+
+  it("a legacy document yields to a side-tagged one and takes the free slot", () => {
+    expect(ids(assignDocumentSlots([doc("old"), doc("new", "front")]))).toEqual(["new", "old"]);
+    expect(ids(assignDocumentSlots([doc("old"), doc("new", "back")]))).toEqual(["old", "new"]);
+  });
+
+  it("two documents with the same side never share a slot", () => {
+    const s = assignDocumentSlots([doc("a", "front"), doc("b", "front")]);
+    expect(ids(s)).toEqual(["a", "b"]);
+  });
+
+  it("more than two (never expected) are kept in extra, the bill is ignored", () => {
+    const s = assignDocumentSlots([doc("a"), doc("b"), doc("c"), doc("bill", undefined, "bill")]);
+    expect(ids(s)).toEqual(["a", "b"]);
+    expect(s.extra.map((d) => d.id)).toEqual(["c"]);
+  });
+
+  it("removing frees only that slot", () => {
+    let state = INITIAL_FLOW_STATE;
+    state = applyFlowPatch(state, addDocumentPatch(state, doc("f"), "front"));
+    state = applyFlowPatch(state, addDocumentPatch(state, doc("r"), "back"));
+    state = applyFlowPatch(state, removeDocumentPatch(state, "f"));
+    expect(ids(assignDocumentSlots(state.activation.documents))).toEqual([null, "r"]);
+    state = applyFlowPatch(state, addDocumentPatch(state, doc("f2"), "front"));
+    expect(ids(assignDocumentSlots(state.activation.documents))).toEqual(["f2", "r"]);
+  });
+
+  it("the side survives a sessionStorage save and restore", () => {
+    let state = INITIAL_FLOW_STATE;
+    state = applyFlowPatch(state, addDocumentPatch(state, doc("r"), "back"));
+    const store = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    } as unknown as Storage;
+    saveFlowState(storage, state);
+    const restored = loadFlowState(storage);
+    expect(ids(assignDocumentSlots(restored.activation.documents))).toEqual([null, "r"]);
   });
 });

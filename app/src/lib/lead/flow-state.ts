@@ -107,7 +107,12 @@ export interface ActivationData {
 export interface FlowUploadedDocument extends UploadedLeadDocument {
   /** Original file name, for display only (never sent to the server again). */
   name: string;
+  /** Client-only: which side of the identity document this file is. Older saves lack it. */
+  side?: DocumentSide;
 }
+
+/** Slot of the identity-document upload area. */
+export type DocumentSide = "front" | "back";
 
 export interface FlowState {
   version: typeof FLOW_STATE_VERSION;

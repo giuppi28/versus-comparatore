@@ -219,7 +219,7 @@ test.describe("B/F. activation step B", () => {
     await createLead(page, String(testInfo.project.use.baseURL));
     await openStepB(page, flowState());
     const jpeg = await makeJpeg(page);
-    const input = page.getByTestId("document-file");
+    const input = page.getByTestId("document-file-front");
 
     await input.setInputFiles({ name: "note.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
     await expect(page.getByTestId("document-upload-error")).toHaveText("Formato non supportato: carica un file JPG o PDF.");
@@ -227,22 +227,23 @@ test.describe("B/F. activation step B", () => {
 
     await input.setInputFiles({ name: "fronte.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(1);
-    await input.setInputFiles({ name: "retro.pdf", mimeType: "application/pdf", buffer: PDF });
+    await page.getByTestId("document-file-back").setInputFiles({ name: "retro.pdf", mimeType: "application/pdf", buffer: PDF });
     await expect(page.getByTestId("document-item")).toHaveCount(2);
-    await expect(page.getByTestId("document-item").nth(1)).toContainText("retro.pdf");
-    // 3rd file: the input is gone (max 2) and a forced upload is refused by the server.
-    await expect(page.getByTestId("document-file")).toHaveCount(0);
+    await expect(page.getByTestId("document-slot-back").getByTestId("document-item")).toContainText("retro.pdf");
+    // 3rd file: both inputs are gone (max 2) and a forced upload is refused by the server.
+    await expect(page.getByTestId("document-file-front")).toHaveCount(0);
+    await expect(page.getByTestId("document-file-back")).toHaveCount(0);
     const third = await page.request.post("/api/lead/document", {
       multipart: { file: { name: "terzo.jpg", mimeType: "image/jpeg", buffer: jpeg } },
       headers: { "x-forwarded-for": `10.4.${rnd()}.${rnd()}` },
     });
     expect(third.status()).toBeGreaterThanOrEqual(400);
 
-    await page.getByRole("button", { name: "Rimuovi retro.pdf" }).click();
+    await page.getByRole("button", { name: "Rimuovi retro del documento: retro.pdf" }).click();
     await expect(page.getByTestId("document-item")).toHaveCount(1);
-    await page.getByTestId("document-file").setInputFiles({ name: "nuovo.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await page.getByTestId("document-file-back").setInputFiles({ name: "nuovo.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(2);
-    await expect(page.getByTestId("document-item").nth(1)).toContainText("nuovo.jpg");
+    await expect(page.getByTestId("document-slot-back").getByTestId("document-item")).toContainText("nuovo.jpg");
   });
 
   test("POD normalized, PDR in POD field flagged, IT002 POD with Catania warns without blocking", async ({ page }) => {
