@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   flooredUpdateDay,
-  GUIDES_PUBLISHED_ON,
   latestUpdateDay,
   offerUpdatedLabel,
   UPDATED_FLOOR,
@@ -35,7 +34,4 @@ describe("update dates floor", () => {
     expect(offerUpdatedLabel("2026-12-03T09:00:00Z")).toBe("Aggiornata il 3 dicembre 2026");
   });
 
-  it("guides were first published on 2026-11-05", () => {
-    expect(GUIDES_PUBLISHED_ON).toBe("2026-11-05");
-  });
 });

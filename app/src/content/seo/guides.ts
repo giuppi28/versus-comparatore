@@ -3,9 +3,14 @@ import type { SeoPage } from "./types";
 const COVERAGE =
   "Confrontiamo le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato.";
 const AGENT = "VERSUS opera come agente ed è remunerato dai venditori.";
-const REVIEWED = "2026-11-05";
+const REVIEWED = "2026-11-07";
+const REVIEWED_NEW = "2026-11-07";
 
 const A = "https://www.arera.it/atlante-per-il-consumatore";
+
+const SRC_PLACET_URL = "https://www.arera.it/consumatori/offerte-standard-per-i-clienti-finali-placet";
+const SRC_FINE_ELE_URL = "https://www.arera.it/consumatori/fine-tutela-ele";
+const SRC_FINE_GAS_URL = "https://www.arera.it/consumatori/fine-tutela-gas-cosa-fare";
 
 const SRC_PORTALE = {
   label: "Portale Offerte di ARERA",
@@ -184,7 +189,7 @@ export const GUIDE_PAGES: SeoPage[] = [
         paragraphs: [
           "Due codici identificano il tuo punto di fornitura: il POD per la luce, di 14 o 15 caratteri alfanumerici che iniziano con IT, e il PDR per il gas, di 14 cifre. Quando cambi venditore restano gli stessi. Per i dati da fornire segui le richieste del venditore.",
           "Prima di firmare il venditore deve consegnarti la Scheda sintetica, con le condizioni principali e la spesa annua stimata. Leggila con calma: è il documento fatto per confrontare.",
-          "Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.",
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.",
         ],
       },
       {
@@ -218,6 +223,7 @@ export const GUIDE_PAGES: SeoPage[] = [
     ],
     sources: [SRC_SWITCH_HOW, SRC_RECESSO_ELE, SRC_SWITCH_COST_ELE, SRC_RECESSO_GAS, SRC_SWITCH_INTERRUPT_GAS, SRC_SWITCH_TIME, SRC_DELIBERA_58, SRC_VULNERABLE, SRC_POD, SRC_PDR, SRC_PORTALE],
     related: ["/guida/voltura-luce-gas", "/guida/subentro-luce-gas", "/offerte-luce-gas", "/offerte-luce-gas-partita-iva"],
+    publishedOn: "2026-11-05",
     reviewedOn: REVIEWED,
   },
 
@@ -283,7 +289,7 @@ export const GUIDE_PAGES: SeoPage[] = [
         heading: "Posso fare la voltura e cambiare fornitore insieme?",
         paragraphs: [
           "Per la luce, secondo ARERA, se vuoi cambiare venditore con la voltura presenti la richiesta al nuovo venditore. Per il gas, la delibera 323/2025/R/com di ARERA ha completato le regole in modo che il cliente possa scegliere il venditore durante la voltura. Chiedi al venditore se si applica già alla tua pratica.",
-          "Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.",
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.",
         ],
       },
       {
@@ -317,6 +323,7 @@ export const GUIDE_PAGES: SeoPage[] = [
     ],
     sources: [SRC_VOLTURA_DEF_GAS, SRC_VOLTURA_HOW_ELE, SRC_VOLTURA_REFUSE_ELE, SRC_VOLTURA_TIME_ELE, SRC_VOLTURA_TIME_GAS, SRC_VOLTURA_COST_ELE, SRC_VOLTURA_COST_GAS, SRC_ARREARS, SRC_DELIBERA_323, SRC_SWITCH_COST_ELE, SRC_PORTALE],
     related: ["/guida/subentro-luce-gas", "/guida/cambio-fornitore-luce-gas", "/guida/primo-allaccio-luce-gas", "/offerte-luce-gas"],
+    publishedOn: "2026-11-05",
     reviewedOn: REVIEWED,
   },
 
@@ -377,7 +384,7 @@ export const GUIDE_PAGES: SeoPage[] = [
         heading: "Posso scegliere un fornitore nuovo al subentro?",
         paragraphs: [
           "Sì: ARERA descrive la richiesta come una domanda rivolta al venditore che scegli. Questo ti permette di confrontare le offerte prima di decidere a chi chiedere l'attivazione.",
-          "Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.",
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.",
         ],
       },
       {
@@ -411,6 +418,7 @@ export const GUIDE_PAGES: SeoPage[] = [
     ],
     sources: [SRC_SUBENTRO_DEF, SRC_SUBENTRO_GAS, SRC_SUBENTRO_ELE, SRC_VOLTURA_COST_GAS, SRC_VOLTURA_COST_ELE, SRC_SAFETY_COST_GAS, SRC_ACTIVATION_TIME_ELE, SRC_ARREARS, SRC_PORTALE],
     related: ["/guida/voltura-luce-gas", "/guida/primo-allaccio-luce-gas", "/guida/cambio-fornitore-luce-gas", "/offerte-luce-gas"],
+    publishedOn: "2026-11-05",
     reviewedOn: REVIEWED,
   },
 
@@ -471,7 +479,7 @@ export const GUIDE_PAGES: SeoPage[] = [
         heading: "Posso scegliere il fornitore subito?",
         paragraphs: [
           "Sì, nel caso della luce, ARERA descrive proprio la possibilità di firmare con un venditore chiedendo allacciamento e attivazione. Puoi quindi confrontare le offerte prima di firmare.",
-          "Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.",
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.",
         ],
       },
       {
@@ -511,6 +519,240 @@ export const GUIDE_PAGES: SeoPage[] = [
     ],
     sources: [SRC_ALLACCIO_HOW_ELE, SRC_ALLACCIO_TIME_ELE, SRC_ALLACCIO_TIME_GAS, SRC_ALLACCIO_COST_ELE, SRC_ALLACCIO_COST_GAS, SRC_ACTIVATION_TIME_ELE, SRC_SAFETY_COST_GAS, SRC_SUBENTRO_DEF, SRC_PORTALE],
     related: ["/guida/subentro-luce-gas", "/guida/voltura-luce-gas", "/guida/cambio-fornitore-luce-gas", "/offerte-luce-gas"],
+    publishedOn: "2026-11-05",
     reviewedOn: REVIEWED,
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    path: "/guida/come-scegliere-offerta-luce-gas",
+    footerLabel: "Come scegliere",
+    title: "Come scegliere un'offerta luce e gas: guida | VERSUS",
+    description:
+      "Come scegliere un'offerta luce e gas: dati da avere, prezzo fisso o variabile, PLACET, Scheda sintetica e controlli prima di firmare. Guida basata su ARERA.",
+    h1: "Come scegliere un'offerta luce e gas",
+    intro:
+      "Per scegliere un'offerta luce o gas guarda il tipo di prezzo (fisso o variabile), i tuoi consumi, le altre voci della bolletta e le condizioni del contratto, che trovi nella Scheda sintetica. Non esiste un'offerta giusta per tutti: dipende dai consumi e da come vuoi gestire il rischio di variazioni di prezzo.",
+    sections: [
+      {
+        heading: "I dati da avere in mano",
+        paragraphs: [
+          "Per confrontare le offerte luce servono il consumo annuo in kWh e la potenza impegnata in kW, che trovi in bolletta. Per il gas il consumo si misura in Smc, gli standard metri cubi usati in fattura. Se non hai la bolletta, lo storico dei consumi è consultabile sul Portale Consumi di ARERA con SPID o CIE.",
+        ],
+      },
+      {
+        heading: "Che cosa comprende il prezzo di un'offerta",
+        paragraphs: [
+          "Il prezzo di un'offerta riguarda l'energia: per la luce in €/kWh, per il gas in €/Smc. Non è la bolletta intera. Per la luce la guida di ARERA indica quattro voci:",
+          "Molte voci sono aggiornate periodicamente da ARERA, anche ogni trimestre: per questo qui non trovi i loro valori.",
+        ],
+        bullets: [
+          "materia energia: l'attività di fornitura del venditore, con una parte fissa annua e una parte legata ai kWh consumati;",
+          "trasporto e gestione del contatore: una tariffa fissata da ARERA con criteri uguali in tutta Italia;",
+          "oneri di sistema: costi di interesse generale pagati da tutti i clienti;",
+          "imposte: l'accisa sull'energia consumata e l'IVA sul totale della bolletta.",
+        ],
+      },
+      {
+        heading: "Prezzo fisso o prezzo variabile",
+        paragraphs: [
+          "Con un'offerta a prezzo fisso il prezzo dell'energia resta invariato per un periodo stabilito dal contratto. Con un'offerta a prezzo variabile il prezzo cambia in automatico a intervalli prestabiliti, seguendo un indice, e può salire o scendere.",
+          "Nessuna delle due è giusta in assoluto: la scelta dipende da quanto vuoi poter prevedere la spesa. Per le offerte variabili la Scheda sintetica deve indicare il meccanismo di indicizzazione e il prezzo più alto dei 12 mesi precedenti, con il periodo a cui si riferisce.",
+        ],
+      },
+      {
+        heading: "Cosa sono le offerte PLACET",
+        paragraphs: [
+          "PLACET significa Prezzo Libero A Condizioni Equiparate di Tutela. Sono offerte standard che ogni venditore deve includere per famiglie e piccole imprese, in una versione a prezzo fisso e in una a prezzo variabile. Hanno durata indeterminata, con condizioni economiche rinnovate ogni 12 mesi, con il venditore che informa il cliente delle nuove condizioni entro tre mesi dalla scadenza. ARERA ne fissa i termini contrattuali, e luce e gas non possono stare nello stesso contratto PLACET.",
+        ],
+      },
+      {
+        heading: "PUN e PSV: gli indici delle offerte variabili",
+        paragraphs: [
+          "Nel PLACET a prezzo variabile ARERA usa come riferimento il PUN per la luce e la media mensile del PSV giorno prima per il gas.",
+          "Il GME, il gestore del mercato elettrico, definisce il PUN Index GME come il prezzo di riferimento dell'energia elettrica scambiata sul mercato del giorno prima (MGP); nelle pagine di ARERA per le offerte PLACET luce l'indice è ancora indicato come PUN. Il PSV, Punto di Scambio Virtuale, è il punto virtuale in cui si scambia e si trasferisce il gas. Non riportiamo i loro valori, che cambiano di continuo.",
+        ],
+      },
+      {
+        heading: "I controlli prima di firmare",
+        paragraphs: [],
+        bullets: [
+          "Scheda sintetica: prima di firmare il venditore deve consegnartela, con le condizioni principali e la spesa annua stimata.",
+          "Recesso anticipato: per la luce, nei contratti a prezzo fisso e durata determinata può esserci una penale. Deve essere scritta nel contratto, firmata in modo specifico e riportata nella Scheda sintetica, alla voce «Modalità e oneri per il recesso».",
+          "Costi alla firma: di norma cambiare venditore non costa nulla, ma possono esserci imposta di bollo e deposito cauzionale, se previsti.",
+          "Ripensamento: per i clienti domestici dura 14 giorni se il contratto è firmato a distanza o fuori dai locali del venditore, 30 giorni in caso di visita a domicilio non richiesta.",
+        ],
+      },
+      {
+        heading: "Casa o partita IVA",
+        paragraphs: [
+          "Le regole per leggere un'offerta sono le stesse. I prezzi e le stime di VERSUS sono IVA esclusa, anche per la partita IVA. Aliquote e trattamento fiscale dipendono dalla tua attività e vanno chiariti con il tuo commercialista. Le offerte PLACET sono previste anche per le piccole imprese.",
+        ],
+      },
+      {
+        heading: "Se sei ancora in un servizio di tutela",
+        paragraphs: [
+          "Secondo ARERA, la maggior tutela per la luce (dal 1 luglio 2024) e il servizio di tutela per il gas (dal gennaio 2024) sono riservati ai clienti vulnerabili, e il Servizio a Tutele Graduali dal 1 aprile 2027 non sarà più disponibile. Trovi i dettagli nella guida «Fine della tutela e passaggio al mercato libero».",
+        ],
+      },
+      {
+        heading: "Un confronto più ampio",
+        paragraphs: [
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte di luce, gas e luce più gas: comprende offerte PLACET, di mercato libero e servizi di tutela.",
+        ],
+      },
+      {
+        heading: "Confronta le offerte su VERSUS",
+        paragraphs: [
+          `Su VERSUS scegli luce, gas o luce e gas, indichi se sei una casa o una partita IVA e inserisci i consumi: vedi le offerte in elenco con una stima della spesa mensile, IVA esclusa, e la scelta resta tua. ${COVERAGE} ${AGENT} Per te il confronto è gratuito.`,
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Qual è l'offerta luce e gas più conveniente?",
+        a: "Dipende dai consumi, dal tipo di prezzo e dalle altre voci della bolletta, quindi non c'è una risposta valida per tutti. Confronta la spesa annua stimata nella Scheda sintetica di più offerte e leggi le condizioni, compresa la durata e il recesso.",
+      },
+      {
+        q: "Il prezzo che vedo è quanto pagherò in bolletta?",
+        a: "No. È il prezzo dell'energia. La bolletta comprende anche trasporto e gestione del contatore, oneri di sistema e imposte, e dipende da quanto consumi davvero.",
+      },
+      {
+        q: "Meglio il prezzo fisso o il prezzo variabile?",
+        a: "Dipende da come vuoi gestire il rischio. Il prezzo fisso resta invariato per il periodo di contratto; il variabile segue un indice e può salire o scendere.",
+      },
+      {
+        q: "Posso ripensarci dopo aver firmato?",
+        a: "Secondo le pagine di ARERA, per i clienti domestici il ripensamento dura 14 giorni se il contratto è firmato a distanza o fuori dai locali del venditore, e 30 giorni in caso di visita a domicilio non richiesta.",
+      },
+    ],
+    sources: [
+      { label: "ARERA, guida alla lettura delle voci di spesa", url: "https://www.arera.it/bolletta/guida-alla-lettura-delle-voci-di-spesa" },
+      { label: "ARERA, spesa per il trasporto e la gestione del contatore", url: `${A}/elettricita/la-bolletta/cosa-si-paga/cosa-e-la-spesa-per-il-trasporto-e-la-gestione-del-contatore` },
+      { label: "ARERA, offerte standard PLACET", url: SRC_PLACET_URL },
+      { label: "ARERA, cosa sono le offerte a prezzo variabile", url: `${A}/gas/il-mercato-dellenergia/le-offerte-commerciali/cosa-sono-le-offerte-a-prezzo-variabile` },
+      { label: "ARERA, il coefficiente di correzione dei volumi C", url: "https://www.arera.it/en/atlante-per-il-consumatore/gas/la-bolletta/letture-e-consumi/che-cose-il-coefficiente-di-correzione-dei-volumi-denominato-c" },
+      SRC_SWITCH_COST_ELE,
+      SRC_SWITCH_TIME,
+      SRC_VULNERABLE,
+      { label: "ARERA, fine della tutela per la luce", url: SRC_FINE_ELE_URL },
+      { label: "ARERA, fine della tutela per il gas", url: SRC_FINE_GAS_URL },
+      { label: "GME, PUN Index GME", url: "https://www.mercatoelettrico.org/it-it/Home/Pubblicazioni/Indici-GME/PUNIndexGme" },
+      { label: "GME, glossario", url: "https://www.mercatoelettrico.org/Home/Glossario" },
+      SRC_PORTALE,
+    ],
+    related: ["/guida/fine-tutela-mercato-libero", "/guida/cambio-fornitore-luce-gas", "/guida/voltura-luce-gas", "/guida/subentro-luce-gas"],
+    publishedOn: "2026-11-07",
+    reviewedOn: REVIEWED_NEW,
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    path: "/guida/fine-tutela-mercato-libero",
+    footerLabel: "Fine tutela",
+    title: "Fine della tutela e mercato libero: cosa cambia | VERSUS",
+    description:
+      "Fine della maggior tutela e del Servizio a Tutele Graduali per luce e gas: date, clienti vulnerabili e cosa fare prima del 1 aprile 2027. Guida basata su ARERA.",
+    h1: "Fine della tutela e passaggio al mercato libero",
+    intro:
+      "Per la luce, dal 1 luglio 2024 la maggior tutela è riservata ai clienti vulnerabili. I clienti non vulnerabili che non avevano scelto il mercato libero sono nel Servizio a Tutele Graduali, che dal 1 aprile 2027 non sarà più disponibile. Per il gas, dal gennaio 2024 il servizio di tutela è riservato ai clienti vulnerabili. Le date sono quelle indicate da ARERA a novembre 2026: ricontrollale sul sito di ARERA.",
+    sections: [
+      {
+        heading: "Cosa è cambiato per la luce",
+        paragraphs: [
+          "Secondo ARERA, dal 1 luglio 2024 la maggior tutela per la luce può essere scelta solo dai clienti vulnerabili. Rientrano:",
+          "I clienti non vulnerabili che non avevano scelto un contratto di mercato libero sono passati dal 1 luglio 2024 al Servizio a Tutele Graduali, con il venditore assegnato alla loro zona.",
+        ],
+        bullets: [
+          "chi ha 75 anni o più;",
+          "chi riceve il bonus sociale elettrico;",
+          "chi riceve il bonus per gravi condizioni di salute;",
+          "chi ha una disabilità riconosciuta dalla legge 104 del 1992;",
+          "chi vive in un'abitazione di emergenza dopo un evento calamitoso;",
+          "chi è servito su isole minori non interconnesse.",
+        ],
+      },
+      {
+        heading: "Cosa succede il 1 aprile 2027",
+        paragraphs: [
+          "Dal 1 aprile 2027 il Servizio a Tutele Graduali non è più disponibile: resta per i clienti senza venditore. I clienti non vulnerabili che non scelgono un'offerta sono spostati, senza interruzioni e senza un nuovo contratto da firmare, su un'offerta di mercato libero del loro venditore del servizio.",
+          "Secondo ARERA quell'offerta ha durata minima di 12 mesi e nessuna penale per il recesso anticipato, ed è quella con la spesa annua stimata più bassa tra le offerte che il venditore rende disponibili ai clienti del servizio a dicembre 2026. A dicembre 2026 il cliente riceve una sintesi dell'offerta; i documenti completi possono arrivare entro il 31 marzo 2027.",
+          "I clienti vulnerabili ancora nel Servizio a Tutele Graduali passano dal 1 aprile 2027 al Servizio di Maggior Tutela. Chi non è stato ancora identificato come vulnerabile può dichiararlo con un modulo allegato alle bollette da settembre 2026.",
+        ],
+      },
+      {
+        heading: "Cosa è cambiato per il gas",
+        paragraphs: [
+          "Secondo ARERA, dal gennaio 2024 il servizio di tutela per il gas può essere scelto solo dai clienti vulnerabili. I clienti domestici non vulnerabili sono passati al mercato libero, e chi non ha fatto nulla è passato a un'offerta PLACET. Sono vulnerabili, per il gas:",
+        ],
+        bullets: [
+          "gli intestatari con 75 anni o più;",
+          "chi riceve il bonus sociale gas;",
+          "chi ha una disabilità riconosciuta dalla legge 104 del 1992;",
+          "chi vive in un'abitazione di emergenza dopo un evento calamitoso.",
+        ],
+      },
+      {
+        heading: "Partita IVA e microimprese",
+        paragraphs: [
+          "ARERA distingue le microimprese (meno di 10 dipendenti e fatturato fino a 2 milioni di euro) dalle piccole imprese (da 10 a 50 dipendenti e/o fatturato tra 2 e 10 milioni di euro, con punti di prelievo in bassa tensione). Conta la dimensione, non la sola partita IVA.",
+          "Il Servizio a Tutele Graduali ha riguardato le microimprese e gli altri clienti non domestici con punti di prelievo fino a 15 kW dal 1 aprile 2023, le piccole imprese dal 1 luglio 2024. Le liste di questi clienti arrivano fino al 31 marzo 2027. Per sapere cosa accade a un'attività dopo quella data, verifica sulle pagine di ARERA o chiedilo al tuo venditore attuale.",
+        ],
+      },
+      {
+        heading: "Passare al mercato libero: cosa c'è da sapere",
+        paragraphs: [
+          "Per la luce, passare al mercato libero è gratuito, non richiede la sostituzione del contatore e non interrompe la fornitura. Per il gas il cambio di venditore non causa interruzioni né interventi sul contatore o sugli impianti. Alla firma possono esserci imposta di bollo e deposito cauzionale, se previsti.",
+          "Prima di firmare il venditore deve consegnarti la Scheda sintetica, con le condizioni principali e la spesa annua stimata. Per confrontare le offerte servono il consumo annuo in kWh e la potenza impegnata in kW, che trovi in bolletta; lo storico dei consumi è sul Portale Consumi di ARERA con SPID o CIE. Come leggere le offerte lo spieghiamo nella guida «Come scegliere un'offerta luce e gas».",
+        ],
+      },
+      {
+        heading: "Un confronto più ampio",
+        paragraphs: [
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte di luce, gas e luce più gas: comprende offerte PLACET, di mercato libero e servizi di tutela.",
+        ],
+      },
+      {
+        heading: "Confronta le offerte su VERSUS",
+        paragraphs: [
+          `Se vuoi scegliere tu, apri il confronto di VERSUS: indichi luce, gas o luce e gas, il tipo di cliente e i consumi, e vedi le offerte in elenco con una stima IVA esclusa. ${COVERAGE} ${AGENT} Per te il confronto è gratuito.`,
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Cosa succede il 1 aprile 2027 se non scelgo un'offerta?",
+        a: "Per la luce, secondo ARERA, il cliente non vulnerabile che non sceglie viene spostato, senza interruzioni, su un'offerta di mercato libero del venditore del servizio, con durata minima di 12 mesi e senza penale per il recesso anticipato.",
+      },
+      {
+        q: "Chi può restare in maggior tutela per la luce?",
+        a: "Solo i clienti vulnerabili: per esempio chi ha 75 anni o più, chi riceve il bonus sociale elettrico o chi ha una disabilità riconosciuta dalla legge 104 del 1992.",
+      },
+      {
+        q: "La tutela del gas esiste ancora?",
+        a: "Sì, ma dal gennaio 2024 solo per i clienti vulnerabili, secondo ARERA. Gli altri clienti domestici sono passati al mercato libero.",
+      },
+      {
+        q: "Passare al mercato libero interrompe la luce o il gas?",
+        a: "No. Per la luce passare al mercato libero è gratuito, non richiede la sostituzione del contatore e non interrompe la fornitura; per il gas il cambio non causa interruzioni né interventi sul contatore.",
+      },
+      {
+        q: "Sono un cliente vulnerabile e non l'ho ancora dichiarato: cosa posso fare?",
+        a: "Secondo ARERA, i clienti non ancora identificati possono dichiarare la vulnerabilità con un modulo allegato alle bollette da settembre 2026. Per la tua situazione, rivolgiti al tuo venditore.",
+      },
+    ],
+    sources: [
+      { label: "ARERA, fine della tutela per la luce", url: SRC_FINE_ELE_URL },
+      SRC_VULNERABLE,
+      { label: "ARERA, il Servizio a Tutele Graduali", url: "https://www.arera.it/consumatori/il-servizio-a-tutele-graduali" },
+      { label: "ARERA, fine della tutela per il gas", url: SRC_FINE_GAS_URL },
+      { label: "ARERA, offerte standard PLACET", url: SRC_PLACET_URL },
+      SRC_SWITCH_INTERRUPT_GAS,
+      SRC_SWITCH_COST_ELE,
+      SRC_PORTALE,
+    ],
+    related: ["/guida/come-scegliere-offerta-luce-gas", "/guida/cambio-fornitore-luce-gas", "/guida/voltura-luce-gas", "/guida/primo-allaccio-luce-gas"],
+    publishedOn: "2026-11-07",
+    reviewedOn: REVIEWED_NEW,
   },
 ];

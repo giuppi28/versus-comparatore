@@ -19,9 +19,6 @@ export function formatItalianDate(value: string): string {
   return `${get("day")} ${MONTHS[get("month") - 1]} ${get("year")}`;
 }
 
-/** First publication of the guides (T19.4a). */
-export const GUIDES_PUBLISHED_ON = "2026-11-05";
-
 /** Floor for every "last updated" date shown or published (T19.4a/T19.4c): nothing earlier than the public launch of the freshness signals. */
 export const UPDATED_FLOOR = "2026-11-07";
 

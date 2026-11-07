@@ -33,6 +33,8 @@ export interface SeoPage {
   sources: SeoSource[];
   /** paths of 3 or 4 other pages in this set */
   related: string[];
+  /** first publication day, guides only (Article datePublished), e.g. "2026-11-05" */
+  publishedOn?: string;
   /** e.g. "2026-11-05" */
   reviewedOn: string;
 }

@@ -28,4 +28,24 @@ export const FAQ: { q: string; a: string }[] = [
     q: "Come viene remunerato VERSUS?",
     a: "VERSUS opera come agente ed è remunerato dai venditori.",
   },
+  {
+    q: "Qual è l'offerta luce e gas più conveniente?",
+    a: "Dipende dai tuoi consumi, dal tipo di prezzo (fisso o variabile) e dalle altre voci della bolletta, quindi non c'è una risposta valida per tutti. Su VERSUS inserisci i tuoi consumi e vedi una stima della spesa mensile, IVA esclusa, per le offerte dei venditori con cui collaboriamo, non per tutte quelle disponibili sul mercato.",
+  },
+  {
+    q: "Meglio il prezzo fisso o il prezzo variabile?",
+    a: "Dipende da come vuoi gestire il rischio. Il prezzo fisso resta invariato per il periodo di contratto; il variabile segue un indice e può salire o scendere. Nella Scheda sintetica di un'offerta variabile trovi come funziona l'indicizzazione e il prezzo più alto degli ultimi 12 mesi.",
+  },
+  {
+    q: "Che cosa sono le offerte PLACET?",
+    a: "Sono offerte standard che ogni venditore deve includere per famiglie e piccole imprese, a prezzo fisso e variabile, con durata indeterminata e condizioni economiche rinnovate ogni 12 mesi, con il venditore che informa il cliente delle nuove condizioni entro tre mesi dalla scadenza. ARERA ne fissa i termini contrattuali, e luce e gas non possono stare nello stesso contratto PLACET.",
+  },
+  {
+    q: "Cosa succede il 1 aprile 2027 se non scelgo un'offerta?",
+    a: "Secondo ARERA, dal 1 aprile 2027 il Servizio a Tutele Graduali per la luce non sarà più disponibile. I clienti non vulnerabili che non scelgono vengono spostati, senza interruzioni, su un'offerta di mercato libero del loro venditore, con durata minima di 12 mesi e senza penale per il recesso anticipato.",
+  },
+  {
+    q: "Cos'è la Scheda sintetica?",
+    a: "È il documento che il venditore deve consegnarti prima della firma, con le condizioni principali del contratto e la spesa annua stimata. Riporta anche le modalità e gli oneri per il recesso, e per le offerte variabili il meccanismo di indicizzazione. È il documento pensato per confrontare le offerte.",
+  },
 ];

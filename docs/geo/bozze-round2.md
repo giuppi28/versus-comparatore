@@ -28,7 +28,7 @@ VERSUS è un comparatore di offerte luce e gas per la casa e per la partita IVA.
 
 Confrontiamo le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato. VERSUS opera come agente ed è remunerato dai venditori. Per te il confronto non ha costi.
 
-Per avere una vista più ampia del mercato esiste il Portale Offerte di ARERA, lo strumento pubblico ufficiale per confrontare le offerte di luce, gas e luce più gas: comprende offerte PLACET, di mercato libero e servizi di tutela.
+Per avere una vista più ampia del mercato esiste il Portale Offerte, il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte di luce, gas e luce più gas: comprende offerte PLACET, di mercato libero e servizi di tutela.
 
 ### Come viene calcolata la stima
 
@@ -38,7 +38,7 @@ Per un'offerta a prezzo fisso la spesa mensile stimata è il consumo di un mese 
 
 ### Prezzo fisso o prezzo variabile
 
-Con un'offerta a prezzo fisso il prezzo dell'energia resta invariato per un periodo stabilito dal contratto. Con un'offerta a prezzo variabile cambia in automatico a intervalli prestabiliti, seguendo un indice. Nelle offerte standard PLACET, ARERA usa come riferimento il PUN per la luce (che il GME pubblica come PUN Index GME) e la media mensile del PSV giorno prima per il gas.
+Con un'offerta a prezzo fisso il prezzo dell'energia resta invariato per un periodo stabilito dal contratto. Con un'offerta a prezzo variabile cambia in automatico a intervalli prestabiliti, seguendo un indice. Nelle offerte standard PLACET, ARERA usa come riferimento il PUN per la luce (indice che il GME definisce PUN Index GME) e la media mensile del PSV giorno prima per il gas.
 
 Per le offerte variabili la Scheda sintetica deve indicare come funziona l'indicizzazione e il prezzo più alto dei 12 mesi precedenti, con il periodo. Né il prezzo fisso né il variabile sono giusti in assoluto: dipende da come vuoi gestire il rischio di variazioni.
 
@@ -109,7 +109,7 @@ Dipende da come vuoi gestire il rischio. Il prezzo fisso resta invariato per il 
 
 **Che cosa sono le offerte PLACET?**
 
-Sono offerte standard che ogni venditore deve includere per famiglie e piccole imprese, a prezzo fisso e variabile, con durata indeterminata e condizioni rinnovate ogni 12 mesi con almeno tre mesi di preavviso. ARERA ne fissa i termini contrattuali, e luce e gas non possono stare nello stesso contratto PLACET.
+Sono offerte standard che ogni venditore deve includere per famiglie e piccole imprese, a prezzo fisso e variabile, con durata indeterminata e condizioni economiche rinnovate ogni 12 mesi, con il venditore che informa il cliente delle nuove condizioni entro tre mesi dalla scadenza. ARERA ne fissa i termini contrattuali, e luce e gas non possono stare nello stesso contratto PLACET.
 
 **Cosa succede il 1 aprile 2027 se non scelgo un'offerta?**
 
@@ -176,13 +176,13 @@ Nessuna delle due è giusta in assoluto: la scelta dipende da quanto vuoi poter 
 
 ### Cosa sono le offerte PLACET
 
-PLACET significa Prezzo Libero A Condizioni Equiparate di Tutela. Sono offerte standard che ogni venditore deve includere per famiglie e piccole imprese, in una versione a prezzo fisso e in una a prezzo variabile. Hanno durata indeterminata, con condizioni rinnovate ogni 12 mesi e almeno tre mesi di preavviso. ARERA ne fissa i termini contrattuali, e luce e gas non possono stare nello stesso contratto PLACET.
+PLACET significa Prezzo Libero A Condizioni Equiparate di Tutela. Sono offerte standard che ogni venditore deve includere per famiglie e piccole imprese, in una versione a prezzo fisso e in una a prezzo variabile. Hanno durata indeterminata, con condizioni economiche rinnovate ogni 12 mesi, con il venditore che informa il cliente delle nuove condizioni entro tre mesi dalla scadenza. ARERA ne fissa i termini contrattuali, e luce e gas non possono stare nello stesso contratto PLACET.
 
 ### PUN e PSV: gli indici delle offerte variabili
 
 Nel PLACET a prezzo variabile ARERA usa come riferimento il PUN per la luce e la media mensile del PSV giorno prima per il gas.
 
-Il GME, il gestore del mercato elettrico, definisce il PUN come il prezzo di riferimento dell'energia elettrica scambiata sul mercato del giorno prima e lo pubblica come PUN Index GME: nelle pagine di ARERA lo trovi ancora spesso scritto PUN. Il PSV, Punto di Scambio Virtuale, è il punto virtuale in cui si scambia e si trasferisce il gas. Non riportiamo i loro valori, che cambiano di continuo.
+Il GME, il gestore del mercato elettrico, definisce il PUN Index GME come il prezzo di riferimento dell'energia elettrica scambiata sul mercato del giorno prima (MGP); nelle pagine di ARERA per le offerte PLACET luce l'indice è ancora indicato come PUN. Il PSV, Punto di Scambio Virtuale, è il punto virtuale in cui si scambia e si trasferisce il gas. Non riportiamo i loro valori, che cambiano di continuo.
 
 ### I controlli prima di firmare
 
@@ -201,7 +201,7 @@ Secondo ARERA, la maggior tutela per la luce (dal 1 luglio 2024) e il servizio d
 
 ### Un confronto più ampio
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte di luce, gas e luce più gas: comprende offerte PLACET, di mercato libero e servizi di tutela.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte di luce, gas e luce più gas: comprende offerte PLACET, di mercato libero e servizi di tutela.
 
 ### Confronta le offerte su VERSUS
 
@@ -333,7 +333,7 @@ Prima di firmare il venditore deve consegnarti la Scheda sintetica, con le condi
 
 ### Un confronto più ampio
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte di luce, gas e luce più gas: comprende offerte PLACET, di mercato libero e servizi di tutela.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte di luce, gas e luce più gas: comprende offerte PLACET, di mercato libero e servizi di tutela.
 
 ### Confronta le offerte su VERSUS
 

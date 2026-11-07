@@ -1,7 +1,6 @@
 import type { OffersSeoPage, SeoPage } from "@/content/seo/types";
 import type { OfferWithSupplier } from "@/lib/data/types";
 import { formatVariablePrice } from "@/lib/logic/pricing";
-import { GUIDES_PUBLISHED_ON } from "./dates";
 
 type Node = Record<string, unknown>;
 
@@ -52,7 +51,7 @@ export function buildGuideJsonLd(page: SeoPage, siteUrl: string): Node {
         description: page.description,
         url,
         mainEntityOfPage: url,
-        datePublished: GUIDES_PUBLISHED_ON,
+        datePublished: page.publishedOn ?? page.reviewedOn,
         dateModified: page.reviewedOn,
         inLanguage: "it-IT",
         author: organizationNode(siteUrl),

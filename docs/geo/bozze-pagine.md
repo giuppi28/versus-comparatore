@@ -39,7 +39,7 @@ Quanto spenderai dipende dai consumi e dalle altre voci della bolletta. Per la l
 
 Con un'offerta a prezzo fisso il prezzo dell'energia resta invariato per un periodo stabilito dal contratto. Con un'offerta a prezzo variabile cambia in automatico a intervalli prestabiliti, seguendo un indice. Per le offerte variabili la Scheda sintetica deve indicare il meccanismo di indicizzazione e il prezzo più alto dei 12 mesi precedenti, con il periodo a cui si riferisce.
 
-Le offerte standard PLACET (Prezzo Libero A Condizioni Equiparate di Tutela) sono un esempio: ogni venditore deve includerle per famiglie e piccole imprese, a prezzo fisso e variabile, con durata indeterminata e condizioni rinnovate ogni 12 mesi con almeno tre mesi di preavviso. ARERA ne fissa i termini e luce e gas non possono stare nello stesso contratto PLACET.
+Le offerte standard PLACET (Prezzo Libero A Condizioni Equiparate di Tutela) sono un esempio: ogni venditore deve includerle per famiglie e piccole imprese, a prezzo fisso e variabile, con durata indeterminata e condizioni economiche rinnovate ogni 12 mesi, con il venditore che informa il cliente delle nuove condizioni entro tre mesi dalla scadenza. ARERA ne fissa i termini e luce e gas non possono stare nello stesso contratto PLACET.
 
 Come riferimento all'ingrosso, nel PLACET variabile ARERA usa il PUN per la luce e la media mensile del PSV giorno prima per il gas. Il PUN è calcolato dal GME, che lo pubblica come PUN Index GME. Il PSV, Punto di Scambio Virtuale, è il punto in cui si scambia il gas.
 
@@ -58,9 +58,9 @@ Secondo ARERA, dal 1 luglio 2024 la maggior tutela per la luce è scelta solo da
 
 Per il gas, sempre secondo ARERA, dal gennaio 2024 la tutela è riservata ai clienti vulnerabili; gli altri clienti domestici sono passati al mercato libero, e chi non ha scelto a un'offerta PLACET.
 
-### Il confronto ufficiale e il nostro
+### Il Portale Offerte e il nostro confronto
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte di luce, gas e luce più gas. Comprende offerte PLACET, di mercato libero e servizi di tutela. Su VERSUS vedi invece le offerte dei venditori con cui collaboriamo.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte di luce, gas e luce più gas. Comprende offerte PLACET, di mercato libero e servizi di tutela. Su VERSUS vedi invece le offerte dei venditori con cui collaboriamo.
 
 ### Confronta le offerte su VERSUS
 
@@ -155,7 +155,7 @@ Cambiare venditore di luce in generale non costa nulla. Le uniche spese possibil
 
 Nei contratti a prezzo fisso e durata determinata può esserci una penale per il recesso anticipato: il massimo deve essere indicato nel contratto, firmato in modo specifico e riportato nella Scheda sintetica, alla voce “Modalità e oneri per il recesso”.
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.
 
 ### Confronta le offerte luce su VERSUS
 
@@ -243,7 +243,7 @@ Sono vulnerabili, per il gas, gli intestatari con 75 anni o più, chi riceve il 
 
 ### Un confronto più ampio
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte gas, luce e luce più gas. Su VERSUS vedi invece le offerte dei venditori con cui collaboriamo.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte gas, luce e luce più gas. Su VERSUS vedi invece le offerte dei venditori con cui collaboriamo.
 
 ### Confronta le offerte gas su VERSUS
 
@@ -336,7 +336,7 @@ I codici POD (luce) e PDR (gas) identificano il punto di fornitura e non cambian
 
 ### Un confronto più ampio
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte. Su VERSUS vedi solo quelle dei venditori con cui collaboriamo.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte. Su VERSUS vedi solo quelle dei venditori con cui collaboriamo.
 
 ### Confronta le offerte per la tua attività su VERSUS
 
@@ -424,7 +424,7 @@ Due codici identificano il tuo punto di fornitura: il POD per la luce, di 14 o 1
 
 Prima di firmare il venditore deve consegnarti la Scheda sintetica, con le condizioni principali e la spesa annua stimata. Leggila con calma: è il documento fatto per confrontare.
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.
 
 ### Confronta le offerte su VERSUS
 
@@ -520,7 +520,7 @@ Con la voltura la fornitura è già attiva e resta tale: cambia solo l'intestata
 
 Per la luce, secondo ARERA, se vuoi cambiare venditore con la voltura presenti la richiesta al nuovo venditore. Per il gas, la delibera 323/2025/R/com di ARERA ha completato le regole in modo che il cliente possa scegliere il venditore durante la voltura. Chiedi al venditore se si applica già alla tua pratica.
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.
 
 ### Confronta le offerte su VERSUS
 
@@ -614,7 +614,7 @@ Per il gas, secondo ARERA, in generale no: il venditore non può addebitare le b
 
 Sì: ARERA descrive la richiesta come una domanda rivolta al venditore che scegli. Questo ti permette di confrontare le offerte prima di decidere a chi chiedere l'attivazione.
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.
 
 ### Confronta le offerte su VERSUS
 
@@ -707,7 +707,7 @@ Se chiedi anche l'attivazione, ai costi dell'allacciamento si aggiungono quelli 
 
 Sì, nel caso della luce, ARERA descrive proprio la possibilità di firmare con un venditore chiedendo allacciamento e attivazione. Puoi quindi confrontare le offerte prima di firmare.
 
-Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.
+Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.
 
 ### Differenza tra allaccio e attivazione
 

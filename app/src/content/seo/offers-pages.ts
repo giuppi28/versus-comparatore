@@ -3,7 +3,7 @@ import type { OffersSeoPage } from "./types";
 const COVERAGE =
   "Confrontiamo le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato.";
 const AGENT = "VERSUS opera come agente ed è remunerato dai venditori.";
-const REVIEWED = "2026-11-05";
+const REVIEWED = "2026-11-07";
 
 const SRC_BILL = {
   label: "ARERA, guida alla lettura delle voci di spesa",
@@ -108,7 +108,7 @@ export const OFFERS_PAGES: OffersSeoPage[] = [
         heading: "Prezzo fisso o prezzo variabile",
         paragraphs: [
           "Con un'offerta a prezzo fisso il prezzo dell'energia resta invariato per un periodo stabilito dal contratto. Con un'offerta a prezzo variabile cambia in automatico a intervalli prestabiliti, seguendo un indice. Per le offerte variabili la Scheda sintetica deve indicare il meccanismo di indicizzazione e il prezzo più alto dei 12 mesi precedenti, con il periodo a cui si riferisce.",
-          "Le offerte standard PLACET (Prezzo Libero A Condizioni Equiparate di Tutela) sono un esempio: ogni venditore deve includerle per famiglie e piccole imprese, a prezzo fisso e variabile, con durata indeterminata e condizioni rinnovate ogni 12 mesi con almeno tre mesi di preavviso. ARERA ne fissa i termini e luce e gas non possono stare nello stesso contratto PLACET.",
+          "Le offerte standard PLACET (Prezzo Libero A Condizioni Equiparate di Tutela) sono un esempio: ogni venditore deve includerle per famiglie e piccole imprese, a prezzo fisso e variabile, con durata indeterminata e condizioni economiche rinnovate ogni 12 mesi, con il venditore che informa il cliente delle nuove condizioni entro tre mesi dalla scadenza. ARERA ne fissa i termini e luce e gas non possono stare nello stesso contratto PLACET.",
           "Come riferimento all'ingrosso, nel PLACET variabile ARERA usa il PUN per la luce e la media mensile del PSV giorno prima per il gas. Il PUN è calcolato dal GME, che lo pubblica come PUN Index GME. Il PSV, Punto di Scambio Virtuale, è il punto in cui si scambia il gas.",
         ],
       },
@@ -132,9 +132,9 @@ export const OFFERS_PAGES: OffersSeoPage[] = [
         ],
       },
       {
-        heading: "Il confronto ufficiale e il nostro",
+        heading: "Il Portale Offerte e il nostro confronto",
         paragraphs: [
-          "Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte di luce, gas e luce più gas. Comprende offerte PLACET, di mercato libero e servizi di tutela. Su VERSUS vedi invece le offerte dei venditori con cui collaboriamo.",
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte di luce, gas e luce più gas. Comprende offerte PLACET, di mercato libero e servizi di tutela. Su VERSUS vedi invece le offerte dei venditori con cui collaboriamo.",
         ],
       },
       {
@@ -227,7 +227,7 @@ export const OFFERS_PAGES: OffersSeoPage[] = [
         paragraphs: [
           "Cambiare venditore di luce in generale non costa nulla. Le uniche spese possibili sono l'imposta di bollo, solo se le regole fiscali la richiedono, e un deposito cauzionale o un'altra garanzia, solo se il contratto la prevede.",
           "Nei contratti a prezzo fisso e durata determinata può esserci una penale per il recesso anticipato: il massimo deve essere indicato nel contratto, firmato in modo specifico e riportato nella Scheda sintetica, alla voce “Modalità e oneri per il recesso”.",
-          "Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte.",
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte.",
         ],
       },
       {
@@ -317,7 +317,7 @@ export const OFFERS_PAGES: OffersSeoPage[] = [
       {
         heading: "Un confronto più ampio",
         paragraphs: [
-          "Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte gas, luce e luce più gas. Su VERSUS vedi invece le offerte dei venditori con cui collaboriamo.",
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte gas, luce e luce più gas. Su VERSUS vedi invece le offerte dei venditori con cui collaboriamo.",
         ],
       },
       {
@@ -414,7 +414,7 @@ export const OFFERS_PAGES: OffersSeoPage[] = [
       {
         heading: "Un confronto più ampio",
         paragraphs: [
-          "Il Portale Offerte di ARERA è lo strumento pubblico ufficiale per confrontare le offerte. Su VERSUS vedi solo quelle dei venditori con cui collaboriamo.",
+          "Il Portale Offerte è il sito gratuito e indipendente di ARERA, previsto dalla Legge Concorrenza del 2017, per confrontare le offerte. Su VERSUS vedi solo quelle dei venditori con cui collaboriamo.",
         ],
       },
       {
