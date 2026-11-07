@@ -143,6 +143,24 @@ describe("mock lead document removal (Phase 12b)", () => {
   });
 });
 
+describe("mock countLeadIdDocuments", () => {
+  it("counts only the id documents of the in-progress lead", async () => {
+    const repo = createMockRepository();
+    const a = await repo.createLead({ privacy_consent: true });
+    const b = await repo.createLead({ privacy_consent: true });
+    expect(await repo.countLeadIdDocuments(a.token)).toBe(0);
+    const d = await repo.uploadLeadDocument(a.token, { mime: "image/jpeg", bytes: JPEG });
+    await repo.uploadLeadDocument(a.token, { mime: "application/pdf", bytes: PDF, kind: "bill" });
+    await repo.uploadLeadDocument(b.token, { mime: "image/jpeg", bytes: JPEG });
+    expect(await repo.countLeadIdDocuments(a.token)).toBe(1);
+    await repo.removeLeadDocument(a.token, d.id);
+    expect(await repo.countLeadIdDocuments(a.token)).toBe(0);
+    await expect(repo.countLeadIdDocuments("nope")).rejects.toBeInstanceOf(LeadNotFoundError);
+    await repo.completeLead(b.token, {});
+    await expect(repo.countLeadIdDocuments(b.token)).rejects.toBeInstanceOf(LeadNotFoundError);
+  });
+});
+
 describe("mock Phase 12 lead fields + callback phone", () => {
   it("stores IBAN / holder / document fields with the DB normalization", async () => {
     const repo = createMockRepository();

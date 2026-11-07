@@ -117,7 +117,7 @@ describe("identity document data (complete)", () => {
   });
 
   it("none given → all null", () => {
-    const r = complete({ document_number: "  " });
+    const r = complete({ document_type: null, document_number: "  " });
     expect(r.fields).toEqual({});
     expect(r.data).toMatchObject({
       document_type: null,
@@ -223,6 +223,7 @@ describe("handlers (mock repository)", () => {
 
   beforeEach(() => {
     repo = createMockRepository();
+    repo.countLeadIdDocuments = async () => 2; // identity document files are mandatory (T18.8)
     handlers = createLeadHandlers({
       getRepository: () => repo,
       notify: vi.fn(async () => {}),

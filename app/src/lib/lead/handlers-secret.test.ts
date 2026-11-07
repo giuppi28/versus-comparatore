@@ -27,6 +27,7 @@ let errorLog: ReturnType<typeof vi.spyOn>;
 function setup() {
   rpc = vi.fn(async (fn: string): Promise<RpcResult> => {
     if (fn === "create_lead") return { data: { id: "lead-1", token: "tok-1" }, error: null };
+    if (fn === "count_lead_documents") return { data: 2, error: null };
     if (fn === "complete_lead") {
       return { data: { id: "lead-1", token: "tok-1", notification_email: "aldo@azienda.it" }, error: null };
     }
@@ -39,6 +40,7 @@ function setup() {
     createLead: sb.createLead,
     updateLead: sb.updateLead,
     completeLead: sb.completeLead,
+    countLeadIdDocuments: sb.countLeadIdDocuments,
   };
   notify = vi.fn<(l: NewLeadNotification) => Promise<void>>(async () => {});
   handlers = createLeadHandlers({
@@ -85,10 +87,10 @@ describe("lead API with the Supabase lead RPCs", () => {
     expect(completed.status).toBe(200);
     await expectNoLeak(completed);
 
-    expect(rpc.mock.calls.map(([fn]) => fn)).toEqual(["create_lead", "update_lead", "complete_lead"]);
+    expect(rpc.mock.calls.map(([fn]) => fn)).toEqual(["create_lead", "update_lead", "count_lead_documents", "complete_lead"]);
     for (const [, args] of rpc.mock.calls) expect(args.p_secret).toBe(SECRET);
     expect(rpc.mock.calls[1][1]).toMatchObject({ p_token: "tok-1", p_patch: { first_name: "Anna" } });
-    expect(rpc.mock.calls[2][1]).toMatchObject({ p_token: "tok-1" });
+    expect(rpc.mock.calls[3][1]).toMatchObject({ p_token: "tok-1" });
   });
 
   it("forwards notification_email from complete_lead to the notification hook", async () => {

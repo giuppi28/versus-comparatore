@@ -272,6 +272,11 @@ export interface Repository {
    * document is kept and the call can be retried).
    */
   removeLeadDocument(token: string, documentId: string): Promise<void>;
+  /**
+   * Number of uploaded identity documents (kind id_document) of the IN-PROGRESS lead owning
+   * `token`. Throws LeadNotFoundError, LeadApiSecretError, or a generic Error.
+   */
+  countLeadIdDocuments(token: string): Promise<number>;
 
   // ---- Admin (authenticated admin session; get it via getAdminRepository()) ----
 

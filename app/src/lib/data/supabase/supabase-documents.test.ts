@@ -341,3 +341,19 @@ describe("removeLeadDocument (request -> Storage remove -> finish)", () => {
     expect(u.remove).not.toHaveBeenCalled();
   });
 });
+
+describe("countLeadIdDocuments", () => {
+  it("calls count_lead_documents with the secret + token and returns the number", async () => {
+    const t = setup({ rpc: [{ data: 2 }] });
+    expect(await createSupabaseRepository(t.client, withSecret).countLeadIdDocuments("tok")).toBe(2);
+    expect(t.rpc).toHaveBeenCalledWith("count_lead_documents", { p_secret: SECRET, p_token: "tok" });
+  });
+  it("maps lead_not_found and rejects a malformed or failed answer (fail closed)", async () => {
+    const nf = setup({ rpc: [{ error: { message: "lead_not_found", code: "P0002" } }] });
+    await expect(createSupabaseRepository(nf.client, withSecret).countLeadIdDocuments("tok")).rejects.toBeInstanceOf(LeadNotFoundError);
+    const bad = setup({ rpc: [{ data: null }] });
+    await expect(createSupabaseRepository(bad.client, withSecret).countLeadIdDocuments("tok")).rejects.toThrow();
+    const down = setup({ rpc: [{ error: { message: "boom" } }] });
+    await expect(createSupabaseRepository(down.client, withSecret).countLeadIdDocuments("tok")).rejects.toThrow();
+  });
+});
