@@ -14,6 +14,7 @@
  */
 import { expect, test, type Page, type Request } from "@playwright/test";
 import { CALLBACK_REQUEST_TEXT } from "../src/lib/lead/callback-request";
+import { SEEDED_ID_DOCUMENT } from "./helpers/identity-document";
 
 const FLOW_KEY = "versus.flow.v1";
 const STEP_KEY = "versus.activation.step.v1";
@@ -84,6 +85,8 @@ function casaLuce(over: Json = {}): Json {
     estimatedSmcYear: 500,
     chosenOffers: { luce: luceOffer, gas: null },
     leadCreated: true,
+    // The identity document is mandatory: seeded as already uploaded (complete is mocked).
+    activation: { ...SEEDED_ID_DOCUMENT },
     ...over,
   };
 }
@@ -481,9 +484,6 @@ test.describe("activation form", () => {
       ["pdr", "on"],
       // Sensitive: kept out of the browser's saved-values history.
       ["iban", "off"],
-      ["document_number", "off"],
-      ["document_expiry", "off"],
-      ["document_issuer", "off"],
     ];
     for (const [name, token] of stepB) {
       await expect(field(page, name), name).toHaveAttribute("autocomplete", token);

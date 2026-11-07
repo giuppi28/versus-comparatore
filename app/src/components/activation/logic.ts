@@ -4,7 +4,7 @@
  * Framework-free so they are unit-tested without rendering.
  */
 import type { GasUseId } from "@/config/consumption";
-import type { Commodity, Supplier } from "@/lib/data/types";
+import type { Commodity, DocumentType, Supplier } from "@/lib/data/types";
 import {
   toLeadCompleteData,
   serviceTypeFor,
@@ -21,8 +21,6 @@ import {
   needsMeterCode,
   POWER_KW_OPTIONS,
 } from "@/lib/lead/rules";
-import { italianToday } from "@/lib/lead/completion";
-import { validateDocumentNumber, validateIsoDate } from "@/lib/lead/schemas";
 import { podDistributorComuneWarning } from "@/lib/logic/distributors";
 import {
   CODICE_FISCALE_MESSAGES,
@@ -95,8 +93,6 @@ const VALIDATOR_MESSAGES: Record<string, Record<string, string>> = {
   iban_holder_tax_code: CODICE_FISCALE_MESSAGES,
 };
 
-export const DOCUMENT_PAST_MESSAGE = "Il documento è scaduto: controlla la data di scadenza.";
-
 const FIELD_REQUIRED_MESSAGES: Record<string, string> = {
   first_name: "Inserisci il nome.",
   last_name: "Inserisci il cognome.",
@@ -119,12 +115,23 @@ const FIELD_REQUIRED_MESSAGES: Record<string, string> = {
   iban_holder_first_name: "Inserisci il nome dell'intestatario.",
   iban_holder_last_name: "Inserisci il cognome dell'intestatario.",
   iban_holder_tax_code: CODICE_FISCALE_MESSAGES.empty,
+  document_type: "Seleziona il tipo di documento.",
+  // Server code "required" carries no detail: the generic wording covers both document types.
+  id_document: "Carica le foto del documento d'identità: tutti i lati richiesti.",
 };
 
-const DOCUMENT_FIELD_MESSAGES: Record<string, Record<string, string>> = {
-  document_number: { format: "Il numero del documento deve avere da 5 a 20 lettere o cifre." },
-  document_expiry: { invalid: "Inserisci una data di scadenza valida.", past: DOCUMENT_PAST_MESSAGE },
-};
+/** Sides of the identity document the customer must upload for each type (front only for the passport). */
+export function requiredDocumentSides(type: DocumentType | null): DocumentSide[] {
+  if (type === null) return [];
+  return type === "passaporto" ? ["front"] : ["front", "back"];
+}
+
+/** Italian error for missing identity-document files (client check). */
+export function missingDocumentMessage(type: DocumentType): string {
+  return type === "passaporto"
+    ? "Carica la pagina del passaporto con la foto."
+    : "Carica entrambi i lati: fronte e retro del documento.";
+}
 
 /** Italian message for one server (or client) field error code. */
 export function messageForFieldCode(field: string, code: string): string {
@@ -132,7 +139,7 @@ export function messageForFieldCode(field: string, code: string): string {
     return PAGE1_DATA_MESSAGE;
   }
   if (code === "required" && FIELD_REQUIRED_MESSAGES[field]) return FIELD_REQUIRED_MESSAGES[field];
-  const specific = VALIDATOR_MESSAGES[field]?.[code] ?? DOCUMENT_FIELD_MESSAGES[field]?.[code];
+  const specific = VALIDATOR_MESSAGES[field]?.[code];
   if (specific) return specific;
   if (field === "cap" && code !== "required") return "Inserisci un CAP di 5 cifre.";
   return GENERIC_MESSAGES[code] ?? "Valore non valido.";
@@ -167,9 +174,7 @@ const FORM_FIELDS = new Set([
   "iban_holder_last_name",
   "iban_holder_tax_code",
   "document_type",
-  "document_number",
-  "document_expiry",
-  "document_issuer",
+  "id_document",
 ]);
 
 /**
@@ -340,7 +345,7 @@ export function ibanRequired(state: FlowState): boolean {
 }
 
 /** IBAN (required for IBAN-only offers, otherwise optional) + different holder and identity document data of Step B. */
-export function validatePaymentAndDocument(state: FlowState, today: string = italianToday()): FieldErrors {
+export function validatePaymentAndDocument(state: FlowState): FieldErrors {
   const errors: FieldErrors = {};
   const a = state.activation;
 
@@ -364,16 +369,14 @@ export function validatePaymentAndDocument(state: FlowState, today: string = ita
     }
   }
 
-  // Identity document data: every field optional and independent; format checks only on filled ones.
-  if (filled(a.documentNumber) && !validateDocumentNumber(a.documentNumber).ok) {
-    errors.document_number = DOCUMENT_FIELD_MESSAGES.document_number.format;
-  }
-  if (filled(a.documentExpiry)) {
-    if (!validateIsoDate(a.documentExpiry).ok) errors.document_expiry = DOCUMENT_FIELD_MESSAGES.document_expiry.invalid;
-    else if (a.documentExpiry.trim() < today) errors.document_expiry = DOCUMENT_PAST_MESSAGE;
-  }
-  if (filled(a.documentIssuer) && a.documentIssuer.trim().length < 2) {
-    errors.document_issuer = "Inserisci l'ente di rilascio.";
+  // Identity document (mandatory, SPEC #38): the type first, then every side it needs.
+  if (a.documentType === null) {
+    errors.document_type = FIELD_REQUIRED_MESSAGES.document_type;
+  } else {
+    const slots = assignDocumentSlots(a.documents);
+    if (requiredDocumentSides(a.documentType).some((side) => slots[side] === null)) {
+      errors.id_document = missingDocumentMessage(a.documentType);
+    }
   }
   return errors;
 }
@@ -447,8 +450,6 @@ export function normalizeActivation(state: FlowState): FlowState["activation"] {
     ibanHolderTaxCode: holderCf.ok ? holderCf.value : a.ibanHolderTaxCode.trim(),
     ibanHolderFirstName: a.ibanHolderFirstName.trim(),
     ibanHolderLastName: a.ibanHolderLastName.trim(),
-    documentNumber: a.documentNumber.trim(),
-    documentIssuer: a.documentIssuer.trim(),
     taxCode: cf.ok ? cf.value : a.taxCode.trim(),
     vatNumber: piva.ok ? piva.value : a.vatNumber.trim(),
     pod: pod.ok ? pod.value : a.pod.trim(),

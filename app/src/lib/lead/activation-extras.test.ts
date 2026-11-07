@@ -404,9 +404,10 @@ describe("flow state (activation extras)", () => {
       iban_holder_last_name: "Verdi",
       iban_holder_tax_code: HOLDER_CF,
       document_type: "patente",
-      document_number: "U1A123456B",
-      document_expiry: "2031-01-01",
-      document_issuer: "MCTC",
     });
+    // Number, expiry and issuer are no longer asked: never sent, even from an older saved session.
+    expect(full).not.toHaveProperty("document_number");
+    expect(full).not.toHaveProperty("document_expiry");
+    expect(full).not.toHaveProperty("document_issuer");
   });
 });

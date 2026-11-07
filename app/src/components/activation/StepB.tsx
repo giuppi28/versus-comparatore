@@ -373,7 +373,7 @@ export function StepB({
         <PaymentFields {...extraProps} />
       </Section>
 
-      <Section title="Documento d'identità (facoltativo)" testId="activation-document">
+      <Section title="Documento d'identità" testId="activation-document">
         <DocumentFields {...extraProps} />
       </Section>
 

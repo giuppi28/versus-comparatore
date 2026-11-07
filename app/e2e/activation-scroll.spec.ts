@@ -3,6 +3,7 @@
  * the focus there (field, card group, form-level message). Same seeding and mocks as activation.spec.ts.
  */
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { SEEDED_ID_DOCUMENT } from "./helpers/identity-document";
 
 const FLOW_KEY = "versus.flow.v1";
 const CF_MARIO_ROSSI = "RSSMRA85T10A562S";
@@ -43,6 +44,8 @@ const flow = {
   estimatedSmcYear: 500,
   chosenOffers: { luce: luceOffer, gas: null },
   leadCreated: true,
+  // Identity document is mandatory: seeded so these tests only see their own missing field.
+  activation: { ...SEEDED_ID_DOCUMENT },
 };
 
 async function open(page: Page) {
