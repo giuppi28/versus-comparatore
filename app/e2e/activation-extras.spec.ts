@@ -227,13 +227,21 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     const jpeg = await makeImage(page, { type: "image/jpeg", width: 200, height: 120 });
     const front = page.getByTestId("document-slot-front");
 
+    const badge = page.getByTestId("document-slot-front-badge");
+    await expect(badge).toHaveCount(0);
     await page.getByTestId("document-file-front").setInputFiles({ name: "uno.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(1);
+    // T18.6: green check badge on the filled slot only; announced politely; "Rimuovi" stays usable.
+    await expect(badge).toBeVisible();
+    await expect(page.getByTestId("document-slot-back-badge")).toHaveCount(0);
+    await expect(badge).toHaveClass(/animate-badge-pop/);
+    await expect(front.getByRole("status")).toHaveText("Fronte del documento caricato");
     const remove = page.getByRole("button", { name: "Rimuovi fronte del documento: uno.jpg" });
     await expect(remove).toHaveText("Rimuovi");
     expect((await remove.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await remove.click();
     await expect(page.getByTestId("document-item")).toHaveCount(0);
+    await expect(badge).toHaveCount(0);
     await expect(page.getByTestId("document-file-front")).toHaveCount(1);
     await page.getByTestId("document-file-front").setInputFiles({ name: "due.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(front.getByTestId("document-item")).toContainText("due.jpg");
@@ -279,6 +287,10 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     await expect(page.getByTestId("activation-step-b")).toBeVisible();
     await expect(page.getByTestId("document-slot-front").getByTestId("document-item")).toContainText("fronte.jpg");
     await expect(page.getByTestId("document-slot-back").getByTestId("document-item")).toContainText("retro.jpg");
+    // A restored file shows the badge without replaying the pop-in or announcing again.
+    await expect(page.getByTestId("document-slot-front-badge")).toBeVisible();
+    await expect(page.getByTestId("document-slot-front-badge")).not.toHaveClass(/animate-badge-pop/);
+    await expect(front.getByRole("status")).toHaveText("");
     await noOverflow(page);
   });
 

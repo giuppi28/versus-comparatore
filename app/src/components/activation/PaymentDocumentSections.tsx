@@ -4,6 +4,7 @@ import { useId, useRef, useState } from "react";
 import {
   Button,
   CheckIcon,
+  cn,
   CloseIcon,
   Input,
   Select,
@@ -188,6 +189,8 @@ export function DocumentFields({
   const [uploadError, setUploadError] = useState<SideMessage | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<SideMessage | null>(null);
+  // Id of the file uploaded in this session: only that one plays the badge pop-in (not after a reload).
+  const [freshDocId, setFreshDocId] = useState<string | null>(null);
   // The bill (kind "bill") lives in its own section: this one only handles identity documents.
   const slots = assignDocumentSlots(a.documents);
   const busy = uploadingSide !== null || removingId !== null;
@@ -201,6 +204,7 @@ export function DocumentFields({
       const prepared = await prepareDocumentFile(file);
       const doc = await uploadLeadDocument(prepared);
       update((s) => addDocumentPatch(s, { ...doc, name: prepared.name }, side));
+      setFreshDocId(doc.id);
     } catch (err) {
       const code =
         err instanceof LeadApiError || err instanceof DocumentPrepareError
@@ -322,6 +326,7 @@ export function DocumentFields({
               key={side}
               side={side}
               doc={slots[side]}
+              fresh={slots[side] !== null && slots[side]?.id === freshDocId}
               hintId={hintId}
               busy={busy}
               uploading={uploadingSide === side}
@@ -376,12 +381,15 @@ function DocumentRow({
   ariaLabel,
   removing,
   disabled,
+  showCheck = true,
   onRemove,
 }: {
   doc: FlowUploadedDocument;
   ariaLabel: string;
   removing: boolean;
   disabled: boolean;
+  /** False in a slot: the slot title row carries the green badge instead. */
+  showCheck?: boolean;
   onRemove: () => void;
 }) {
   return (
@@ -389,9 +397,11 @@ function DocumentRow({
       data-testid="document-item"
       className="flex items-center gap-2 text-sm text-ink"
     >
-      <span aria-hidden="true" className="text-brand-600">
-        <CheckIcon className="size-5" />
-      </span>
+      {showCheck && (
+        <span aria-hidden="true" className="text-brand-600">
+          <CheckIcon className="size-5" />
+        </span>
+      )}
       <span className="min-w-0 flex-1 truncate">{doc.name}</span>
       <span className="shrink-0 text-ink-muted">
         {formatUploadSize(doc.size_bytes)}
@@ -417,6 +427,7 @@ function DocumentRow({
 function DocumentSlot({
   side,
   doc,
+  fresh,
   hintId,
   busy,
   uploading,
@@ -428,6 +439,8 @@ function DocumentSlot({
 }: {
   side: DocumentSide;
   doc: FlowUploadedDocument | null;
+  /** The file was uploaded in this session (animate the badge, announce it). */
+  fresh: boolean;
   hintId: string;
   busy: boolean;
   uploading: boolean;
@@ -449,11 +462,31 @@ function DocumentSlot({
       data-testid={`document-slot-${side}`}
       className="min-w-0 space-y-2 rounded-control border border-line px-3 py-3"
     >
-      <p id={`${id}-label`} className="text-sm font-semibold text-ink">
-        {label}
-      </p>
+      {/* Fixed-height title row: the badge appears inside it without moving anything. */}
+      <div className="flex min-h-7 items-center justify-between gap-2">
+        <p id={`${id}-label`} className="text-sm font-semibold text-ink">
+          {label}
+        </p>
+        {doc && (
+          <span
+            aria-hidden="true"
+            data-testid={`document-slot-${side}-badge`}
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white",
+              fresh && "animate-badge-pop motion-reduce:animate-none",
+            )}
+          >
+            <CheckIcon className="size-4" strokeWidth={3} />
+          </span>
+        )}
+      </div>
+      {/* Always mounted so the announcement is read when it fills; silent on reload/restore. */}
+      <span role="status" className="sr-only">
+        {doc && fresh ? `${label} caricato` : ""}
+      </span>
       {doc ? (
         <DocumentRow
+          showCheck={false}
           doc={doc}
           ariaLabel={`Rimuovi ${label.toLowerCase()}: ${doc.name}`}
           removing={removing}
