@@ -23,6 +23,10 @@ const SelectCardGroupContext = createContext<GroupContext | null>(null);
 interface GroupBaseProps {
   "aria-label"?: string;
   "aria-labelledby"?: string;
+  /** The group has a validation error: sets aria-invalid so the form can scroll and focus it. */
+  invalid?: boolean;
+  /** Id of the visible error message (aria-describedby). */
+  errorId?: string;
   className?: string;
   children: ReactNode;
 }
@@ -42,6 +46,8 @@ export function SelectCardGroup(props: SelectCardGroupProps) {
   const aria = {
     "aria-label": rest["aria-label"],
     "aria-labelledby": rest["aria-labelledby"],
+    "aria-invalid": rest.invalid ? (true as const) : undefined,
+    "aria-describedby": rest.invalid ? rest.errorId : undefined,
   };
 
   function onToggle(v: string) {

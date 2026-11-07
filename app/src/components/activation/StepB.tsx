@@ -176,6 +176,8 @@ export function StepB({
           <SelectCardGroup
             type="radio"
             aria-labelledby="resident-label"
+            invalid={!!errorFor("is_resident")}
+            errorId="resident-error"
             value={a.isResident === null ? null : a.isResident ? "yes" : "no"}
             onValueChange={(v) => {
               edited("is_resident");
@@ -274,6 +276,8 @@ export function StepB({
             <SelectCardGroup
               type="radio"
               aria-labelledby="voltage-label"
+              invalid={!!errorFor("voltage")}
+              errorId="voltage-error"
               value={a.voltage === null ? null : String(a.voltage)}
               onValueChange={(v) => {
                 edited("voltage");
@@ -344,6 +348,8 @@ export function StepB({
             <SelectCardGroup
               type="checkbox"
               aria-labelledby="gas-uses-label"
+              invalid={!!errorFor("gas_uses")}
+              errorId="gas-uses-error"
               value={gasUses}
               onValueChange={(v) => {
                 edited("gas_uses");

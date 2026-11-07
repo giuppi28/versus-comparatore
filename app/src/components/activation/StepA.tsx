@@ -175,6 +175,8 @@ export function StepA({
         <SelectCardGroup
           type="radio"
           aria-labelledby="housing-title-label"
+          invalid={!!errorFor("housing_title")}
+          errorId="housing-title-error"
           value={a.housingTitle}
           onValueChange={(v) => {
             edited("housing_title");
