@@ -1,6 +1,6 @@
 # Canonical facts — VERSUS
 
-Rule: every listing, schema block, `llms.txt` and page copies these values byte-identical. ⚠ values never ship: omit them until confirmed. Updated 2026-11-05.
+Rule: every listing, schema block, `llms.txt` and page copies these values byte-identical. ⚠ values never ship: omit them until confirmed. Updated 2026-11-07.
 
 ## Confirmed
 | Fact | Value | Source |
@@ -25,8 +25,14 @@ Rule: every listing, schema block, `llms.txt` and page copies these values byte-
 | Fact | Why | Who |
 |---|---|---|
 | ⚠ Fees and 12-month lock | Values not in Aldo's list | Aldo |
-| ⚠ Telephone number | Current value +39 095 123 4567 is a placeholder; number also barred from UI before the thank-you page | Aldo |
+| ⚠ Telephone number | Current value +39 095 123 4567 is a placeholder. Giuseppe will give Aldo's real number (2026-11-07); until then do not publish. Number also barred from UI before the thank-you page | Giuseppe |
 | ⚠ Savings claims | No calculation method defined | Aldo, Giuseppe |
-| ⚠ Social profiles, Wikidata, reviews | None exist; no `sameAs`, no ratings | Giuseppe |
+| ⚠ Social profiles, Wikidata, reviews | None exist; no `sameAs`, no ratings. Giuseppe creates Instagram and the other profiles later (2026-11-07) | Giuseppe |
+
+## Decisions recorded 2026-11-07 (Giuseppe, for Aldo)
+- ✅ Aldo receives customers at the registered office, Via Umberto 326 B, 95055 San Pietro Clarenza (CT): a Google Business Profile is eligible. Giuseppe creates it later and tells Aldo later.
+- ✅ All suppliers with active offers may be named as partners in off-site mentions (list always read from the DB).
+- Aldo gets no Search Console access.
+- No press release until Giuseppe has talked with Aldo.
 
 Six suppliers appear in the home logo strip without active offers (Acea Energia, E.ON Energia, Engie, Hera Comm, Iberdrola, Sorgenia): do not name them as compared suppliers in schema, `llms.txt` or new pages. Giuseppe chose on 2026-11-05 to keep all 15 logos on the home (T17.3).
