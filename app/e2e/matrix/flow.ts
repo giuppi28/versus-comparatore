@@ -32,6 +32,7 @@ import {
   sqmLabel,
 } from "../../src/app/admin/(protected)/leads/labels";
 import type { MatrixCase } from "./cases";
+import { uploadRequiredSides } from "../helpers/identity-document";
 import { waitForLead, type LeadView } from "./lead-reader";
 
 // ---------------------------------------------------------------------------
@@ -499,6 +500,11 @@ export async function fillActivation(
     if (c.customer === "business") await page.getByTestId(`gas-use-${c.businessGasUse}`).getByRole("checkbox").click();
   }
   await expect(page.getByText(/Codice (POD|PDR) \(facoltativo\)/)).toHaveCount(expectedOptional);
+
+  // ---- Identity document: mandatory (T18.8). Real uploads through the UI, so the server count passes; the type varies per case. ----
+  const documentType = (["carta_identita", "patente", "passaporto"] as const)[c.index % 3];
+  await uploadRequiredSides(page, documentType);
+  await expect(page.getByTestId("document-collapsed")).toBeVisible();
 
   // ---- IBAN: optional, required when a chosen offer needs it (then the submit is blocked until filled) ----
   const ibanNeeded = needsIban(chosen);

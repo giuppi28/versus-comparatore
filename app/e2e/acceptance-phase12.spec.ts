@@ -7,6 +7,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { CALLBACK_REQUEST_TEXT } from "../src/lib/lead/callback-request";
 import { completeData, page1Data, VALID_POD } from "../src/lib/lead/test-fixtures";
+import { SEEDED_ID_DOCUMENT, uploadIdDocumentsViaApi } from "./helpers/identity-document";
 
 const FLOW_KEY = "versus.flow.v1";
 const STEP_KEY = "versus.activation.step.v1";
@@ -161,10 +162,10 @@ test.describe("A. admin settings", () => {
 });
 
 test.describe("B/F. activation step B", () => {
-  test("empty IBAN and no document: can continue to the thank-you page", async ({ page }) => {
+  test("empty IBAN: can continue to the thank-you page (document already uploaded)", async ({ page }) => {
     await page.route("**/api/lead/complete", (r) =>
       r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) }));
-    await openStepB(page, flowState());
+    await openStepB(page, flowState(SEEDED_ID_DOCUMENT));
     await expect(field(page, "iban")).toHaveValue("");
     await page.getByTestId("activation-submit").click();
     await expect(page).toHaveURL(/\/grazie$/);
@@ -176,7 +177,7 @@ test.describe("B/F. activation step B", () => {
       completeBody = r.request().postData() ?? "";
       return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
     });
-    await openStepB(page, flowState());
+    await openStepB(page, flowState(SEEDED_ID_DOCUMENT));
     await field(page, "iban").fill(BAD_CHECK_IBAN);
     await page.getByTestId("activation-submit").click();
     await expect(page.getByText("IBAN non valido: controlla le cifre.")).toBeVisible();
@@ -204,20 +205,10 @@ test.describe("B/F. activation step B", () => {
     await expect(page.locator("#" + (await field(page, "iban_holder_tax_code").getAttribute("id")) + "-error")).toContainText(/cognome/i);
   });
 
-  test("document with past expiry rejected", async ({ page }) => {
-    await openStepB(page, flowState());
-    await field(page, "document_type").selectOption("patente");
-    await field(page, "document_number").fill("U1A234567B");
-    await field(page, "document_expiry").fill("2020-01-01");
-    await field(page, "document_issuer").fill("MIT-UCO");
-    await page.getByTestId("activation-submit").click();
-    await expect(page.getByText("Il documento è scaduto: controlla la data di scadenza.")).toBeVisible();
-    await expect(page).toHaveURL(/\/attivazione/);
-  });
-
   test("upload: JPEG + PDF ok, 3rd rejected, remove + re-upload ok, .txt rejected", async ({ page }, testInfo) => {
     await createLead(page, String(testInfo.project.use.baseURL));
     await openStepB(page, flowState());
+    await field(page, "document_type").selectOption("carta_identita");
     const jpeg = await makeJpeg(page);
     const input = page.getByTestId("document-file-front");
 
@@ -228,6 +219,8 @@ test.describe("B/F. activation step B", () => {
     await input.setInputFiles({ name: "fronte.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(1);
     await page.getByTestId("document-file-back").setInputFiles({ name: "retro.pdf", mimeType: "application/pdf", buffer: PDF });
+    await expect(page.getByTestId("document-collapsed")).toBeVisible(); // both sides in: collapsed (T18.8)
+    await page.getByTestId("document-edit").click();
     await expect(page.getByTestId("document-item")).toHaveCount(2);
     await expect(page.getByTestId("document-slot-back").getByTestId("document-item")).toContainText("retro.pdf");
     // 3rd file: both inputs are gone (max 2) and a forced upload is refused by the server.
@@ -249,7 +242,7 @@ test.describe("B/F. activation step B", () => {
   test("POD normalized, PDR in POD field flagged, IT002 POD with Catania warns without blocking", async ({ page }) => {
     await page.route("**/api/lead/complete", (r) =>
       r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) }));
-    await openStepB(page, flowState({ pod: "" }));
+    await openStepB(page, flowState({ pod: "", ...SEEDED_ID_DOCUMENT }));
     await field(page, "pod").fill("it001e 1234 5678");
     await field(page, "pod").blur();
     await expect(field(page, "pod")).toHaveValue("IT001E12345678");
@@ -332,6 +325,7 @@ test.describe("T15.1 callback request (SPEC #28)", () => {
     });
     const created = await ctx.post("/api/lead", { data: { data: page1Data({ phone }) } });
     expect(created.status(), await created.text()).toBeLessThan(300);
+    await uploadIdDocumentsViaApi(ctx); // mandatory (T18.8): the forged request must fail for its text only
     // A client-supplied text is refused: the recorded sentence is a server constant.
     const forged = await ctx.post("/api/lead/complete", {
       data: { data: completeData({ phone, callback_request_text: "Testo del client" } as never) },

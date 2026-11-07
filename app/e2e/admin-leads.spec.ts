@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page, type PlaywrightWorkerArgs } from "@playwright/test";
 import { completeData, page1Data } from "../src/lib/lead/test-fixtures";
+import { uploadIdDocumentsViaApi } from "./helpers/identity-document";
 
 // Must match the webServer env in playwright.config.ts (mock auth, test-only).
 const ADMIN_EMAIL = "admin@versus.test";
@@ -38,6 +39,7 @@ async function seedLeads(baseURL: string, playwright: PlaywrightWorkerArgs["play
   expect(res.status(), await res.text()).toBeLessThan(300);
   const token = (await done.storageState()).cookies.find((c) => c.name === "versus_lead")?.value ?? "";
   expect(token).not.toBe("");
+  await uploadIdDocumentsViaApi(done); // the identity document is mandatory (T18.8); completeData uses a passport
   res = await done.post("/api/lead/complete", {
     data: { data: completeData({ pod: completedPod }) },
   });

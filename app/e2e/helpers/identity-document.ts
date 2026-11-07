@@ -6,7 +6,8 @@
  *   for specs that talk to the real API.
  */
 import path from "node:path";
-import { expect, type Page } from "@playwright/test";
+import fs from "node:fs";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 export const FIXTURES = path.join(__dirname, "..", "fixtures");
 export const ID_FRONT = path.join(FIXTURES, "id-front.jpg");
@@ -38,4 +39,19 @@ export async function uploadRequiredSides(page: Page, type: "carta_identita" | "
   await page.locator('[name="document_type"]').selectOption(type);
   await uploadSide(page, "front", type === "passaporto" ? PASSPORT_PAGE : ID_FRONT);
   if (type !== "passaporto") await uploadSide(page, "back", ID_BACK);
+}
+
+/**
+ * Uploads the identity-document files through the public API (the lead cookie must already be on
+ * `ctx`), for specs that complete a lead without the UI. `count` = 2 for carta d'identità / patente
+ * (the `completeData` fixture uses passaporto: 1).
+ */
+export async function uploadIdDocumentsViaApi(ctx: APIRequestContext, count = 1) {
+  const files = count === 1 ? [PASSPORT_PAGE] : [ID_FRONT, ID_BACK];
+  for (const file of files) {
+    const res = await ctx.post("/api/lead/document", {
+      multipart: { file: { name: path.basename(file), mimeType: "image/jpeg", buffer: fs.readFileSync(file) } },
+    });
+    expect(res.status(), await res.text()).toBeLessThan(300);
+  }
 }

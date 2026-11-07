@@ -247,7 +247,7 @@ export default function PrivacyPage() {
               </p>
             </Section>
 
-            <p className="text-sm text-ink-muted">Ultimo aggiornamento: 5 novembre 2026.</p>
+            <p className="text-sm text-ink-muted">Ultimo aggiornamento: 7 novembre 2026.</p>
           </article>
 
           <div className="py-8">
