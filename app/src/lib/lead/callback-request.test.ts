@@ -6,9 +6,9 @@ import { CALLBACK_REQUEST_BUTTON_LABEL, CALLBACK_REQUEST_TEXT, CALLBACK_REQUEST_
 describe("callback request constant (SPEC #28)", () => {
   it("is the exact sentence of decision #28 and the button label it names", () => {
     expect(CALLBACK_REQUEST_TEXT).toBe(
-      "Premendo «Richiamami» chiedi di essere ricontattato da un consulente VERSUS al numero di telefono che hai indicato, per attivare l'offerta scelta.",
+      "Premendo «Accetta» accetti di essere richiamato da un nostro operatore per la firma del contratto.",
     );
-    expect(CALLBACK_REQUEST_BUTTON_LABEL).toBe("Richiamami");
+    expect(CALLBACK_REQUEST_BUTTON_LABEL).toBe("Accetta");
     expect(CALLBACK_REQUEST_TEXT).toContain(`«${CALLBACK_REQUEST_BUTTON_LABEL}»`);
   });
 
@@ -23,13 +23,14 @@ describe("callback request constant (SPEC #28)", () => {
     expect(sql).toContain(`char_length(v_cb_text) > ${CALLBACK_REQUEST_TEXT_MAX}`);
   });
 
-  it("step B renders the constant above the submit button labelled with it", () => {
+  it("step B renders the constant right below the submit button labelled with it", () => {
     const src = readFileSync(join(process.cwd(), "src/components/activation/StepB.tsx"), "utf8");
     const sentence = src.indexOf("{CALLBACK_REQUEST_TEXT}");
     const submit = src.indexOf('data-testid="activation-submit"');
     expect(sentence).toBeGreaterThan(0);
-    expect(submit).toBeGreaterThan(sentence);
-    expect(src.slice(submit, submit + 200)).toContain("{CALLBACK_REQUEST_BUTTON_LABEL}");
+    expect(sentence).toBeGreaterThan(submit);
+    expect(src.slice(submit, submit + 300)).toContain("{CALLBACK_REQUEST_BUTTON_LABEL}");
+    expect(src.slice(submit, sentence)).toContain('aria-describedby="callback-request-text"');
     expect(src).not.toMatch(/>\s*Prosegui\s*</);
   });
 });

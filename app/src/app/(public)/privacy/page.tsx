@@ -150,7 +150,7 @@ export default function PrivacyPage() {
               <ul className="list-disc space-y-2 pl-6">
                 <li>
                   confrontare le offerte luce e gas, gestire la richiesta di attivazione e il
-                  ricontatto che richiedi con «Richiamami»: esecuzione di misure precontrattuali
+                  ricontatto che richiedi con «Accetta»: esecuzione di misure precontrattuali
                   adottate su tua richiesta (art. 6, par. 1, lett. b, GDPR);
                 </li>
                 <li>
@@ -182,7 +182,7 @@ export default function PrivacyPage() {
                 </li>
               </ul>
               <p>
-                Il ricontatto telefonico che richiedi con «Richiamami» è effettuato direttamente dal
+                Il ricontatto telefonico che richiedi con «Accetta» è effettuato direttamente dal
                 titolare, senza call center esterni.
               </p>
               <p>I dati non sono diffusi.</p>

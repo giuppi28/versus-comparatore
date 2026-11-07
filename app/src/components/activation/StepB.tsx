@@ -390,24 +390,38 @@ export function StepB({
 
       {beforeActions}
 
-      <div className="space-y-4">
-        {/* Explicit callback request (SPEC #28): the same constant is recorded on the lead. */}
-        <p data-testid="callback-request-text" className="text-sm text-ink-muted">
+      {/* Explicit callback request (SPEC #28): the same constant is recorded on the lead. The sentence
+          sits right under the submit button (mobile: Accetta, sentence, Indietro). */}
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-y-2">
+        <div className="order-1 sm:order-2 sm:col-start-2 sm:row-start-1 sm:justify-self-end">
+          <Button
+            type="submit"
+            size="lg"
+            data-testid="activation-submit"
+            aria-describedby="callback-request-text"
+            loading={submitting}
+            className="w-full sm:w-auto"
+          >
+            {CALLBACK_REQUEST_BUTTON_LABEL}
+          </Button>
+        </div>
+        <p
+          id="callback-request-text"
+          data-testid="callback-request-text"
+          className="order-2 text-xs leading-snug text-ink-muted sm:order-3 sm:col-start-2 sm:row-start-2 sm:text-right"
+        >
           {CALLBACK_REQUEST_TEXT}
         </p>
-
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+        <div className="order-3 sm:order-1 sm:col-start-1 sm:row-start-1">
           <Button
             variant="secondary"
             size="lg"
             data-testid="activation-back"
             onClick={onBack}
             disabled={submitting}
+            className="w-full sm:w-auto"
           >
             Indietro
-          </Button>
-          <Button type="submit" size="lg" data-testid="activation-submit" loading={submitting}>
-            {CALLBACK_REQUEST_BUTTON_LABEL}
           </Button>
         </div>
       </div>

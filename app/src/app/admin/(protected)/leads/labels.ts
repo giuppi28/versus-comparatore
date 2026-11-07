@@ -109,7 +109,7 @@ export const DOCUMENT_MIME_LABELS: Record<string, string> = {
 
 /**
  * Callback request shown on the lead detail (T15.1, SPEC #28):
- * - "requested": the customer pressed "Richiamami" (timestamp + text recorded);
+ * - "requested": the customer pressed "Accetta" (timestamp + text recorded);
  * - "not_recorded": completed lead without a record (completed before migration
  *   20261102100000, or by the old app): shown as "Non registrata";
  * - "pending": lead not completed yet: shown as "—".

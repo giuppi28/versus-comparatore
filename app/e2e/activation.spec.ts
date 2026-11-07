@@ -219,17 +219,22 @@ test.describe("activation form", () => {
     await expect(radio(page, "voltage-220")).toHaveAttribute("aria-checked", "true");
     await expectNoOverflow(page);
 
-    // SPEC #28: the submit is the explicit callback request; its sentence sits right above the buttons.
+    // SPEC #28: the submit is the explicit callback request; its sentence sits right below it.
     const submit = page.getByTestId("activation-submit");
     const sentence = page.getByTestId("callback-request-text");
-    await expect(submit).toHaveText("Richiamami");
+    await expect(submit).toHaveText("Accetta");
     await expect(page.getByRole("button", { name: "Prosegui" })).toHaveCount(0);
     await expect(sentence).toHaveText(CALLBACK_REQUEST_TEXT);
     await expect(sentence).toHaveText(
-      "Premendo «Richiamami» chiedi di essere ricontattato da un consulente VERSUS al numero di telefono che hai indicato, per attivare l'offerta scelta.",
+      "Premendo «Accetta» accetti di essere richiamato da un nostro operatore per la firma del contratto.",
     );
+    // Right below the button (T18.7), visible together with it, associated with it for screen readers.
     const [sBox, bBox] = [await sentence.boundingBox(), await submit.boundingBox()];
-    expect(sBox && bBox && sBox.y + sBox.height <= bBox.y && bBox.y - (sBox.y + sBox.height) < 40).toBe(true);
+    expect(sBox && bBox && bBox.y + bBox.height <= sBox.y && sBox.y - (bBox.y + bBox.height) < 24).toBe(true);
+    await submit.scrollIntoViewIfNeeded();
+    await expect(submit).toBeInViewport({ ratio: 1 });
+    await expect(sentence).toBeInViewport({ ratio: 1 });
+    await expect(submit).toHaveAttribute("aria-describedby", "callback-request-text");
     expect(await sentence.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeLessThanOrEqual(14);
     await shot(page, testInfo.project.name, "b-filled");
 

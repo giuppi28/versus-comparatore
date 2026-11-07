@@ -351,7 +351,7 @@ test.describe("copy and brand rules", () => {
     await page.waitForTimeout(300);
     await expect.poll(() => seen.length).toBeGreaterThan(1);
     expect(offenders(seen, BRAND_WORDING), "brand wording").toEqual([]);
-    // PRD §13.1 + SPEC #29: the privacy notice states the contact purpose («Richiamami») and may name
+    // PRD §13.1 + SPEC #29: the privacy notice states the contact purpose («Accetta») and may name
     // an external call centre as a recipient; the remaining call wording stays forbidden.
     const strict = CALLBACK_WORDING.filter(
       ([name]) => !["ricontatt*", "chiama*", "richiam*", "call center"].includes(name),
