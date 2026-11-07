@@ -17,6 +17,12 @@ describe("buildJsonLd", () => {
     ]);
   });
 
+  it("puts dateModified on the WebSite node, floored at 2026-11-07 by default", () => {
+    expect((graph[1] as { dateModified: string }).dateModified).toBe("2026-11-07");
+    const custom = buildJsonLd(URL, "2026-12-03")["@graph"] as { dateModified?: string }[];
+    expect(custom[1].dateModified).toBe("2026-12-03");
+  });
+
   it("lists every FAQ item byte-identical", () => {
     const faq = graph[3] as { mainEntity: { name: string; acceptedAnswer: { text: string } }[] };
     expect(faq.mainEntity).toHaveLength(FAQ.length);

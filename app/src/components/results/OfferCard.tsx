@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { Button, CheckIcon, ChevronDownIcon, cn } from "@/components/ui";
 import { IBAN_REQUIRED_NOTICE, formatEuro, formatPrice, formatVariablePrice, isVariableOffer } from "@/lib/logic";
 import type { Commodity, OfferWithSupplier } from "@/lib/data/types";
+import { offerUpdatedLabel } from "@/lib/seo/dates";
 import { supplierLogoSrc } from "./logo-src";
 import { toCents, unitFor } from "./results-logic";
 
@@ -122,6 +123,9 @@ export function OfferCard({ offer, commodity, monthlyCost, featured = false, cho
                     <CheckIcon width={12} height={12} /> Scelta
                   </span>
                 )}
+              </p>
+              <p data-testid="offer-updated" className="mt-0.5 text-xs text-ink-subtle">
+                {offerUpdatedLabel(offer.updated_at)}
               </p>
             </div>
           </div>

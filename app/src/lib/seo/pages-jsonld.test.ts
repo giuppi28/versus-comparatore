@@ -27,6 +27,7 @@ describe("guide JSON-LD", () => {
       expect(graph.map((n) => n["@type"])).toEqual(["Article", "BreadcrumbList", "FAQPage"]);
       const article = graph[0];
       expect(article.headline).toBe(page.h1);
+      expect(article.datePublished).toBe("2026-11-05");
       expect(article.dateModified).toBe(page.reviewedOn);
       expect(article.author).toEqual(ORG);
       expect(article.publisher).toEqual(ORG);

@@ -135,6 +135,7 @@ export const GUIDE_PAGES: SeoPage[] = [
   // ---------------------------------------------------------------------
   {
     path: "/guida/cambio-fornitore-luce-gas",
+    footerLabel: "Cambio fornitore",
     title: "Cambio fornitore luce e gas: come funziona | VERSUS",
     description:
       "Come cambiare fornitore di luce e gas: chi avvia la pratica, costi, tempi, ripensamento e cosa non cambia. Guida basata sulle pagine di ARERA.",
@@ -223,6 +224,7 @@ export const GUIDE_PAGES: SeoPage[] = [
   // ---------------------------------------------------------------------
   {
     path: "/guida/voltura-luce-gas",
+    footerLabel: "Voltura",
     title: "Voltura luce e gas: cos'è, documenti e tempi | VERSUS",
     description:
       "Cos'è la voltura di luce e gas, chi la richiede, quali documenti servono, tempi e costi, e differenza dal subentro. Guida basata su ARERA.",
@@ -321,6 +323,7 @@ export const GUIDE_PAGES: SeoPage[] = [
   // ---------------------------------------------------------------------
   {
     path: "/guida/subentro-luce-gas",
+    footerLabel: "Subentro",
     title: "Subentro luce e gas: quando serve e come si fa | VERSUS",
     description:
       "Cos'è il subentro di luce e gas, quando serve al posto della voltura, documenti, tempi di riattivazione e costi. Guida basata su ARERA.",
@@ -414,6 +417,7 @@ export const GUIDE_PAGES: SeoPage[] = [
   // ---------------------------------------------------------------------
   {
     path: "/guida/primo-allaccio-luce-gas",
+    footerLabel: "Primo allaccio",
     title: "Primo allaccio luce e gas: cos'è e come funziona | VERSUS",
     description:
       "Primo allaccio di luce e gas: differenza tra allacciamento e attivazione, a chi rivolgersi, passaggi e tempi indicati da ARERA.",

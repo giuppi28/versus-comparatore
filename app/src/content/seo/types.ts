@@ -17,6 +17,8 @@ export interface SeoFaq {
 export interface SeoPage {
   /** e.g. "/guida/voltura-luce-gas" */
   path: string;
+  /** short link label for the footer "Guide" row (guides only) */
+  footerLabel?: string;
   /** <title>, max 60 characters, ends with "| VERSUS" */
   title: string;
   /** meta description, max 155 characters */

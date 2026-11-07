@@ -1,8 +1,9 @@
 import { FAQ } from "@/components/page1/faq";
 import { COMPANY, COMPANY_ADDRESS } from "@/lib/legal/company";
+import { UPDATED_FLOOR } from "./dates";
 
 /** Facts only (docs/geo/canonical-facts.md): no prices, savings, ratings, reviews, telephone or sameAs. */
-export function buildJsonLd(siteUrl: string): Record<string, unknown> {
+export function buildJsonLd(siteUrl: string, dateModified: string = UPDATED_FLOOR): Record<string, unknown> {
   const orgId = `${siteUrl}/#organization`;
   const siteId = `${siteUrl}/#website`;
   return {
@@ -26,6 +27,7 @@ export function buildJsonLd(siteUrl: string): Record<string, unknown> {
         name: "VERSUS",
         inLanguage: "it-IT",
         publisher: { "@id": orgId },
+        dateModified,
       },
       {
         "@type": "Service",

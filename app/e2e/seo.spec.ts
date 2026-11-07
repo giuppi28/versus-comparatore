@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // Raw HTML via the request fixture: no JavaScript runs, like a crawler.
-const TITLE = "Offerte luce e gas: confronto gratuito online | VERSUS";
+const TITLE = "Offerte luce e gas: comparatore gratuito | VERSUS";
 const DESCRIPTION =
   "Confronta gratis le offerte luce e gas per casa e partita IVA: rispondi a poche domande, scegli l'offerta e attivala online.";
 
@@ -65,7 +65,8 @@ test.describe("SEO (raw HTML)", () => {
     expect(res.status()).toBe(200);
     const body = await res.text();
     expect(body.match(/<loc>/g)).toHaveLength(5);
-    expect(body.match(/<lastmod>/g)).toHaveLength(4); // guides only, the home has none
+    expect(body.match(/<lastmod>/g)).toHaveLength(5); // home (latest offer update, floored) + the 4 guides
+    expect(body).toMatch(/<loc>https:\/\/[^<]+\/<\/loc>\s*<lastmod>20\d\d-\d\d-\d\d/);
   });
 
   test("llms.txt", async ({ request }) => {

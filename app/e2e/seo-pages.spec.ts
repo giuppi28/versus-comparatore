@@ -145,11 +145,13 @@ test.describe("SEO pages (raw HTML)", () => {
     expect((await request.get("/guida/non-esiste")).status()).toBe(404);
   });
 
-  test("no page outside the cluster links to the 8 paths", async ({ request }) => {
+  test("public pages link the 4 guides from the footer row and never the 4 offers pages (T19.4b)", async ({ request }) => {
     for (const from of ["/", "/privacy", "/offerte", "/attivazione", "/grazie"]) {
       const html = await (await request.get(from)).text();
+      expect(html, `${from} must have the footer guides row`).toContain('data-testid="footer-guides"');
       for (const p of ALL.map((x) => x.path)) {
-        expect(html, `${from} must not link to ${p}`).not.toMatch(new RegExp(`href="[^"]*${p}(["?#/])`));
+        const linked = new RegExp(`href="[^"]*${p}(["?#/])`).test(html);
+        expect(linked, `${from} -> ${p}`).toBe(!OFFER_PATHS.has(p));
       }
     }
   });
