@@ -128,7 +128,7 @@ test.describe("Page 1 — structure and copy", () => {
 
     // Landing sections below the form: after it, real suppliers only (no placeholders), FAQ is native <details>.
     const sections = page.getByTestId("landing-sections");
-    await expect(sections.getByRole("heading", { name: "Come funziona" })).toBeVisible();
+    await expect(sections.getByRole("heading", { name: "Come funziona", exact: true })).toBeVisible();
     await expect(sections.getByRole("listitem").filter({ hasText: /Confronta|Scegli|Attiva online/ })).toHaveCount(3);
     const logos = sections.getByRole("region", { name: "Confrontiamo le offerte di" }).locator("img");
     expect(await logos.count()).toBeGreaterThanOrEqual(10);
