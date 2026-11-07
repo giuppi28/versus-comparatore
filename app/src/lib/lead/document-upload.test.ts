@@ -104,6 +104,7 @@ describe("POST /api/lead/document", () => {
       "lead_not_found",
     );
     const cookie = await leadCookie();
+    expect((await handlers.uploadDocument(upload(formWith(fileOf(JPEG, "image/jpeg")), { cookie }))).status).toBe(201);
     const done = await handlers.complete(
       new Request(`${URL_BASE}/api/lead/complete`, {
         method: "POST",

@@ -51,6 +51,7 @@ export function buildGuideJsonLd(page: SeoPage, siteUrl: string): Node {
         description: page.description,
         url,
         mainEntityOfPage: url,
+        datePublished: page.publishedOn ?? page.reviewedOn,
         dateModified: page.reviewedOn,
         inLanguage: "it-IT",
         author: organizationNode(siteUrl),

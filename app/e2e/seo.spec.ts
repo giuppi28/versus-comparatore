@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // Raw HTML via the request fixture: no JavaScript runs, like a crawler.
-const TITLE = "Offerte luce e gas: confronto gratuito online | VERSUS";
+const TITLE = "Offerte luce e gas: comparatore gratuito | VERSUS";
 const DESCRIPTION =
   "Confronta gratis le offerte luce e gas per casa e partita IVA: rispondi a poche domande, scegli l'offerta e attivala online.";
 
@@ -60,12 +60,13 @@ test.describe("SEO (raw HTML)", () => {
     expect(body).toMatch(/Sitemap: https:\/\/\S+\/sitemap\.xml/);
   });
 
-  test("sitemap.xml lists the home and the 4 guides", async ({ request }) => {
+  test("sitemap.xml lists the home and the 6 guides", async ({ request }) => {
     const res = await request.get("/sitemap.xml");
     expect(res.status()).toBe(200);
     const body = await res.text();
-    expect(body.match(/<loc>/g)).toHaveLength(5);
-    expect(body.match(/<lastmod>/g)).toHaveLength(4); // guides only, the home has none
+    expect(body.match(/<loc>/g)).toHaveLength(7);
+    expect(body.match(/<lastmod>/g)).toHaveLength(7); // home (latest offer update, floored) + the 6 guides
+    expect(body).toMatch(/<loc>https:\/\/[^<]+\/<\/loc>\s*<lastmod>20\d\d-\d\d-\d\d/);
   });
 
   test("llms.txt", async ({ request }) => {
@@ -74,7 +75,7 @@ test.describe("SEO (raw HTML)", () => {
     expect(res.headers()["content-type"]).toContain("text/plain");
     const body = await res.text();
     expect(body.startsWith("# VERSUS")).toBe(true);
-    expect(body).toContain("Ultimo aggiornamento: 2026-11-05");
+    expect(body).toContain("Ultimo aggiornamento: 2026-11-07");
     expect(body).toContain("KEHILA S.r.l.s.");
     expect(body).not.toMatch(/\+39|\b0\d{1,3}[ .]\d{3,4}[ .]\d{3,4}\b/);
   });

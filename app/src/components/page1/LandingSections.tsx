@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronDownIcon } from "@/components/ui/icons";
+import { EXPLAINER_BLOCKS, EXPLAINER_INTRO, EXPLAINER_TITLE } from "./explainer";
 import { FAQ } from "./faq";
 
 /** A real supplier shown in the "Confrontiamo le offerte di" strip. */
@@ -100,6 +101,28 @@ export function LandingSections({ suppliers }: { suppliers: SupplierLogo[] }) {
               </summary>
               <p className="px-5 pb-5 text-sm leading-relaxed text-ink-muted">{item.a}</p>
             </details>
+          ))}
+        </div>
+      </Section>
+
+      {/* Long-form text (T19.4e): plain server-rendered typography, always visible, comfortable measure. */}
+      <Section id="come-funziona-confronto" title={EXPLAINER_TITLE}>
+        <div data-testid="home-explainer" className="mx-auto mt-6 flex max-w-prose flex-col gap-4 text-base leading-relaxed text-ink">
+          <p>{EXPLAINER_INTRO}</p>
+          {EXPLAINER_BLOCKS.map((block) => (
+            <div key={block.heading} className="flex flex-col gap-3 pt-4">
+              <h3 className="text-lg font-semibold leading-snug text-ink">{block.heading}</h3>
+              {block.paragraphs.map((p) => (
+                <p key={p}>{p}</p>
+              ))}
+              {block.bullets && (
+                <ul className="list-disc space-y-2 pl-6">
+                  {block.bullets.map((b) => (
+                    <li key={b}>{b}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           ))}
         </div>
       </Section>

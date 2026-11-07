@@ -9,7 +9,7 @@ describe("buildLlmsTxt", () => {
     const t = buildLlmsTxt(URL, ["Enel Energia"]);
     expect(t.startsWith("# VERSUS")).toBe(true);
     expect(t).toContain("\n> ");
-    expect(t).toContain("Ultimo aggiornamento: 2026-11-05");
+    expect(t).toContain("Ultimo aggiornamento: 2026-11-07");
     expect(t).toContain("- Enel Energia");
     expect(t).toContain("KEHILA S.r.l.s.");
     expect(t).toContain(`${URL}/privacy`);
@@ -18,10 +18,10 @@ describe("buildLlmsTxt", () => {
     expect(t).toContain("- VERSUS opera come agente ed è remunerato dai venditori.");
   });
 
-  it("lists the 8 SEO pages under Pagine principali, without prices", () => {
+  it("lists the 10 SEO pages under Pagine principali, without prices", () => {
     const t = buildLlmsTxt(URL, null);
     const section = t.slice(t.indexOf("## Pagine principali"));
-    expect(ALL_SEO_PAGES).toHaveLength(8);
+    expect(ALL_SEO_PAGES).toHaveLength(10);
     for (const p of ALL_SEO_PAGES) expect(section).toContain(`(${URL}${p.path})`);
     expect(section).not.toMatch(/€|\d,\d{2,4}/);
   });

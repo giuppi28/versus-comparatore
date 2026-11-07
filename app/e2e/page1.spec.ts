@@ -128,7 +128,7 @@ test.describe("Page 1 — structure and copy", () => {
 
     // Landing sections below the form: after it, real suppliers only (no placeholders), FAQ is native <details>.
     const sections = page.getByTestId("landing-sections");
-    await expect(sections.getByRole("heading", { name: "Come funziona" })).toBeVisible();
+    await expect(sections.getByRole("heading", { name: "Come funziona", exact: true })).toBeVisible();
     await expect(sections.getByRole("listitem").filter({ hasText: /Confronta|Scegli|Attiva online/ })).toHaveCount(3);
     const logos = sections.getByRole("region", { name: "Confrontiamo le offerte di" }).locator("img");
     expect(await logos.count()).toBeGreaterThanOrEqual(10);
@@ -685,8 +685,34 @@ test.describe("Page 1 — lead creation and submit", () => {
     await page.getByTestId("privacy-consent").check();
     await page.getByTestId("submit").click();
     await expect(page.getByTestId("form-error")).toHaveText("Troppe richieste, riprova tra poco.");
+    // T18.5: the banner is scrolled into view and focused, so the click never looks dead.
+    await expect(page.getByTestId("form-error")).toBeInViewport();
+    await expect(page.getByTestId("form-error")).toBeFocused();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByTestId("submit")).toBeEnabled();
+  });
+});
+
+test.describe("Page 1 — blocked submit", () => {
+  test("a missing card group is scrolled into view and its first card focused", async ({ page }) => {
+    await open(page);
+    await pick(page, "commodity-luce", "customer-casa", "service-subentro");
+    await fillPersonal(page);
+    await consent(page);
+    // Only "Quante persone vivono in casa?" is missing; the click happens below it.
+    await page.getByTestId("submit").click();
+    const group = page.getByTestId("block-consumption").getByRole("radiogroup");
+    await expect(group).toBeInViewport({ ratio: 1 });
+    await expect(group.locator("button:focus")).toHaveCount(1);
+    // The group exposes the error: aria-invalid plus a description that exists while it is shown.
+    await expect(group).toHaveAttribute("aria-invalid", "true");
+    await expect(group).toHaveAttribute("aria-describedby", "error-people");
+    await expect(page.locator("#error-people")).toBeVisible();
+    await expect(page.locator("fieldset[aria-describedby]")).toHaveCount(0);
+    // A valid choice clears it.
+    await card(page, "people-2").click();
+    await expect(group).not.toHaveAttribute("aria-invalid", "true");
+    await expect(group).not.toHaveAttribute("aria-describedby", /.+/);
   });
 });
 

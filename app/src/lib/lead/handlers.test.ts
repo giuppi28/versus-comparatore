@@ -22,6 +22,8 @@ let notify: ReturnType<typeof vi.fn<(l: NewLeadNotification) => Promise<void>>>;
 
 function setup(opts: { isProduction?: boolean; limiters?: ReturnType<typeof createRateLimiters> } = {}) {
   repo = createMockRepository();
+  // Default: the lead has both identity document files (T18.8 tests override this).
+  repo.countLeadIdDocuments = async () => 2;
   notify = vi.fn<(l: NewLeadNotification) => Promise<void>>(async () => {});
   handlers = createLeadHandlers({
     getRepository: () => repo,
@@ -360,6 +362,36 @@ describe("POST /api/lead/complete", () => {
     const cookies = setCookies(res);
     expect(cookies[LEAD_COOKIE].raw).toMatch(/Max-Age=0/);
     expect(cookies[LEAD_STEP_COOKIE].raw).toMatch(/Max-Age=0/);
+  });
+
+  it("refuses completion without the required identity document files (fields.id_document)", async () => {
+    const cookie = await createAndGetCookie();
+    repo.countLeadIdDocuments = async () => 1;
+    const res = await complete(completeData({ document_type: "patente" }), cookie);
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ ok: false, error: "validation", fields: { id_document: "required" } });
+    expect((await onlyLead()).step_reached).toBe("page1");
+    expect(notify).not.toHaveBeenCalled();
+    // A passport needs one file only.
+    const ok = await complete(completeData({ document_type: "passaporto" }), cookie);
+    expect(ok.status).toBe(200);
+  });
+
+  it("refuses completion without a document type (fields.document_type)", async () => {
+    const cookie = await createAndGetCookie();
+    const res = await complete(completeData({ document_type: null }), cookie);
+    expect(res.status).toBe(422);
+    expect((await res.json()).fields).toEqual({ document_type: "required" });
+  });
+
+  it("fails closed when the document count fails → 500, lead not completed", async () => {
+    const cookie = await createAndGetCookie();
+    repo.countLeadIdDocuments = async () => {
+      throw new Error("db down");
+    };
+    const res = await complete(completeData(), cookie);
+    expect(res.status).toBe(500);
+    expect((await onlyLead()).step_reached).not.toBe("completed");
   });
 
   it("without the cookie → 401", async () => {

@@ -2,7 +2,7 @@
  * Server-side business rules for the final submit (PRD §10 "On submit").
  * Runs after `completeDataSchema` (types + formats) has passed.
  */
-import type { Commodity, LeadData, Repository } from "@/lib/data";
+import type { Commodity, DocumentType, LeadData, Repository } from "@/lib/data";
 import { validateCodiceFiscale } from "@/lib/logic/validators";
 import type { FieldErrors, ParsedCompleteData, ParsedPatchData } from "./schemas";
 import {
@@ -216,4 +216,18 @@ export async function checkCompletionReferences(
     // cities, and a false rejection would block a real customer.
   }
   return fields;
+}
+
+/**
+ * Identity document is mandatory (T18.8): passport = 1 uploaded file, carta d'identità and
+ * patente = 2 (front and back). The server stores no side, so files are only counted.
+ * Returns the field the UI maps the error to, or null when the requirement is met.
+ */
+export function requiredIdDocumentsMissing(
+  type: DocumentType | null | undefined,
+  uploadedCount: number,
+): "document_type" | "id_document" | null {
+  if (!type) return "document_type";
+  const needed = type === "passaporto" ? 1 : 2;
+  return uploadedCount >= needed ? null : "id_document";
 }

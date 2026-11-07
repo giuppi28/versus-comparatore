@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, Stepper } from "@/components/ui";
 import type { Supplier } from "@/lib/data/types";
 import { useFlow } from "@/lib/lead/flow-context";
 import { totalMonthlyCost } from "@/lib/lead/flow-state";
+import { focusFirstProblem } from "@/lib/focus-problem";
 import { completeLead, LeadApiError } from "@/lib/lead/client";
 import { ActivationSummary } from "./ActivationSummary";
 import {
@@ -62,6 +63,13 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // Bumped on a blocked or failed submit; the effect below runs after the errors are rendered.
+  const [focusRequest, setFocusRequest] = useState(0);
+  const formRootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (focusRequest > 0) focusFirstProblem(formRootRef.current ?? document);
+  }, [focusRequest]);
 
   const redirectTo = hydrated ? activationRedirect(state) : null;
   useEffect(() => {
@@ -97,12 +105,9 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
     window.scrollTo({ top: 0 });
   }
 
+  /** Scrolls to and focuses the first problem (field, card group or form message) once rendered. */
   function focusFirstInvalid() {
-    requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>('[data-testid^="activation-step-"] [aria-invalid="true"]')
-        ?.focus();
-    });
+    setFocusRequest((n) => n + 1);
   }
 
   function onNextA() {
@@ -150,14 +155,15 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
         setGeneralErrors(general);
         const target = firstStepWithErrors(fields);
         if (target && target !== step) goTo(target);
-        if (target) focusFirstInvalid();
         if (!target && general.length === 0) setSubmitError(submitErrorMessage(err));
+        focusFirstInvalid();
         return;
       }
       setSessionExpired(
         err instanceof LeadApiError && (err.code === "no_lead" || err.code === "lead_not_found"),
       );
       setSubmitError(submitErrorMessage(err));
+      focusFirstInvalid();
       return;
     }
     // Success: the thank-you page requires leadCompleted (set BEFORE navigating).
@@ -183,12 +189,14 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
         <ActivationSummary luce={state.chosenOffers.luce} gas={state.chosenOffers.gas} total={total} />
       </aside>
 
-      <div className="space-y-6 lg:order-1">
+      <div ref={formRootRef} className="space-y-6 lg:order-1">
         <Stepper steps={STEPS} current={step === "A" ? 0 : 1} aria-label="Passaggi dell'attivazione" />
         <Card padding="lg" className="space-y-6">
           {generalErrors.length > 0 && (
             <div
               role="alert"
+              tabIndex={-1}
+              data-form-problem
               data-testid="activation-general-error"
               className="rounded-control border border-danger bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
             >
@@ -219,6 +227,8 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
                 submitError && (
                   <p
                     role="alert"
+                    tabIndex={-1}
+                    data-form-problem
                     data-testid="activation-error"
                     className="rounded-control border border-danger bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
                   >

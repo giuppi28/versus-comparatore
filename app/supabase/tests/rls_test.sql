@@ -1447,5 +1447,73 @@ begin
   raise notice 'ok: phase 18 email values (owner)';
 end $$;
 
+-- =====================================================================================
+-- PHASE 18 (T18.8): count_lead_documents - uploaded id_document rows of the in-progress lead
+-- =====================================================================================
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  v    jsonb;
+  d    jsonb;
+  n    integer;
+  ok   boolean;
+  err  text;
+  s    text := 'rls-test-secret-not-the-real-one';
+  base jsonb := '{"privacy_consent":true,"commodity":"luce","customer_type":"casa","first_name":"Eva","last_name":"Neri","phone":"3330004444","comune_istat":"999999","service_type":"subentro","tax_code":"NREVAE80A41H501Y","housing_title":"inquilino","cap":"99999","address":"Via Po","street_number":"7","is_resident":true,"chosen_offer_luce":"00000000-0000-4000-8000-00000000c001"}';
+begin
+  v := public.create_lead(s, base);
+  -- secret and token checks
+  ok := false; begin perform public.count_lead_documents('wrong-secret', v ->> 'token'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: count_lead_documents wrong secret (got %)', err; end if;
+  ok := false; begin perform public.count_lead_documents(null, v ->> 'token'); exception when others then ok := sqlerrm = 'invalid_secret'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: count_lead_documents null secret (got %)', err; end if;
+  ok := false; begin perform public.count_lead_documents(s, repeat('0', 64)); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: count_lead_documents unknown token (got %)', err; end if;
+  ok := false; begin perform public.count_lead_documents(s, null); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: count_lead_documents null token (got %)', err; end if;
+
+  if public.count_lead_documents(s, v ->> 'token') <> 0 then raise exception 'FAIL: new lead has documents'; end if;
+  -- a pending slot (registered, not confirmed) is not counted
+  d := public.register_lead_document(s, v ->> 'token', 'image/jpeg', 1000);
+  if public.count_lead_documents(s, v ->> 'token') <> 0 then raise exception 'FAIL: pending slot counted'; end if;
+  perform public.confirm_lead_document(s, v ->> 'token', (d ->> 'id')::uuid);
+  if public.count_lead_documents(s, v ->> 'token') <> 1 then raise exception 'FAIL: uploaded id_document not counted'; end if;
+  -- a bill is not an id document
+  d := public.register_lead_document(s, v ->> 'token', 'application/pdf', 1000, 'bill');
+  perform public.confirm_lead_document(s, v ->> 'token', (d ->> 'id')::uuid);
+  if public.count_lead_documents(s, v ->> 'token') <> 1 then raise exception 'FAIL: bill counted as id document'; end if;
+  d := public.register_lead_document(s, v ->> 'token', 'application/pdf', 1000);
+  perform public.confirm_lead_document(s, v ->> 'token', (d ->> 'id')::uuid);
+  if public.count_lead_documents(s, v ->> 'token') <> 2 then raise exception 'FAIL: second id_document not counted'; end if;
+  -- another lead's documents are not counted
+  if public.count_lead_documents(s, public.create_lead(s, base) ->> 'token') <> 0 then raise exception 'FAIL: counted another lead''s documents'; end if;
+
+  -- anon still has no direct access to lead_documents
+  ok := false; begin perform 1 from public.lead_documents limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon can select lead_documents'; end if;
+
+  -- a completed lead is read-only: lead_not_found
+  perform public.complete_lead(s, v ->> 'token', '{}');
+  ok := false; begin perform public.count_lead_documents(s, v ->> 'token'); exception when others then ok := sqlerrm = 'lead_not_found'; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: count on a completed lead (got %)', err; end if;
+  raise notice 'ok: phase 18 count_lead_documents (anon)';
+end $$;
+
+reset role;
+do $$
+begin
+  if not (select prosecdef from pg_proc where oid = 'public.count_lead_documents(text,text)'::regprocedure) then
+    raise exception 'FAIL: count_lead_documents not SECURITY DEFINER';
+  end if;
+  if (select proconfig from pg_proc where oid = 'public.count_lead_documents(text,text)'::regprocedure) is distinct from array['search_path=""'] then
+    raise exception 'FAIL: count_lead_documents search_path';
+  end if;
+  if has_function_privilege('public', 'public.count_lead_documents(text,text)', 'execute') then
+    raise exception 'FAIL: count_lead_documents executable by PUBLIC';
+  end if;
+  raise notice 'ok: phase 18 count_lead_documents (definition)';
+end $$;
+
 do $$ begin raise notice 'ALL RLS TESTS PASSED'; end $$;
 rollback;

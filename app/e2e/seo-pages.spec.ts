@@ -2,6 +2,8 @@ import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
+import { EXPLAINER_BLOCKS, EXPLAINER_INTRO, EXPLAINER_TITLE } from "../src/components/page1/explainer";
+import { FAQ } from "../src/components/page1/faq";
 import { GUIDE_PAGES } from "../src/content/seo/guides";
 import { OFFERS_PAGES } from "../src/content/seo/offers-pages";
 import { SITE_URL } from "../src/lib/seo/site";
@@ -133,23 +135,47 @@ test.describe("SEO pages (raw HTML)", () => {
     });
   }
 
-  test("the home stays indexable with its canonical, the sitemap lists it with the 4 guides", async ({ request }) => {
+  test("the home stays indexable with its canonical, the sitemap lists it with the 6 guides", async ({ request }) => {
     const html = await (await request.get("/")).text();
     expect(html).toMatch(/<link rel="canonical" href="https:\/\/[^"]+"/);
     expect(html).not.toMatch(/<meta name="robots" content="[^"]*noindex/);
     const sitemap = await (await request.get("/sitemap.xml")).text();
-    expect(sitemap.match(/<loc>/g)).toHaveLength(5);
+    expect(sitemap.match(/<loc>/g)).toHaveLength(7);
+  });
+
+  test("home text block and the 12 FAQ rows are in the raw HTML, visible, with the copy rules (T19.4e)", async ({ request }) => {
+    const html = await (await request.get("/")).text();
+    const block = html.match(/<section[^>]*aria-labelledby="come-funziona-confronto"[\s\S]*?<\/section>/);
+    expect(block, "home explainer section").not.toBeNull();
+    expect(block![0]).not.toMatch(/<details|hidden/);
+    const text = textOf(block![0]);
+    expect(text).toContain(EXPLAINER_TITLE);
+    expect(text).toContain(EXPLAINER_INTRO);
+    for (const b of EXPLAINER_BLOCKS) {
+      expect(text).toContain(b.heading);
+      for (const p of [...b.paragraphs, ...(b.bullets ?? [])]) expect(text).toContain(p);
+    }
+    expect(text).toContain("Confrontiamo le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato.");
+    expect(text).toContain("VERSUS opera come agente ed è remunerato dai venditori.");
+    expect(text).not.toMatch(/chiam|demo|club|e-?mail|\bcall\b|\+39|\d{2,4}[ .]\d{3,4}[ .]\d{3,4}|migliore|In evidenza/i);
+    // no new links from the home block (the footer Guide row already links the guides)
+    expect(block![0]).not.toMatch(/<a /);
+    const body = textOf(html);
+    expect(FAQ).toHaveLength(12);
+    for (const f of FAQ) expect(body).toContain(f.a);
   });
 
   test("unknown guide slug is a 404", async ({ request }) => {
     expect((await request.get("/guida/non-esiste")).status()).toBe(404);
   });
 
-  test("no page outside the cluster links to the 8 paths", async ({ request }) => {
+  test("public pages link the 6 guides from the footer row and never the 4 offers pages (T19.4b)", async ({ request }) => {
     for (const from of ["/", "/privacy", "/offerte", "/attivazione", "/grazie"]) {
       const html = await (await request.get(from)).text();
+      expect(html, `${from} must have the footer guides row`).toContain('data-testid="footer-guides"');
       for (const p of ALL.map((x) => x.path)) {
-        expect(html, `${from} must not link to ${p}`).not.toMatch(new RegExp(`href="[^"]*${p}(["?#/])`));
+        const linked = new RegExp(`href="[^"]*${p}(["?#/])`).test(html);
+        expect(linked, `${from} -> ${p}`).toBe(!OFFER_PATHS.has(p));
       }
     }
   });

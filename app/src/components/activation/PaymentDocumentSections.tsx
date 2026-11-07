@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   Button,
   CheckIcon,
+  cn,
   CloseIcon,
   Input,
   Select,
@@ -23,6 +24,7 @@ import {
   formatUploadSize,
   ibanRequired,
   groupIban,
+  requiredDocumentSides,
   removeDocumentPatch,
   removeErrorMessage,
   uploadErrorMessage,
@@ -174,7 +176,24 @@ export function PaymentFields({
   );
 }
 
-/** "Documento d'identità (facoltativo)": data fields (each optional) + immediate file upload. */
+/** Italian label of one upload slot (the passport has a single page with the photo). */
+function sideLabel(type: DocumentType | null, side: DocumentSide): string {
+  if (type === "passaporto") return "Pagina con la foto";
+  return side === "front" ? "Fronte del documento" : "Retro del documento";
+}
+
+/** Short description of what was uploaded, for the collapsed state. */
+function uploadedSummary(type: DocumentType): string {
+  return type === "passaporto"
+    ? "Passaporto, pagina con la foto"
+    : `${DOCUMENT_TYPE_LABELS[type]}, fronte e retro`;
+}
+
+/**
+ * "Documento d'identità" (mandatory): the type first, then one upload per required side (front and
+ * back, or the passport photo page). When every required side is there the section collapses into
+ * one big "Documento caricato" state; "Modifica" reopens it with the per-side checks.
+ */
 export function DocumentFields({
   state,
   update,
@@ -183,14 +202,51 @@ export function DocumentFields({
   edited,
 }: SectionProps) {
   const a = state.activation;
+  const type = a.documentType;
   const hintId = useId();
   const [uploadingSide, setUploadingSide] = useState<DocumentSide | null>(null);
   const [uploadError, setUploadError] = useState<SideMessage | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<SideMessage | null>(null);
+  // Id of the file uploaded in this session: only that one plays the badge pop-in (not after a reload).
+  const [freshDocId, setFreshDocId] = useState<string | null>(null);
   // The bill (kind "bill") lives in its own section: this one only handles identity documents.
   const slots = assignDocumentSlots(a.documents);
   const busy = uploadingSide !== null || removingId !== null;
+  const sides = requiredDocumentSides(type);
+  const complete = type !== null && sides.every((side) => slots[side] !== null);
+
+  // Collapse model, all derived (no state set from effects). `completeKey` identifies the current
+  // complete set of files; the section collapses once it is "armed" (after a short delay that lets
+  // the last badge show) and stays open while the customer is reviewing it.
+  const completeKey = complete ? `${type}:${sides.map((side) => slots[side]?.id).join("+")}` : null;
+  const [armedKey, setArmedKey] = useState<string | null>(completeKey);
+  const [reviewingKey, setReviewingKey] = useState<string | null>(null);
+  // True once the collapse happened in this session: only then animate and announce it.
+  const [animateDone, setAnimateDone] = useState(false);
+  const documentError = errorFor("id_document");
+  // A server "files missing" error opens the section so the customer sees the checks and the message.
+  const collapsed =
+    completeKey !== null && armedKey === completeKey && reviewingKey !== completeKey && !documentError;
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const editRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (completeKey === null || armedKey === completeKey) return;
+    const timer = setTimeout(() => {
+      setArmedKey(completeKey);
+      setAnimateDone(true);
+    }, COLLAPSE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [completeKey, armedKey]);
+
+  useEffect(() => {
+    if (collapsed && animateDone) editRef.current?.focus({ preventScroll: true });
+  }, [collapsed, animateDone]);
+
+  useEffect(() => {
+    if (reviewingKey !== null) sectionRef.current?.focus({ preventScroll: true });
+  }, [reviewingKey]);
 
   async function onFiles(side: DocumentSide, file: File | undefined) {
     if (!file) return;
@@ -200,7 +256,9 @@ export function DocumentFields({
     try {
       const prepared = await prepareDocumentFile(file);
       const doc = await uploadLeadDocument(prepared);
+      edited("id_document");
       update((s) => addDocumentPatch(s, { ...doc, name: prepared.name }, side));
+      setFreshDocId(doc.id);
     } catch (err) {
       const code =
         err instanceof LeadApiError || err instanceof DocumentPrepareError
@@ -235,138 +293,168 @@ export function DocumentFields({
     setRemovingId(null);
   }
 
-  return (
-    <div className="space-y-5">
-      <p className="text-sm text-ink-muted">
-        Facoltativo: puoi compilare i dati del documento, caricare il file, oppure saltare questa sezione.
-      </p>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Select
-          label="Tipo di documento"
-          name="document_type"
-          options={[
-            { value: "", label: "Seleziona il tipo" },
-            ...DOCUMENT_TYPES.map((t) => ({
-              value: t,
-              label: DOCUMENT_TYPE_LABELS[t],
-            })),
-          ]}
-          value={a.documentType ?? ""}
-          error={errorFor("document_type")}
-          onChange={(e) => {
-            edited("document_type");
-            update({
-              activation: {
-                documentType: (e.target.value || null) as DocumentType | null,
-              },
-            });
-          }}
-          onBlur={() => touch("document_type")}
-        />
-        <Input
-          label="Numero del documento"
-          name="document_number"
-          autoCapitalize="characters"
-          // Identity-document data (number, expiry, issuer) is sensitive: never kept in the
-          // browser's saved-values history, so autocomplete stays off on these three fields.
-          autoComplete="off"
-          spellCheck={false}
-          maxLength={30}
-          value={a.documentNumber}
-          error={errorFor("document_number")}
-          onChange={(e) => {
-            edited("document_number");
-            update({
-              activation: { documentNumber: e.target.value.toUpperCase() },
-            });
-          }}
-          onBlur={() => touch("document_number")}
-        />
-        <Input
-          label="Data di scadenza"
-          name="document_expiry"
-          type="date"
-          autoComplete="off"
-          min="1900-01-01"
-          max="2100-12-31"
-          value={a.documentExpiry}
-          error={errorFor("document_expiry")}
-          onChange={(e) => {
-            edited("document_expiry");
-            update({ activation: { documentExpiry: e.target.value } });
-          }}
-          onBlur={() => touch("document_expiry")}
-        />
-        <Input
-          label="Ente di rilascio"
-          name="document_issuer"
-          autoComplete="off"
-          maxLength={80}
-          value={a.documentIssuer}
-          error={errorFor("document_issuer")}
-          onChange={(e) => {
-            edited("document_issuer");
-            update({ activation: { documentIssuer: e.target.value } });
-          }}
-          onBlur={() => touch("document_issuer")}
-        />
-      </div>
+  /** New type: files that still fit are kept; a retro no longer needed (passport) is removed. */
+  function onTypeChange(next: DocumentType | null) {
+    edited("document_type");
+    edited("id_document");
+    setUploadError(null);
+    setRemoveError(null);
+    update({ activation: { documentType: next } });
+    const unused = next !== null && !requiredDocumentSides(next).includes("back") ? slots.back : null;
+    if (unused) void onRemove("back", unused.id);
+  }
 
-      <fieldset data-testid="document-upload" className="min-w-0 space-y-3">
-        <legend className="mb-2 text-sm font-semibold text-ink">
-          Oppure carica il documento
-        </legend>
-        <div className="grid gap-5 sm:grid-cols-2">
-          {DOCUMENT_SIDES.map((side) => (
-            <DocumentSlot
-              key={side}
-              side={side}
-              doc={slots[side]}
-              hintId={hintId}
-              busy={busy}
-              uploading={uploadingSide === side}
-              removing={slots[side] !== null && removingId === slots[side]?.id}
-              error={
-                (uploadError?.side === side && uploadError.message) ||
-                (removeError?.side === side && removeError.message) ||
-                null
-              }
-              errorKind={uploadError?.side === side ? "upload" : "remove"}
-              onFile={(file) => void onFiles(side, file)}
-              onRemove={(id) => void onRemove(side, id)}
-            />
-          ))}
+  const missingId = `${hintId}-missing`;
+
+  return (
+    <div
+      ref={sectionRef}
+      tabIndex={-1}
+      data-testid="document-section"
+      aria-invalid={documentError ? true : undefined}
+      aria-describedby={documentError ? missingId : undefined}
+      className="space-y-5 outline-none"
+    >
+      {/* Always mounted so the announcement is read when the section collapses. */}
+      <span role="status" data-testid="document-done-status" className="sr-only">
+        {collapsed && animateDone ? "Documento caricato" : ""}
+      </span>
+      {collapsed && type !== null ? (
+        <div
+          data-testid="document-collapsed"
+          className={cn(
+            "flex flex-col items-center gap-3 rounded-card border border-brand-600 bg-brand-50 px-4 py-8 text-center",
+            animateDone && "animate-doc-done motion-reduce:animate-none",
+          )}
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "flex size-16 items-center justify-center rounded-full bg-brand-600 text-white",
+              animateDone && "animate-badge-pop motion-reduce:animate-none",
+            )}
+          >
+            <CheckIcon className="size-9" strokeWidth={3} />
+          </span>
+          <div>
+            <p className="text-lg font-bold text-brand-700">Documento caricato</p>
+            <p className="text-sm text-ink-muted">{uploadedSummary(type)}</p>
+          </div>
+          <Button
+            ref={editRef}
+            type="button"
+            variant="secondary"
+            data-testid="document-edit"
+            className="min-h-11"
+            onClick={() => {
+              setAnimateDone(false);
+              setReviewingKey(completeKey);
+            }}
+          >
+            Modifica
+          </Button>
         </div>
-        {slots.extra.length > 0 && (
-          <ul data-testid="document-list" className="space-y-2">
-            {slots.extra.map((d) => (
-              <li key={d.id}>
-                <DocumentRow
-                  doc={d}
-                  ariaLabel={`Rimuovi ${d.name}`}
-                  removing={removingId === d.id}
-                  disabled={busy}
-                  onRemove={() => void onRemove("back", d.id)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-        <p id={hintId} className="text-sm text-ink-muted">
-          Foto (JPG, PNG, HEIC) o PDF, max 4 MB; le foto vengono ridotte in
-          automatico. Con il passaporto, o con un PDF che contiene già entrambi
-          i lati, basta il fronte.
-        </p>
-      </fieldset>
+      ) : (
+        <>
+          <div className="max-w-sm">
+            <Select
+              label="Tipo di documento"
+              name="document_type"
+              required
+              options={[
+                { value: "", label: "Seleziona il tipo" },
+                ...DOCUMENT_TYPES.map((t) => ({
+                  value: t,
+                  label: DOCUMENT_TYPE_LABELS[t],
+                })),
+              ]}
+              value={type ?? ""}
+              error={errorFor("document_type")}
+              onChange={(e) => onTypeChange((e.target.value || null) as DocumentType | null)}
+              onBlur={() => touch("document_type")}
+            />
+          </div>
+
+          {type !== null && (
+            <fieldset data-testid="document-upload" className="min-w-0 space-y-3">
+              <legend className="mb-2 text-sm font-semibold text-ink">
+                {type === "passaporto" ? "Carica il passaporto" : "Carica il documento"}
+              </legend>
+              <div className="grid gap-5 sm:grid-cols-2">
+                {sides.map((side) => (
+                  <DocumentSlot
+                    key={side}
+                    side={side}
+                    label={sideLabel(type, side)}
+                    doc={slots[side]}
+                    fresh={slots[side] !== null && slots[side]?.id === freshDocId}
+                    hintId={hintId}
+                    busy={busy}
+                    uploading={uploadingSide === side}
+                    removing={slots[side] !== null && removingId === slots[side]?.id}
+                    error={
+                      (uploadError?.side === side && uploadError.message) ||
+                      (removeError?.side === side && removeError.message) ||
+                      null
+                    }
+                    errorKind={uploadError?.side === side ? "upload" : "remove"}
+                    onFile={(file) => void onFiles(side, file)}
+                    onRemove={(id) => void onRemove(side, id)}
+                  />
+                ))}
+              </div>
+              {slots.extra.length > 0 && (
+                <ul data-testid="document-list" className="space-y-2">
+                  {slots.extra.map((d) => (
+                    <li key={d.id}>
+                      <DocumentRow
+                        doc={d}
+                        ariaLabel={`Rimuovi ${d.name}`}
+                        removing={removingId === d.id}
+                        disabled={busy}
+                        onRemove={() => void onRemove("back", d.id)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p id={hintId} className="text-sm text-ink-muted">
+                Foto (JPG, PNG, HEIC) o PDF, max 4 MB; le foto vengono ridotte in automatico.
+              </p>
+              {documentError && (
+                <p
+                  id={missingId}
+                  data-testid="document-missing-error"
+                  role="alert"
+                  className="text-sm font-medium text-danger"
+                >
+                  {documentError}
+                </p>
+              )}
+              {complete && (
+                <Button
+                  type="button"
+                  data-testid="document-done"
+                  variant="secondary"
+                  className="min-h-11"
+                  onClick={() => {
+                    setArmedKey(completeKey);
+                    setReviewingKey(null);
+                    setAnimateDone(true);
+                  }}
+                >
+                  Fatto
+                </Button>
+              )}
+            </fieldset>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-const DOCUMENT_SIDES: DocumentSide[] = ["front", "back"];
-const SIDE_LABELS: Record<DocumentSide, string> = {
-  front: "Fronte del documento",
-  back: "Retro del documento",
-};
+const COLLAPSE_DELAY_MS = 800;
 
 type SideMessage = { side: DocumentSide; message: string };
 
@@ -376,12 +464,15 @@ function DocumentRow({
   ariaLabel,
   removing,
   disabled,
+  showCheck = true,
   onRemove,
 }: {
   doc: FlowUploadedDocument;
   ariaLabel: string;
   removing: boolean;
   disabled: boolean;
+  /** False in a slot: the slot title row carries the green badge instead. */
+  showCheck?: boolean;
   onRemove: () => void;
 }) {
   return (
@@ -389,9 +480,11 @@ function DocumentRow({
       data-testid="document-item"
       className="flex items-center gap-2 text-sm text-ink"
     >
-      <span aria-hidden="true" className="text-brand-600">
-        <CheckIcon className="size-5" />
-      </span>
+      {showCheck && (
+        <span aria-hidden="true" className="text-brand-600">
+          <CheckIcon className="size-5" />
+        </span>
+      )}
       <span className="min-w-0 flex-1 truncate">{doc.name}</span>
       <span className="shrink-0 text-ink-muted">
         {formatUploadSize(doc.size_bytes)}
@@ -416,7 +509,9 @@ function DocumentRow({
 /** Front or back of the identity document: empty (choose a file) or filled (file + remove). */
 function DocumentSlot({
   side,
+  label,
   doc,
+  fresh,
   hintId,
   busy,
   uploading,
@@ -427,7 +522,10 @@ function DocumentSlot({
   onRemove,
 }: {
   side: DocumentSide;
+  label: string;
   doc: FlowUploadedDocument | null;
+  /** The file was uploaded in this session (animate the badge, announce it). */
+  fresh: boolean;
   hintId: string;
   busy: boolean;
   uploading: boolean;
@@ -439,7 +537,6 @@ function DocumentSlot({
 }) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const label = SIDE_LABELS[side];
   const errorId = `${id}-error`;
 
   return (
@@ -449,11 +546,31 @@ function DocumentSlot({
       data-testid={`document-slot-${side}`}
       className="min-w-0 space-y-2 rounded-control border border-line px-3 py-3"
     >
-      <p id={`${id}-label`} className="text-sm font-semibold text-ink">
-        {label}
-      </p>
+      {/* Fixed-height title row: the badge appears inside it without moving anything. */}
+      <div className="flex min-h-7 items-center justify-between gap-2">
+        <p id={`${id}-label`} className="text-sm font-semibold text-ink">
+          {label}
+        </p>
+        {doc && (
+          <span
+            aria-hidden="true"
+            data-testid={`document-slot-${side}-badge`}
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white",
+              fresh && "animate-badge-pop motion-reduce:animate-none",
+            )}
+          >
+            <CheckIcon className="size-4" strokeWidth={3} />
+          </span>
+        )}
+      </div>
+      {/* Always mounted so the announcement is read when it fills; silent on reload/restore. */}
+      <span role="status" className="sr-only">
+        {doc && fresh ? `${label} caricato` : ""}
+      </span>
       {doc ? (
         <DocumentRow
+          showCheck={false}
           doc={doc}
           ariaLabel={`Rimuovi ${label.toLowerCase()}: ${doc.name}`}
           removing={removing}

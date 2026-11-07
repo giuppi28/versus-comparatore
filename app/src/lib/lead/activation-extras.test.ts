@@ -117,7 +117,7 @@ describe("identity document data (complete)", () => {
   });
 
   it("none given → all null", () => {
-    const r = complete({ document_number: "  " });
+    const r = complete({ document_type: null, document_number: "  " });
     expect(r.fields).toEqual({});
     expect(r.data).toMatchObject({
       document_type: null,
@@ -223,6 +223,7 @@ describe("handlers (mock repository)", () => {
 
   beforeEach(() => {
     repo = createMockRepository();
+    repo.countLeadIdDocuments = async () => 2; // identity document files are mandatory (T18.8)
     handlers = createLeadHandlers({
       getRepository: () => repo,
       notify: vi.fn(async () => {}),
@@ -403,9 +404,10 @@ describe("flow state (activation extras)", () => {
       iban_holder_last_name: "Verdi",
       iban_holder_tax_code: HOLDER_CF,
       document_type: "patente",
-      document_number: "U1A123456B",
-      document_expiry: "2031-01-01",
-      document_issuer: "MCTC",
     });
+    // Number, expiry and issuer are no longer asked: never sent, even from an older saved session.
+    expect(full).not.toHaveProperty("document_number");
+    expect(full).not.toHaveProperty("document_expiry");
+    expect(full).not.toHaveProperty("document_issuer");
   });
 });

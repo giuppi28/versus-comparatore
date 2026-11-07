@@ -14,6 +14,18 @@ function withSupplier(offerId: string): OfferWithSupplier {
 }
 
 describe("OfferCard", () => {
+  it("shows the update line with the 2026-11-07 floor, and the real date when later", () => {
+    const { unmount } = render(
+      <OfferCard offer={{ ...edison, updated_at: "2026-10-15T00:00:00.000Z" }} commodity="luce" monthlyCost={50} onActivate={() => {}} />,
+    );
+    expect(screen.getByTestId("offer-updated").textContent).toBe("Aggiornata il 7 novembre 2026");
+    unmount();
+    render(
+      <OfferCard offer={{ ...edison, updated_at: "2026-12-03T09:00:00Z" }} commodity="luce" monthlyCost={50} onActivate={() => {}} />,
+    );
+    expect(screen.getByTestId("offer-updated").textContent).toBe("Aggiornata il 3 dicembre 2026");
+  });
+
   const edison = withSupplier("offer-aldo-14");
   const cost = monthlyCost(edison, 2700)!;
 

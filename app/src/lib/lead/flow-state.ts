@@ -93,7 +93,7 @@ export interface ActivationData {
   ibanHolderFirstName: string;
   ibanHolderLastName: string;
   ibanHolderTaxCode: string;
-  /** Identity document data: all four or none. */
+  /** Identity document type (mandatory at completion). Number, expiry and issuer are no longer asked or sent; kept so saved sessions still load. */
   documentType: DocumentType | null;
   documentNumber: string;
   /** ISO date "YYYY-MM-DD" (value of an <input type="date">), "" = empty. */
@@ -523,9 +523,6 @@ function activationExtras(a: ActivationData): Partial<LeadCompleteData> {
     iban_holder_last_name: holder ? trimmed(a.ibanHolderLastName) : undefined,
     iban_holder_tax_code: holder ? trimmed(a.ibanHolderTaxCode) : undefined,
     document_type: a.documentType ?? undefined,
-    document_number: trimmed(a.documentNumber),
-    document_expiry: trimmed(a.documentExpiry),
-    document_issuer: trimmed(a.documentIssuer),
   };
 }
 

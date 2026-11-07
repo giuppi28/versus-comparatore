@@ -12,6 +12,7 @@ import {
   type AutocompleteOption,
 } from "@/components/ui";
 import type { LeadCommodity, LeadCustomerType, ServiceType } from "@/lib/data/types";
+import { revealElement } from "@/lib/focus-problem";
 import { updateLead } from "@/lib/lead/client";
 import { useFlow } from "@/lib/lead/flow-context";
 import {
@@ -79,15 +80,10 @@ const SERVICES: { value: ServiceType; testId: string; title: string; description
   { value: "primo_allaccio", testId: "service-primo-allaccio", title: "Primo allaccio", description: "Nuova fornitura", icon: <PlugIcon /> },
 ];
 
-/** Scrolls to a field and moves the focus to its first control. */
+/** Scrolls to a field and moves the focus to its first control (or to the error banner itself). */
 function scrollToField(key: FieldKey | "form-error") {
   const el = document.getElementById(key === "form-error" ? key : anchorId(key));
-  if (!el) return;
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
-  el.querySelector<HTMLElement>("input:not([type=hidden]), select, textarea, button:not(:disabled)")?.focus({
-    preventScroll: true,
-  });
+  if (el) revealElement(el);
 }
 
 function toOption(c: ComuneSuggestion): AutocompleteOption<ComuneSuggestion> {
@@ -120,6 +116,12 @@ export function Page1Form({ suppliers }: Page1FormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [serverErrors, setServerErrors] = useState<Page1Errors>({});
+  // Where to scroll after a blocked or failed submit. Handled in an effect so the error messages
+  // are already rendered (and the layout has settled) when the position is computed.
+  const [scrollRequest, setScrollRequest] = useState<{ key: FieldKey | "form-error" } | null>(null);
+  useEffect(() => {
+    if (scrollRequest) scrollToField(scrollRequest.key);
+  }, [scrollRequest]);
 
   /** User edit → consistent flow patch (estimates, forced Primo allaccio, ...). */
   const change = useCallback(
@@ -200,7 +202,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
 
     const firstError = firstErrorKey(validatePage1(state, suppliers));
     if (firstError) {
-      setTimeout(() => scrollToField(firstError), 0);
+      setScrollRequest({ key: firstError });
       return;
     }
 
@@ -224,7 +226,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
       setServerErrors(mapped.fields);
       setSubmitting(false);
       const key = firstErrorKey(mapped.fields);
-      setTimeout(() => scrollToField(key ?? "form-error"), 0);
+      setScrollRequest({ key: key ?? "form-error" });
     }
   }
 
@@ -244,6 +246,8 @@ export function Page1Form({ suppliers }: Page1FormProps) {
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("commodity")}
+            invalid={!!errors.commodity}
+            errorId={errorId("commodity")}
             value={state.commodity}
             onValueChange={(v) => change({ commodity: v as LeadCommodity })}
             className="grid grid-cols-3 gap-2 sm:gap-3"
@@ -267,6 +271,8 @@ export function Page1Form({ suppliers }: Page1FormProps) {
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("customerType")}
+            invalid={!!errors.customerType}
+            errorId={errorId("customerType")}
             value={state.customerType}
             onValueChange={(v) => change({ customerType: v as LeadCustomerType })}
             className="grid grid-cols-2 gap-3"
@@ -418,6 +424,8 @@ export function Page1Form({ suppliers }: Page1FormProps) {
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("serviceType")}
+            invalid={!!errors.serviceType}
+            errorId={errorId("serviceType")}
             value={state.serviceType}
             onValueChange={(v) => change({ serviceType: v as ServiceType })}
             className="grid grid-cols-2 gap-3 sm:grid-cols-4"

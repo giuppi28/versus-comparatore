@@ -1,11 +1,12 @@
 /**
  * Activation step B extras (Phase 12 / T12.7): optional IBAN (+ different holder), identity
- * document data + upload, POD/PDR cross-detection, POD/comune warning.
+ * document upload (mandatory since T18.8: type first; the type/sides rules live in document.spec.ts), POD/PDR cross-detection, POD/comune warning.
  * Mock data mode. Test ids: activation-payment, activation-document, iban-holder-different,
  * iban-holder-fields, document-file-front/back, document-slot-front/back, document-item, document-upload-error, pod-warning.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { page1Data } from "../src/lib/lead/test-fixtures";
+import { SEEDED_ID_DOCUMENT, uploadRequiredSides } from "./helpers/identity-document";
 
 const FLOW_KEY = "versus.flow.v1";
 const STEP_KEY = "versus.activation.step.v1";
@@ -185,22 +186,10 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     );
   });
 
-  test("document: fields optional and independent, filled past expiry still errors", async ({ page }) => {
-    await openStepB(page, flowState());
-    await field(page, "document_type").selectOption("patente");
-    await field(page, "document_expiry").fill("2020-01-01");
-    await page.getByTestId("activation-submit").click();
-    await expect(page.getByText("Il documento è scaduto: controlla la data di scadenza.")).toBeVisible();
-    await expect(page.getByText("Completa i dati del documento.")).toHaveCount(0);
-    await field(page, "document_expiry").fill("");
-    await page.getByTestId("activation-submit").click();
-    await expect(page.getByText("Il documento è scaduto: controlla la data di scadenza.")).toHaveCount(0);
-    await expect(page.getByText("Completa i dati del documento.")).toHaveCount(0);
-  });
-
   test("upload: JPEG accepted and listed, undecodable image rejected without blocking", async ({ page }, testInfo) => {
     await createLead(page, String(testInfo.project.use.baseURL));
     await openStepB(page, flowState());
+    await field(page, "document_type").selectOption("carta_identita");
     const jpeg = await makeImage(page, { type: "image/jpeg", width: 200, height: 120 });
 
     await page.getByTestId("document-file-front").setInputFiles({ name: "falso.jpg", mimeType: "image/jpeg", buffer: Buffer.from("not an image at all") });
@@ -215,6 +204,8 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     await expect(page.getByTestId("document-upload-error")).toHaveCount(0);
 
     await page.getByTestId("document-file-back").setInputFiles({ name: "doc2.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await expect(page.getByTestId("document-collapsed")).toBeVisible(); // both sides in: the section collapses
+    await page.getByTestId("document-edit").click();
     await expect(page.getByTestId("document-item")).toHaveCount(2);
     await expect(page.getByTestId("document-file-front")).toHaveCount(0);
     await expect(page.getByTestId("document-file-back")).toHaveCount(0);
@@ -224,22 +215,33 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
   test("upload: remove a file, only its slot empties and a new upload works", async ({ page }, testInfo) => {
     await createLead(page, String(testInfo.project.use.baseURL));
     await openStepB(page, flowState());
+    await field(page, "document_type").selectOption("carta_identita");
     const jpeg = await makeImage(page, { type: "image/jpeg", width: 200, height: 120 });
     const front = page.getByTestId("document-slot-front");
 
+    const badge = page.getByTestId("document-slot-front-badge");
+    await expect(badge).toHaveCount(0);
     await page.getByTestId("document-file-front").setInputFiles({ name: "uno.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(1);
+    // T18.6: green check badge on the filled slot only; announced politely; "Rimuovi" stays usable.
+    await expect(badge).toBeVisible();
+    await expect(page.getByTestId("document-slot-back-badge")).toHaveCount(0);
+    await expect(badge).toHaveClass(/animate-badge-pop/);
+    await expect(front.getByRole("status")).toHaveText("Fronte del documento caricato");
     const remove = page.getByRole("button", { name: "Rimuovi fronte del documento: uno.jpg" });
     await expect(remove).toHaveText("Rimuovi");
     expect((await remove.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await remove.click();
     await expect(page.getByTestId("document-item")).toHaveCount(0);
+    await expect(badge).toHaveCount(0);
     await expect(page.getByTestId("document-file-front")).toHaveCount(1);
     await page.getByTestId("document-file-front").setInputFiles({ name: "due.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(front.getByTestId("document-item")).toContainText("due.jpg");
 
     // Two files hide both inputs; removing one brings back only its own.
     await page.getByTestId("document-file-back").setInputFiles({ name: "tre.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await expect(page.getByTestId("document-collapsed")).toBeVisible(); // both sides in: the section collapses
+    await page.getByTestId("document-edit").click();
     await expect(page.getByTestId("document-item")).toHaveCount(2);
     await expect(page.getByTestId("document-file-front")).toHaveCount(0);
     await expect(page.getByTestId("document-file-back")).toHaveCount(0);
@@ -254,6 +256,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
   test("upload: front then back land in the right slots, survive a reload, an error stays in its slot", async ({ page }, testInfo) => {
     await createLead(page, String(testInfo.project.use.baseURL));
     await openStepB(page, flowState());
+    await field(page, "document_type").selectOption("carta_identita");
     const jpeg = await makeImage(page, { type: "image/jpeg", width: 200, height: 120 });
     const front = page.getByTestId("document-slot-front");
     const back = page.getByTestId("document-slot-back");
@@ -270,21 +273,30 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     await expect(back.getByTestId("document-upload-error")).toHaveCount(0);
 
     await page.getByTestId("document-file-front").setInputFiles({ name: "fronte.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await expect(page.getByTestId("document-collapsed")).toBeVisible(); // both sides in: the section collapses
+    await page.getByTestId("document-edit").click();
     await expect(front.getByTestId("document-item")).toContainText("fronte.jpg");
     await expect(back.getByTestId("document-item")).toContainText("retro.jpg");
     await expect(page.getByTestId("document-upload-error")).toHaveCount(0);
 
-    // Reload (flow kept in sessionStorage): both stay in the right slots.
+    // Reload (flow kept in sessionStorage): the section comes back collapsed; reopened, both stay in the right slots.
     await page.reload();
     await expect(page.getByTestId("activation-step-b")).toBeVisible();
+    await expect(page.getByTestId("document-collapsed")).toBeVisible();
+    await page.getByTestId("document-edit").click();
     await expect(page.getByTestId("document-slot-front").getByTestId("document-item")).toContainText("fronte.jpg");
     await expect(page.getByTestId("document-slot-back").getByTestId("document-item")).toContainText("retro.jpg");
+    // A restored file shows the badge without replaying the pop-in or announcing again.
+    await expect(page.getByTestId("document-slot-front-badge")).toBeVisible();
+    await expect(page.getByTestId("document-slot-front-badge")).not.toHaveClass(/animate-badge-pop/);
+    await expect(front.getByRole("status")).toHaveText("");
     await noOverflow(page);
   });
 
   test("upload: a failed removal keeps the item and shows an error; 404 drops it", async ({ page }, testInfo) => {
     await createLead(page, String(testInfo.project.use.baseURL));
     await openStepB(page, flowState());
+    await field(page, "document_type").selectOption("carta_identita");
     const jpeg = await makeImage(page, { type: "image/jpeg", width: 200, height: 120 });
     await page.getByTestId("document-file-front").setInputFiles({ name: "uno.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(1);
@@ -312,6 +324,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
   test("upload: a large PNG is compressed to a small .jpg and uploaded", async ({ page }, testInfo) => {
     await createLead(page, String(testInfo.project.use.baseURL));
     await openStepB(page, flowState());
+    await field(page, "document_type").selectOption("carta_identita");
     const png = await makeImage(page, { type: "image/png", width: 3000, height: 2000, blocky: 2 });
     expect(png.length).toBeGreaterThan(4 * 1024 * 1024);
 
@@ -323,6 +336,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
 
   test("upload: an undecodable .heic shows the decode error", async ({ page }) => {
     await openStepB(page, flowState());
+    await field(page, "document_type").selectOption("carta_identita");
     const junk = Buffer.from(Array.from({ length: 2048 }, (_, i) => (i * 37 + 11) % 256));
     await page.getByTestId("document-file-front").setInputFiles({ name: "IMG_0001.heic", mimeType: "image/heic", buffer: junk });
     await expect(page.getByTestId("document-upload-error")).toHaveText(
@@ -332,6 +346,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
 
   test("upload: other types are rejected client-side", async ({ page }) => {
     await openStepB(page, flowState());
+    await field(page, "document_type").selectOption("carta_identita");
     await page.getByTestId("document-file-front").setInputFiles({ name: "a.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
     await expect(page.getByTestId("document-upload-error")).toHaveText("Formato non supportato: carica un file JPG o PDF.");
   });
@@ -348,7 +363,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     await page.route("**/api/lead/complete", (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) }),
     );
-    await openStepB(page, flowState({ comune: roma }, { cap: "00118", pod: "IT001E12345678" }));
+    await openStepB(page, flowState({ comune: roma }, { cap: "00118", pod: "IT001E12345678", ...SEEDED_ID_DOCUMENT }));
     await expect(page.getByTestId("pod-warning")).toHaveText(
       "Controlla il POD: il distributore indicato non serve di solito questo comune.",
     );
@@ -368,16 +383,9 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     // The first three consonants of the surname stay R-S-S, so the CF still matches.
     await openStepB(page, flowState({ lastName: surname }));
     await field(page, "iban").fill(GOOD_IBAN);
-    await field(page, "document_type").selectOption("patente");
-    await field(page, "document_number").fill("U1A234567B");
-    await field(page, "document_expiry").fill("2031-01-05");
-    await field(page, "document_issuer").fill("MIT-UCO");
-    await page.getByTestId("document-file-front").setInputFiles({
-      name: "doc.jpg",
-      mimeType: "image/jpeg",
-      buffer: await makeImage(page, { type: "image/jpeg", width: 200, height: 120 }),
-    });
-    await expect(page.getByTestId("document-item")).toHaveCount(1);
+    // Mandatory document (T18.8): real uploads of both sides for a patente.
+    await uploadRequiredSides(page, "patente");
+    await expect(page.getByTestId("document-collapsed")).toBeVisible();
     await page.getByTestId("activation-submit").click();
     await expect(page).toHaveURL(/\/grazie$/);
 
@@ -391,8 +399,8 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     await page.goto(`/admin/leads?tab=tutti&q=${surname}`);
     await page.locator('[data-testid="lead-item"]:visible').first().getByRole("link", { name: new RegExp(surname) }).click();
     await expect(page.getByTestId("lead-iban")).toHaveText("IT60 X054 2811 1010 0000 0123 456");
-    await expect(page.getByTestId("group-documento")).toContainText("U1A234567B");
-    await expect(page.getByTestId("lead-document")).toHaveCount(1);
+    await expect(page.getByTestId("group-documento")).toContainText("Patente");
+    await expect(page.getByTestId("lead-document")).toHaveCount(2);
     await page.getByTestId("lead-delete").click();
     await page.getByTestId("confirm-dialog-confirm").click();
     await expect(page).toHaveURL(/\/admin\/leads\?deleted=1$/);

@@ -1,7 +1,7 @@
 import { COMPANY } from "@/lib/legal/company";
 import { ALL_SEO_PAGES } from "./pages";
 
-export const LLMS_LAST_UPDATE = "2026-11-05";
+export const LLMS_LAST_UPDATE = "2026-11-07";
 
 /** Pure builder of /llms.txt. `suppliers` = real suppliers with at least one active offer (null = unavailable: section omitted). */
 export function buildLlmsTxt(siteUrl: string, suppliers: string[] | null): string {

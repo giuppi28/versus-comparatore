@@ -77,6 +77,35 @@
 
   /* Spacing base is Tailwind's 0.25rem; section rhythm token */
   --spacing-section: 3rem;
+
+  /* Check badge on an uploaded file: short pop-in, ease-out, tiny overshoot (T18.6) */
+  /* Section collapsing into the big "Documento caricato" state (T18.8): soft fade and rise */
+  --animate-doc-done: doc-done 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes doc-done {
+    0% {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  --animate-badge-pop: badge-pop 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  @keyframes badge-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.08);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
 }
 
 /* Wide uppercase display style (headings, main CTA). */

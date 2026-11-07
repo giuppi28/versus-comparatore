@@ -380,6 +380,12 @@ export function createMockRepository(seed: MockSeed = {}): Repository {
       return publicDocument(doc);
     },
 
+    async countLeadIdDocuments(token) {
+      const lead = leadByToken(token);
+      if (lead.step_reached === "completed") throw new LeadNotFoundError();
+      return documents.filter((d) => d.lead_id === lead.id && d.kind === "id_document").length;
+    },
+
     async removeLeadDocument(token, documentId) {
       const lead = leadByToken(token);
       // Like lock_lead_by_token: completed leads are read-only.

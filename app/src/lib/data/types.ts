@@ -207,9 +207,9 @@ export interface Lead {
 
   // Explicit callback request (SPEC #28, migration 20261102100000). Set only by
   // complete_lead (server route constant), never by the customer flow data.
-  /** ISO timestamp of the "Richiamami" submit; null for leads completed before T15.1 / in progress. */
+  /** ISO timestamp of the "Accetta" submit; null for leads completed before T15.1 / in progress. */
   callback_requested_at: string | null;
-  /** Exact sentence shown above the "Richiamami" button (CALLBACK_REQUEST_TEXT). */
+  /** Exact sentence shown below the "Accetta" button (CALLBACK_REQUEST_TEXT). */
   callback_request_text: string | null;
 
   // History kept when the referenced offer / supplier is deleted (DB triggers, Phase 11).

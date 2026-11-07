@@ -19,6 +19,7 @@ import {
   groupIban,
   podWarning,
   uploadErrorMessage,
+  requiredDocumentSides,
   validatePaymentAndDocument,
   messageForFieldCode,
   normalizeActivation,
@@ -72,8 +73,14 @@ function flow(patch: FlowPatch = {}): FlowState {
 const filledA: FlowPatch = {
   activation: { taxCode: VALID_CF, housingTitle: "proprietario" },
 };
+const idDoc = (id: string, side?: "front" | "back") =>
+  ({ id, kind: "id_card", name: id, size_bytes: 1, ...(side ? { side } : {}) }) as unknown as FlowState["activation"]["documents"][number];
+const BOTH_SIDES = [idDoc("f", "front"), idDoc("b", "back")];
+
 const filledB: FlowPatch = {
   activation: {
+    documentType: "carta_identita",
+    documents: BOTH_SIDES,
     cap: "20121",
     address: "Via Roma",
     streetNumber: "1",
@@ -144,7 +151,7 @@ describe("validateStepB", () => {
 
   it("requires cap choice, address, civico, residency, POD, voltage", () => {
     const errors = validateStepB(flow());
-    expect(Object.keys(errors).sort()).toEqual(["address", "cap", "is_resident", "pod", "street_number", "voltage"]);
+    expect(Object.keys(errors).sort()).toEqual(["address", "cap", "document_type", "is_resident", "pod", "street_number", "voltage"]);
     expect(errors.cap).toBe("Seleziona il CAP.");
   });
 
@@ -340,20 +347,20 @@ describe("helpers", () => {
 });
 
 describe("IBAN, holder and document validation (step B extras)", () => {
-  const TODAY = "2026-10-23";
-  const withAct = (activation: Partial<FlowState["activation"]>) => flow({ activation });
+  const withAct = (activation: Partial<FlowState["activation"]>) =>
+    flow({ activation: { documentType: "carta_identita", documents: BOTH_SIDES, ...activation } });
   const GOOD_IBAN = "IT60X0542811101000000123456";
 
-  it("accepts an empty optional section", () => {
-    expect(validatePaymentAndDocument(flow(), TODAY)).toEqual({});
+  it("accepts an empty optional payment section once the document is complete", () => {
+    expect(validatePaymentAndDocument(withAct({}))).toEqual({});
   });
   it("IBAN: checksum error only when filled, valid grouped IBAN accepted", () => {
-    expect(validatePaymentAndDocument(withAct({ iban: "IT60X0542811101000000123457" }), TODAY).iban).toMatch(/controlla/);
-    expect(validatePaymentAndDocument(withAct({ iban: groupIban(GOOD_IBAN) }), TODAY)).toEqual({});
+    expect(validatePaymentAndDocument(withAct({ iban: "IT60X0542811101000000123457" })).iban).toMatch(/controlla/);
+    expect(validatePaymentAndDocument(withAct({ iban: groupIban(GOOD_IBAN) }))).toEqual({});
     expect(groupIban("it60 x054")).toBe("IT60 X054");
   });
   it("holder: required fields and CF/name consistency", () => {
-    const e = validatePaymentAndDocument(withAct({ iban: GOOD_IBAN, ibanHolderDifferent: true }), TODAY);
+    const e = validatePaymentAndDocument(withAct({ iban: GOOD_IBAN, ibanHolderDifferent: true }));
     expect(Object.keys(e).sort()).toEqual(["iban_holder_first_name", "iban_holder_last_name", "iban_holder_tax_code"]);
     const m = validatePaymentAndDocument(
       withAct({
@@ -363,27 +370,44 @@ describe("IBAN, holder and document validation (step B extras)", () => {
         ibanHolderLastName: "Bianchi",
         ibanHolderTaxCode: VALID_CF,
       }),
-      TODAY,
     );
     expect(m.iban_holder_tax_code).toMatch(/cognome/i);
   });
   it("holder fields are ignored without IBAN or without the checkbox", () => {
-    expect(validatePaymentAndDocument(withAct({ ibanHolderDifferent: true }), TODAY)).toEqual({});
-    expect(validatePaymentAndDocument(withAct({ iban: GOOD_IBAN }), TODAY)).toEqual({});
+    expect(validatePaymentAndDocument(withAct({ ibanHolderDifferent: true }))).toEqual({});
+    expect(validatePaymentAndDocument(withAct({ iban: GOOD_IBAN }))).toEqual({});
   });
-  it("document: fields independent and optional, expiry not in the past", () => {
-    expect(validatePaymentAndDocument(withAct({ documentNumber: "AB12345" }), TODAY)).toEqual({});
-    expect(validatePaymentAndDocument(withAct({ documentType: "patente" }), TODAY)).toEqual({});
-    expect(validatePaymentAndDocument(withAct({ documentExpiry: "2020-01-01" }), TODAY).document_expiry).toMatch(/scaduto/);
-    const full = {
-      documentType: "patente" as const,
-      documentNumber: "U1A234567B",
-      documentExpiry: "2031-01-05",
-      documentIssuer: "MIT-UCO",
-    };
-    expect(validatePaymentAndDocument(withAct(full), TODAY)).toEqual({});
-    expect(validatePaymentAndDocument(withAct({ ...full, documentExpiry: "2020-01-01" }), TODAY).document_expiry).toMatch(/scaduto/);
-    expect(validatePaymentAndDocument(withAct({ ...full, documentNumber: "12" }), TODAY).document_number).toBeDefined();
+  it("document: the type is mandatory and comes first", () => {
+    const e = validatePaymentAndDocument(withAct({ documentType: null, documents: [] }));
+    expect(e.document_type).toBe("Seleziona il tipo di documento.");
+    expect(e.id_document).toBeUndefined();
+  });
+  it("document: carta d'identità and patente need front and back", () => {
+    for (const documentType of ["carta_identita", "patente"] as const) {
+      expect(validatePaymentAndDocument(withAct({ documentType, documents: [] })).id_document).toMatch(/fronte e retro/);
+      expect(validatePaymentAndDocument(withAct({ documentType, documents: [idDoc("f", "front")] })).id_document).toBeDefined();
+      expect(validatePaymentAndDocument(withAct({ documentType, documents: [idDoc("b", "back")] })).id_document).toBeDefined();
+      expect(validatePaymentAndDocument(withAct({ documentType, documents: BOTH_SIDES }))).toEqual({});
+    }
+  });
+  it("document: the passport needs only the photo page", () => {
+    const passport = (documents: FlowState["activation"]["documents"]) =>
+      validatePaymentAndDocument(withAct({ documentType: "passaporto", documents }));
+    expect(passport([]).id_document).toMatch(/passaporto/);
+    expect(passport([idDoc("f", "front")])).toEqual({});
+  });
+  it("document: legacy numbers, expiry and issuer are ignored; the bill does not count", () => {
+    expect(
+      validatePaymentAndDocument(withAct({ documentNumber: "12", documentExpiry: "2020-01-01", documentIssuer: "x" })),
+    ).toEqual({});
+    const bill = { ...idDoc("bill"), kind: "bill" } as unknown as FlowState["activation"]["documents"][number];
+    expect(validatePaymentAndDocument(withAct({ documents: [bill, idDoc("f", "front")] })).id_document).toBeDefined();
+  });
+  it("document: requiredDocumentSides per type", () => {
+    expect(requiredDocumentSides(null)).toEqual([]);
+    expect(requiredDocumentSides("passaporto")).toEqual(["front"]);
+    expect(requiredDocumentSides("carta_identita")).toEqual(["front", "back"]);
+    expect(requiredDocumentSides("patente")).toEqual(["front", "back"]);
   });
   it("IBAN is required when any chosen offer has iban_required (single + dual); optional otherwise", () => {
     const req = (c: "luce" | "gas") => ({ ...offer(c), iban_required: true });
@@ -406,8 +430,9 @@ describe("IBAN, holder and document validation (step B extras)", () => {
     expect(validateStepB(st).iban).toBeDefined();
     expect(messageForFieldCode("iban", "checksum")).toMatch(/controlla/);
     expect(messageForFieldCode("iban_holder_tax_code", "surname_mismatch")).toMatch(/cognome/i);
-    expect(messageForFieldCode("document_expiry", "past")).toMatch(/scaduto/);
-    expect(splitFormErrors({ iban: "x", document_number: "y" }).general).toEqual([]);
+    expect(messageForFieldCode("id_document", "required")).toMatch(/documento/);
+    expect(messageForFieldCode("document_type", "required")).toBe("Seleziona il tipo di documento.");
+    expect(splitFormErrors({ iban: "x", id_document: "y", document_type: "z" }).general).toEqual([]);
     expect(stepOfField("iban")).toBe("B");
   });
   it("normalizeActivation normalises IBAN and holder CF", () => {

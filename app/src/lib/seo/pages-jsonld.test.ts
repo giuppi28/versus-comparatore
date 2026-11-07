@@ -18,6 +18,7 @@ const base = {
   supplier: { name: "Enel Energia" },
 } as unknown as OfferWithSupplier;
 
+const NEW_GUIDES = ["/guida/come-scegliere-offerta-luce-gas", "/guida/fine-tutela-mercato-libero"];
 const graphOf = (data: Record<string, unknown>) => data["@graph"] as Record<string, unknown>[];
 
 describe("guide JSON-LD", () => {
@@ -27,6 +28,7 @@ describe("guide JSON-LD", () => {
       expect(graph.map((n) => n["@type"])).toEqual(["Article", "BreadcrumbList", "FAQPage"]);
       const article = graph[0];
       expect(article.headline).toBe(page.h1);
+      expect(article.datePublished).toBe(NEW_GUIDES.includes(page.path) ? "2026-11-07" : "2026-11-05");
       expect(article.dateModified).toBe(page.reviewedOn);
       expect(article.author).toEqual(ORG);
       expect(article.publisher).toEqual(ORG);

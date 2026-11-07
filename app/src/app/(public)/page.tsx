@@ -6,10 +6,11 @@ import { LandingSections, type SupplierLogo } from "@/components/page1/LandingSe
 import { getRepository } from "@/lib/data";
 import { resolveLogoUrl } from "@/lib/data/logo";
 import { isRealSupplier } from "@/lib/data/types";
+import { loadHomeModifiedDay } from "@/lib/seo/home-modified";
 import { buildJsonLd, serializeJsonLd } from "@/lib/seo/jsonld";
 import { SITE_URL } from "@/lib/seo/site";
 
-const TITLE = "Offerte luce e gas: confronto gratuito online | VERSUS";
+const TITLE = "Offerte luce e gas: comparatore gratuito | VERSUS";
 // Page-level openGraph/twitter replace the layout's, so the file-convention image is referenced explicitly.
 const OG_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: "VERSUS — comparatore luce e gas" };
 
@@ -58,12 +59,16 @@ async function loadSupplierLogos(): Promise<SupplierLogo[]> {
 
 /** Page 1 — data collection + consumption estimate (PRD §6). */
 export default async function Page1() {
-  const [suppliers, logos] = await Promise.all([loadSupplierOptions(), loadSupplierLogos()]);
+  const [suppliers, logos, homeModified] = await Promise.all([
+    loadSupplierOptions(),
+    loadSupplierLogos(),
+    loadHomeModifiedDay(),
+  ]);
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildJsonLd(SITE_URL)) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(buildJsonLd(SITE_URL, homeModified)) }}
       />
       <SiteHeader homeLink={false} />
       <main className="flex-1 pb-section">

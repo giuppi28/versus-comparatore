@@ -7,6 +7,7 @@
 import path from "node:path";
 import { request, type Page } from "@playwright/test";
 import { completeData, page1Data } from "../../src/lib/lead/test-fixtures";
+import { uploadIdDocumentsViaApi } from "../helpers/identity-document";
 import { MATRIX } from "./cases";
 import {
   checkThankYou,
@@ -246,6 +247,7 @@ test.describe("screenshots: admin area", () => {
     partialSurname = `Shot${Math.random().toString(36).replace(/[^a-z]/g, "").slice(0, 6)}`;
     const done = await client();
     await done.post("/api/lead", { data: { data: page1Data() } });
+    await uploadIdDocumentsViaApi(done); // the identity document is mandatory (T18.8)
     const res = await done.post("/api/lead/complete", { data: { data: completeData({ pod: completedPod }) } });
     expect(res.status()).toBeLessThan(300);
     await done.dispose();

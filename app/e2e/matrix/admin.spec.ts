@@ -5,6 +5,7 @@
  */
 import { request, type Page } from "@playwright/test";
 import { completeData, page1Data } from "../../src/lib/lead/test-fixtures";
+import { uploadIdDocumentsViaApi } from "../helpers/identity-document";
 import { ADMIN_EMAIL, ADMIN_PASSWORD } from "./constants";
 import { expect, randomIp, test } from "./fixtures";
 import { ADMIN_STATE_FILE } from "./paths";
@@ -133,6 +134,7 @@ async function seedLeads(baseURL: string, label: string): Promise<SeedLeads> {
   const done = await client();
   let res = await done.post("/api/lead", { data: { data: page1Data() } });
   expect(res.status(), await res.text()).toBeLessThan(300);
+  await uploadIdDocumentsViaApi(done); // the identity document is mandatory (T18.8)
   res = await done.post("/api/lead/complete", { data: { data: completeData({ pod: completedPod }) }});
   expect(res.status(), await res.text()).toBeLessThan(300);
   await done.dispose();

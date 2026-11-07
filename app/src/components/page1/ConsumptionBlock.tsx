@@ -17,7 +17,7 @@ import {
   WaterHeaterIcon,
 } from "./icons";
 import { formatCount, parseWholeNumber, usesManualEntry, type Page1Errors } from "./logic";
-import { Anchor, Block, CheckboxField, Choice, FieldGroup, legendId } from "./parts";
+import { Anchor, Block, CheckboxField, Choice, errorId, FieldGroup, legendId } from "./parts";
 import type { ReactNode } from "react";
 
 const APPLIANCE_ICONS: Record<ApplianceId, ReactNode> = {
@@ -128,6 +128,8 @@ export function ConsumptionBlock({ state, change, errors }: Props) {
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("people")}
+            invalid={!!errors.people}
+            errorId={errorId("people")}
             value={state.people != null ? String(state.people) : null}
             onValueChange={(v) => change({ people: Number(v) })}
             className="grid grid-cols-5 gap-2"
@@ -177,6 +179,8 @@ export function ConsumptionBlock({ state, change, errors }: Props) {
             <SelectCardGroup
               type="radio"
               aria-labelledby={legendId("hasGas")}
+              invalid={!!errors.hasGas}
+              errorId={errorId("hasGas")}
               value={state.hasGas == null ? null : state.hasGas ? "yes" : "no"}
               onValueChange={(v) => change({ hasGas: v === "yes" })}
               className="grid grid-cols-2 gap-3"
@@ -200,6 +204,8 @@ export function ConsumptionBlock({ state, change, errors }: Props) {
             <SelectCardGroup
               type="checkbox"
               aria-labelledby={legendId("gasUses")}
+              invalid={!!errors.gasUses}
+              errorId={errorId("gasUses")}
               value={state.gasUses}
               onValueChange={(v) => change({ gasUses: v as GasUseId[] })}
               className="grid grid-cols-2 gap-3 sm:grid-cols-3"
@@ -222,6 +228,8 @@ export function ConsumptionBlock({ state, change, errors }: Props) {
               <SelectCardGroup
                 type="radio"
                 aria-labelledby={legendId("sqmRange")}
+                invalid={!!errors.sqmRange}
+                errorId={errorId("sqmRange")}
                 value={state.sqmRange}
                 onValueChange={(v) => change({ sqmRange: v as SqmRange })}
                 className="grid grid-cols-2 gap-3 sm:grid-cols-4"

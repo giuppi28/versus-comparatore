@@ -5,6 +5,7 @@
  * back buttons keeping the data and a refresh in the middle of every step.
  */
 import { completeData } from "../../src/lib/lead/test-fixtures";
+import { uploadRequiredSides } from "../helpers/identity-document";
 import { MATRIX, makeCodiceFiscale, type MatrixCase } from "./cases";
 import { card, chooseComune, field, openPage1, pick, radio, reachActivation } from "./flow";
 import { expect, randomIp, test } from "./fixtures";
@@ -512,6 +513,7 @@ test.describe("server-side validation of /api/lead/complete", () => {
     await field(page, "pod").fill(POD);
     await radio(page, "voltage-220").click();
     await field(page, "pdr").fill(PDR);
+    await uploadRequiredSides(page); // mandatory identity document (T18.8), else the client blocks before the request
 
     // Another person's (valid) codice fiscale slips through "the client".
     await page.route("**/api/lead/complete", async (route) => {
@@ -681,6 +683,12 @@ test.describe("back buttons and refresh", () => {
     await expect(radio(page, "voltage-380")).toHaveAttribute("aria-checked", "true");
     await expect(field(page, "power_kw")).toHaveValue("4.5");
     await expect(page.getByTestId("summary-total")).toBeVisible();
+
+    // Identity document (mandatory, T18.8): uploaded for real; it survives one more refresh.
+    await uploadRequiredSides(page, "patente");
+    await page.reload();
+    await expect(page.getByTestId("activation-step-b")).toBeVisible();
+    await expect(page.getByTestId("document-collapsed")).toBeVisible();
 
     // The lead cookie survived every refresh: the submit completes the same lead.
     await page.getByTestId("activation-submit").click();

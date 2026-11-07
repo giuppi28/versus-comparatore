@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GUIDE_PAGES } from "@/content/seo/guides";
 import { companyLines } from "@/lib/legal/company";
 import { BrandLockup } from "./BrandLockup";
 
@@ -27,6 +28,22 @@ export function SiteFooter() {
           <p>© VERSUS {new Date().getFullYear()}</p>
         </div>
       </div>
+      <nav
+        aria-label="Guide"
+        data-testid="footer-guides"
+        className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-4 gap-y-0 border-t border-line px-4 py-2 text-sm text-ink-muted sm:px-6"
+      >
+        <span className="font-medium">Guide</span>
+        {GUIDE_PAGES.map((g) => (
+          <Link
+            key={g.path}
+            href={g.path}
+            className="inline-flex min-h-11 items-center rounded-control underline decoration-line-strong underline-offset-4 hover:text-brand-700 hover:decoration-brand-500"
+          >
+            {g.footerLabel ?? g.h1}
+          </Link>
+        ))}
+      </nav>
       {legal.length > 0 && (
         <div
           data-testid="footer-legal"

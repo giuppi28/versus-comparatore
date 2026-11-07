@@ -51,6 +51,7 @@ export function completeData(overrides: Partial<LeadCompleteData> = {}): LeadCom
     pod: VALID_POD,
     power_kw: 3,
     voltage: 220,
+    document_type: "passaporto",
     ...overrides,
   };
 }

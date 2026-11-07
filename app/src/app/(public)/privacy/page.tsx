@@ -32,7 +32,7 @@ const DATA_COLLECTED = [
   "fornitore attuale di luce e gas",
   "offerta scelta e relativa spesa mensile mostrata",
   "IBAN ed eventuali dati dell’intestatario del conto, se diverso dal titolare (obbligatori solo per le offerte che prevedono il pagamento con IBAN, altrimenti facoltativi)",
-  "dati del documento d’identità (tipo, numero, scadenza, ente di rilascio) e copia del documento caricata (facoltativi)",
+  "tipo di documento d’identità e copia del documento caricata (fronte e retro, oppure la pagina con la foto per il passaporto), obbligatori per attivare la fornitura; per le richieste precedenti possono essere presenti anche numero, scadenza ed ente di rilascio",
   "copia della bolletta in PDF (facoltativa), conservata come il documento d’identità; i dati che contiene (POD, PDR, codice fiscale, fornitore) sono letti solo nel tuo browser per precompilare il modulo, senza servizi esterni",
 ];
 
@@ -123,8 +123,8 @@ export default function PrivacyPage() {
                   L&apos;IBAN è obbligatorio per le offerte che prevedono il pagamento con IBAN: tali
                   offerte lo indicano prima dell&apos;attivazione e, senza l&apos;IBAN, quell&apos;offerta non
                   può essere attivata. Per le altre offerte l&apos;IBAN è facoltativo. Il documento
-                  d&apos;identità e la bolletta sono sempre facoltativi: puoi non fornirli. Se li
-                  indichi, li trattiamo per le seguenti finalità:
+                  d&apos;identità è obbligatorio per l&apos;attivazione; la bolletta è sempre
+                  facoltativa. Trattiamo questi dati per le seguenti finalità:
                 </p>
                 <ul className="list-disc space-y-1 pl-6">
                   <li>
@@ -150,7 +150,7 @@ export default function PrivacyPage() {
               <ul className="list-disc space-y-2 pl-6">
                 <li>
                   confrontare le offerte luce e gas, gestire la richiesta di attivazione e il
-                  ricontatto che richiedi con «Richiamami»: esecuzione di misure precontrattuali
+                  ricontatto che richiedi con «Accetta»: esecuzione di misure precontrattuali
                   adottate su tua richiesta (art. 6, par. 1, lett. b, GDPR);
                 </li>
                 <li>
@@ -182,7 +182,7 @@ export default function PrivacyPage() {
                 </li>
               </ul>
               <p>
-                Il ricontatto telefonico che richiedi con «Richiamami» è effettuato direttamente dal
+                Il ricontatto telefonico che richiedi con «Accetta» è effettuato direttamente dal
                 titolare, senza call center esterni.
               </p>
               <p>I dati non sono diffusi.</p>
@@ -243,11 +243,11 @@ export default function PrivacyPage() {
                 Nome, cognome, telefono, email, codice fiscale, indirizzo e codici POD/PDR sono necessari per
                 confrontare e attivare l&apos;offerta: senza, la richiesta non può essere completata.
                 L&apos;IBAN è necessario solo per le offerte che lo indicano. Il documento
-                d&apos;identità e la bolletta sono facoltativi.
+                d&apos;identità è necessario per attivare la fornitura; la bolletta è facoltativa.
               </p>
             </Section>
 
-            <p className="text-sm text-ink-muted">Ultimo aggiornamento: 5 novembre 2026.</p>
+            <p className="text-sm text-ink-muted">Ultimo aggiornamento: 7 novembre 2026.</p>
           </article>
 
           <div className="py-8">

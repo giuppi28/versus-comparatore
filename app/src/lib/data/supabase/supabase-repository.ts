@@ -517,6 +517,16 @@ export function createSupabaseRepository(
       return toLeadDocument(conf.data, kind);
     },
 
+    async countLeadIdDocuments(token) {
+      const res = await client.rpc("count_lead_documents", { p_secret: leadSecret(), p_token: token });
+      if (res.error) fail(res.error, "lead");
+      const n = firstRow(res.data);
+      if (typeof n !== "number" || !Number.isInteger(n) || n < 0) {
+        throw new Error("Unexpected response from count_lead_documents");
+      }
+      return n;
+    },
+
     async removeLeadDocument(token, documentId) {
       // A malformed id would fail the uuid cast (22P02): same as an unknown document.
       if (!isUuid(documentId)) throw new LeadDocumentNotFoundError();
