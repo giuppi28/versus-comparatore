@@ -704,6 +704,15 @@ test.describe("Page 1 — blocked submit", () => {
     const group = page.getByTestId("block-consumption").getByRole("radiogroup");
     await expect(group).toBeInViewport({ ratio: 1 });
     await expect(group.locator("button:focus")).toHaveCount(1);
+    // The group exposes the error: aria-invalid plus a description that exists while it is shown.
+    await expect(group).toHaveAttribute("aria-invalid", "true");
+    await expect(group).toHaveAttribute("aria-describedby", "error-people");
+    await expect(page.locator("#error-people")).toBeVisible();
+    await expect(page.locator("fieldset[aria-describedby]")).toHaveCount(0);
+    // A valid choice clears it.
+    await card(page, "people-2").click();
+    await expect(group).not.toHaveAttribute("aria-invalid", "true");
+    await expect(group).not.toHaveAttribute("aria-describedby", /.+/);
   });
 });
 

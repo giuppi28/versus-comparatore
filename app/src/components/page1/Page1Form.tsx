@@ -246,6 +246,8 @@ export function Page1Form({ suppliers }: Page1FormProps) {
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("commodity")}
+            invalid={!!errors.commodity}
+            errorId={errorId("commodity")}
             value={state.commodity}
             onValueChange={(v) => change({ commodity: v as LeadCommodity })}
             className="grid grid-cols-3 gap-2 sm:gap-3"
@@ -269,6 +271,8 @@ export function Page1Form({ suppliers }: Page1FormProps) {
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("customerType")}
+            invalid={!!errors.customerType}
+            errorId={errorId("customerType")}
             value={state.customerType}
             onValueChange={(v) => change({ customerType: v as LeadCustomerType })}
             className="grid grid-cols-2 gap-3"
@@ -420,6 +424,8 @@ export function Page1Form({ suppliers }: Page1FormProps) {
           <SelectCardGroup
             type="radio"
             aria-labelledby={legendId("serviceType")}
+            invalid={!!errors.serviceType}
+            errorId={errorId("serviceType")}
             value={state.serviceType}
             onValueChange={(v) => change({ serviceType: v as ServiceType })}
             className="grid grid-cols-2 gap-3 sm:grid-cols-4"

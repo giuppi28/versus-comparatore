@@ -68,7 +68,6 @@ export function FieldGroup({
     <fieldset
       id={anchorId(fieldKey)}
       className={cn("m-0 min-w-0 scroll-mt-6 border-0 p-0", className)}
-      aria-describedby={error ? errorId(fieldKey) : undefined}
     >
       <legend
         id={legendId(fieldKey)}
