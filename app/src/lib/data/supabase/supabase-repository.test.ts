@@ -88,39 +88,6 @@ describe("supabase repository lead RPCs", () => {
     });
   }
 
-  it("create_lead before migration 20261105100000 (not production): retries once without email and logs it", async () => {
-    const rpc = vi
-      .fn()
-      .mockResolvedValueOnce({ data: null, error: { message: "invalid_field: email", code: "22023" } })
-      .mockResolvedValueOnce({ data: { id: "i", token: "t" }, error: null });
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubEnv("VERCEL_ENV", "preview");
-    try {
-      const repo = createSupabaseRepository(fakeClient(rpc), withSecret);
-      await repo.createLead({ privacy_consent: true, email: "a@b.it", first_name: "A" });
-      expect(rpc).toHaveBeenNthCalledWith(2, "create_lead", {
-        p_secret: SECRET,
-        p_data: { privacy_consent: true, first_name: "A" },
-      });
-      expect(log).toHaveBeenCalledWith(expect.stringContaining("email NOT stored"));
-    } finally {
-      vi.unstubAllEnvs();
-      log.mockRestore();
-    }
-  });
-
-  it("update_lead rejecting email in Vercel production: no retry, the error propagates", async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "invalid_field: email", code: "22023" } });
-    vi.stubEnv("VERCEL_ENV", "production");
-    try {
-      const repo = createSupabaseRepository(fakeClient(rpc), withSecret);
-      await expect(repo.updateLead("t", { email: "a@b.it" })).rejects.toThrow(/invalid_field: email/);
-      expect(rpc).toHaveBeenCalledTimes(1);
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
-
   it("complete_lead before migration 20261102100000 in Vercel production: no retry, the error propagates", async () => {
     const rpc = vi
       .fn()

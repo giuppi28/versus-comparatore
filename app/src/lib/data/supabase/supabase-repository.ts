@@ -144,34 +144,6 @@ function isUnknownCallbackField(error: { message: string }): boolean {
   return /invalid_field:\s*callback_request_text\b/i.test(error.message);
 }
 
-/** A lead function rejected the `email` key: migration 20261105100000 is not applied yet. */
-function isUnknownEmailField(error: { message: string }): boolean {
-  return /invalid_field:\s*email\b/i.test(error.message);
-}
-
-/**
- * Runs a lead RPC; before migration 20261105100000 the DB rejects the `email` key (whole
- * call rolled back). Outside Vercel production (local, tests, previews sharing the DB while
- * the migration is pending) it retries once without the key and logs loudly, so a customer
- * is not stuck. In production the error propagates (apply the migration before merging).
- */
-async function withEmailFallback<R extends { error: { message: string } | null }>(
-  data: Record<string, unknown>,
-  call: (data: Record<string, unknown>) => PromiseLike<R>,
-): Promise<R> {
-  const first = await call(data);
-  if (!first.error || !("email" in data) || !isUnknownEmailField(first.error) || isVercelProduction()) return first;
-  console.error("[lead] lead function does not accept email (migration 20261105100000 not applied): email NOT stored");
-  const { email: _email, ...rest } = data;
-  void _email;
-  return call(rest);
-}
-
-/** leads.email is missing (migration 20261105100000 not applied yet): Postgres 42703. */
-function isMissingEmailColumn(error: { message: string; code?: string }): boolean {
-  return error.code === "42703" || /column.*email.*does not exist/i.test(error.message);
-}
-
 /** Vercel production deployment (read at call time so tests can stub it). */
 function isVercelProduction(): boolean {
   return process.env.VERCEL_ENV === "production";
@@ -454,26 +426,27 @@ export function createSupabaseRepository(
 
     async createLead(data) {
       if (data.privacy_consent !== true) throw new PrivacyConsentRequiredError();
-      const secret = leadSecret();
-      const { data: res, error } = await withEmailFallback(data as Record<string, unknown>, (p_data) =>
-        client.rpc("create_lead", { p_secret: secret, p_data }),
-      );
+      const { data: res, error } = await client.rpc("create_lead", {
+        p_secret: leadSecret(),
+        p_data: data,
+      });
       if (error) fail(error, "lead");
       return toRef(res);
     },
 
     async updateLead(token, patch) {
-      const secret = leadSecret();
-      const { error } = await withEmailFallback(patch as Record<string, unknown>, (p_patch) =>
-        client.rpc("update_lead", { p_secret: secret, p_token: token, p_patch }),
-      );
+      const { error } = await client.rpc("update_lead", {
+        p_secret: leadSecret(),
+        p_token: token,
+        p_patch: patch,
+      });
       if (error) fail(error, "lead");
     },
 
     async completeLead(token, data, options) {
       const secret = leadSecret();
       const call = (p_data: Record<string, unknown>) =>
-        withEmailFallback(p_data, (d) => client.rpc("complete_lead", { p_secret: secret, p_token: token, p_data: d }));
+        client.rpc("complete_lead", { p_secret: secret, p_token: token, p_data });
       const callbackText = options?.callbackRequestText;
       let { data: res, error } = await call(
         callbackText === undefined ? data : { ...data, callback_request_text: callbackText },
@@ -597,27 +570,22 @@ export function createSupabaseRepository(
         .toLowerCase()
         .split(/\s+/)
         .filter(Boolean);
-      // Before migration 20261105100000 there is no leads.email column: a search over it fails
-      // with 42703, so the query is retried once without that column (see `runSearch`).
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const filtered = <Q extends { eq: any; or: any }>(q: Q, columns: string[] = LEAD_SEARCH_COLUMNS): Q => {
+      const filtered = <Q extends { eq: any; or: any }>(q: Q): Q => {
         let out = q;
         if (query.step_reached) out = out.eq("step_reached", query.step_reached);
         if (query.status) out = out.eq("status", query.status);
         for (const t of terms) {
-          out = out.or(columns.map((c) => `${c}.ilike."%${t}%"`).join(","));
+          out = out.or(LEAD_SEARCH_COLUMNS.map((c) => `${c}.ilike."%${t}%"`).join(","));
         }
         return out;
       };
-      const runSearch = (columns: string[]) =>
-        filtered(client.from("leads").select("*", { count: "exact" }), columns)
-          .order("created_at", { ascending: false })
-          .order("id", { ascending: false })
-          .range((page - 1) * pageSize, page * pageSize - 1);
-      let { data, count, error } = await runSearch(LEAD_SEARCH_COLUMNS);
-      if (error && terms.length > 0 && isMissingEmailColumn(error)) {
-        ({ data, count, error } = await runSearch(LEAD_SEARCH_COLUMNS.filter((c) => c !== "email")));
-      }
+      const { data, count, error } = await filtered(
+        client.from("leads").select("*", { count: "exact" }),
+      )
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range((page - 1) * pageSize, page * pageSize - 1);
       if (error) {
         // Page past the end: PostgREST answers PGRST103 (416). Return an empty page with the real total.
         if ((error as { code?: string }).code === "PGRST103") {
