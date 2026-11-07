@@ -146,6 +146,8 @@ export interface Lead {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  /** Customer email, lower-case. NULL for leads created before migration 20261105100000. */
+  email: string | null;
   tax_code: string | null;
   company_name: string | null;
   vat_number: string | null;

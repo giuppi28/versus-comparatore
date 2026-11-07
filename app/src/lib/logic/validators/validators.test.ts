@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  EMAIL_MESSAGES,
+  validateEmail,
   CODICE_FISCALE_MESSAGES,
   PARTITA_IVA_MESSAGES,
   PDR_MESSAGES,
@@ -206,6 +208,13 @@ describe("validatePhone", () => {
     ["333-123-4567", "3331234567"],
     ["(333) 123.4567", "3331234567"],
     ["320123456", "320123456"], // 9 digits
+    // Browser autofill (Chrome / Safari) shapes
+    ["+39 333 1234567", "3331234567"],
+    ["+393331234567", "3331234567"],
+    ["393331234567", "3331234567"], // bare 39 prefix + 10 digits
+    ["+39\u00a0333\u00a01234567", "3331234567"], // non-breaking spaces
+    [" 3331234567 ", "3331234567"],
+    ["3931234567", "3931234567"], // a real 393 mobile prefix is not a country code
   ])("accepts %s", (input, expected) => {
     expect(validatePhone(input)).toEqual({ ok: true, value: expected });
   });
@@ -217,9 +226,23 @@ describe("validatePhone", () => {
     expect(validatePhone("33312345678")).toEqual({ ok: false, error: "format" }); // too long
     expect(validatePhone("333123456a")).toEqual({ ok: false, error: "format" });
     expect(validatePhone("+44 333 1234567")).toEqual({ ok: false, error: "format" });
+    expect(validatePhone("39333123456")).toEqual({ ok: false, error: "format" }); // 39 + 9 digits is ambiguous
   });
   it("has messages", () => {
     expect(PHONE_MESSAGES.empty).toBeTruthy();
     expect(PHONE_MESSAGES.format).toBeTruthy();
+  });
+});
+
+describe("validateEmail", () => {
+  it("trims and lower-cases", () => {
+    expect(validateEmail("  Mario.Rossi@Example.IT ")).toEqual({ ok: true, value: "mario.rossi@example.it" });
+  });
+  it("reports empty and format errors", () => {
+    expect(validateEmail("   ")).toEqual({ ok: false, error: "empty" });
+    for (const bad of ["mario", "mario@", "@example.it", "mario@example", "ma rio@example.it", "a@b@c.it", `${"a".repeat(250)}@b.it`]) {
+      expect(validateEmail(bad)).toEqual({ ok: false, error: "format" });
+    }
+    expect(EMAIL_MESSAGES.format).toMatch(/email/i);
   });
 });

@@ -22,6 +22,7 @@ type Key =
   | "firstName"
   | "lastName"
   | "phone"
+  | "email"
   | "company"
   | "comune"
   | "privacy"
@@ -45,6 +46,7 @@ function actions(page: Page, kind: Kind): Record<Key, () => Promise<void>> {
     firstName: () => page.getByTestId("first-name").fill("Mario"),
     lastName: () => page.getByTestId("last-name").fill("Rossi"),
     phone: () => page.getByTestId("phone").fill("333 123 4567"),
+    email: () => page.getByTestId("email").fill("mario.rossi@example.it"),
     company: () => page.getByTestId("company-name").fill("Rossi Impianti S.r.l."),
     comune: () => chooseComune(page, "Milano"),
     privacy: async () => {
@@ -67,8 +69,8 @@ function actions(page: Page, kind: Kind): Record<Key, () => Promise<void>> {
 }
 
 const ORDER: Record<Kind, Key[]> = {
-  casa: ["commodity", "customerType", "service", "supplierLuce", "supplierGas", "people", "hasGas", "gasUses", "sqm", "firstName", "lastName", "phone", "comune", "privacy"],
-  business: ["commodity", "customerType", "service", "supplierLuce", "supplierGas", "company", "firstName", "lastName", "phone", "comune", "manualKwh", "manualSmc", "privacy"],
+  casa: ["commodity", "customerType", "service", "supplierLuce", "supplierGas", "people", "hasGas", "gasUses", "sqm", "firstName", "lastName", "phone", "email", "comune", "privacy"],
+  business: ["commodity", "customerType", "service", "supplierLuce", "supplierGas", "company", "firstName", "lastName", "phone", "email", "comune", "manualKwh", "manualSmc", "privacy"],
 };
 
 /**
@@ -111,6 +113,7 @@ const MISSING: Missing[] = [
   { key: "firstName", kind: "casa", message: "Inserisci il tuo nome." },
   { key: "lastName", kind: "casa", message: "Inserisci il tuo cognome." },
   { key: "phone", kind: "casa", message: "Inserisci il numero di cellulare." },
+  { key: "email", kind: "casa", message: "Inserisci la tua email." },
   { key: "comune", kind: "casa", message: "Cerca e seleziona il tuo comune dall'elenco." },
   { key: "privacy", kind: "casa", message: "Per proseguire devi accettare l'informativa sulla privacy.", errorTestId: "error-privacy" },
   // No "service" entry: Cambio fornitore is preselected, so the service can never be missing (see the
@@ -191,7 +194,7 @@ test.describe("Page 1: every required field", () => {
 
 test.describe("Page 1: invalid values", () => {
   const BAD_PHONES = ["12345", "212345678", "3331234", "abcdefghij", "+39 333 12345678901", "333 123 456 78901"];
-  const GOOD_PHONES = ["+39 333 123 4567", "0039 333 1234567", "333-123-4567", "(333) 1234567", "3331234567", "340 1234567"];
+  const GOOD_PHONES = ["+39 333 123 4567", "0039 333 1234567", "333-123-4567", "(333) 1234567", "3331234567", "340 1234567", "+393331234567", "393331234567"];
 
   test("invalid mobile numbers are refused, every accepted notation is normalised", TAG, async ({ page }) => {
     await openPage1(page);
@@ -209,6 +212,19 @@ test.describe("Page 1: invalid values", () => {
     await expect(page.getByText("Nessun comune trovato")).toBeVisible();
     await page.getByTestId("submit").click();
     await expect(page.getByText("Cerca e seleziona il tuo comune dall'elenco.")).toBeVisible();
+  });
+
+  test("invalid emails are refused, padded and capitalised ones are accepted", TAG, async ({ page }) => {
+    await openPage1(page);
+    for (const bad of ["mario", "mario@", "@example.it", "mario@example", "ma rio@example.it", "a@b@c.it"]) {
+      await page.getByTestId("email").fill(bad);
+      await page.getByTestId("submit").click();
+      await expect(page.getByText("Inserisci un indirizzo email valido (es. nome@esempio.it).", { exact: true }), `email "${bad}"`).toBeVisible();
+    }
+    for (const good of ["mario.rossi@example.it", "  Mario.Rossi@Example.IT ", "m+tag@sub.example.co.uk"]) {
+      await page.getByTestId("email").fill(good);
+      await expect(page.getByText(/indirizzo email valido/), `email "${good}"`).toHaveCount(0);
+    }
   });
 
   test("Partita IVA manual consumption: zero, absurdly large and non numeric values", TAG, async ({ page }) => {
@@ -330,6 +346,16 @@ test.describe("activation step A", () => {
     }
     await phone.fill("333 123 4567");
     await expect(page.getByText(/numero di cellulare italiano valido/)).toHaveCount(0);
+
+    // Email: blank is allowed in step A (flows begun before the field existed); a typed one must be valid.
+    const email = field(page, "email");
+    for (const bad of ["mario", "mario@example"]) {
+      await email.fill(bad);
+      await email.blur();
+      await expect(page.getByText("Inserisci un indirizzo email valido (es. nome@esempio.it).")).toBeVisible();
+    }
+    await email.fill(" Mario.Rossi@Example.IT ");
+    await expect(page.getByText(/indirizzo email valido/)).toHaveCount(0);
   });
 });
 
@@ -448,6 +474,7 @@ test.describe("server-side validation of /api/lead/complete", () => {
     await expectReject({ pod: "XX001E12345678" }, "pod", "prefix");
     await expectReject({ pod: "IT00" }, "pod", "length");
     await expectReject({ phone: "12345" }, "phone", "format");
+    await expectReject({ email: "non-una-email" }, "email", "format");
     await expectReject({ first_name: "" }, "first_name", ["required", "invalid"]);
     await expectReject({ housing_title: "boh" }, "housing_title", "invalid");
     await expectReject({ voltage: 110 }, "voltage", "invalid");
@@ -575,6 +602,7 @@ test.describe("back buttons and refresh", () => {
     await page.getByTestId("last-name").fill(c.person.last);
     const phone = `3${Math.floor(Math.random() * 1e9).toString().padStart(9, "0")}`;
     await page.getByTestId("phone").fill(phone);
+    await page.getByTestId("email").fill(`lead.${phone}@example.it`);
     await chooseComune(page, "Milano");
     const created = page.waitForResponse((r) => r.url().endsWith("/api/lead") && r.request().method() === "POST");
     await page.getByTestId("privacy-consent").check();

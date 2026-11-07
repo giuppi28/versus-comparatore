@@ -21,3 +21,8 @@ Plain-language list of what the site does, base for Aldo's manual. Full spec: `P
 - **Offers** — create and edit every field of an offer (prices, fixed fee per month or per year, locked months, promo, advantages, conditions). New fields: "Tipo di prezzo" (fixed or variable with PUN; variable is for luce only, with the spread over PUN in €/kWh), "Pagamento con IBAN obbligatorio", and "In evidenza" (for home customers, business customers, both, or none). Offers can be activated/deactivated and deleted. The list shows badges for variable, IBAN-required and highlighted offers. "Prezzo verificato" must be ticked on every active offer before go-live.
 - **Settings** — notification email for new leads, "Invia email di prova", callback number shown on the thank-you page, and the go-live checklist.
 - **New-lead email** — Aldo receives an email for each completed request.
+
+## Email and document sides (Phase 18)
+- The customer enters email next to the mobile number on the first page; it can be corrected at activation, and Aldo sees it in the new-lead email and in the admin area, where leads can be searched by email.
+- Browsers can fill in name, surname, company, phone, email, town, postcode and address automatically. Bank and identity-document details are never filled in or remembered.
+- The identity document has two separate uploads, front and back. Both are optional; with a passport, or a PDF holding both sides, the front is enough.

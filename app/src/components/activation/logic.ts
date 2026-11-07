@@ -5,7 +5,14 @@
  */
 import type { GasUseId } from "@/config/consumption";
 import type { Commodity, Supplier } from "@/lib/data/types";
-import { toLeadCompleteData, serviceTypeFor, type FlowPatch, type FlowState } from "@/lib/lead/flow-state";
+import {
+  toLeadCompleteData,
+  serviceTypeFor,
+  type DocumentSide,
+  type FlowPatch,
+  type FlowState,
+  type FlowUploadedDocument,
+} from "@/lib/lead/flow-state";
 import {
   DEFAULT_POWER_KW,
   includesGas,
@@ -22,6 +29,7 @@ import {
   IBAN_MESSAGES,
   PARTITA_IVA_MESSAGES,
   PDR_MESSAGES,
+  EMAIL_MESSAGES,
   PHONE_MESSAGES,
   POD_MESSAGES,
   normalizeIban,
@@ -29,6 +37,7 @@ import {
   validateIban,
   validatePartitaIva,
   validatePdr,
+  validateEmail,
   validatePhone,
   validatePod,
 } from "@/lib/logic/validators";
@@ -41,6 +50,7 @@ const STEP_A_FIELDS = new Set([
   "first_name",
   "last_name",
   "phone",
+  "email",
   "tax_code",
   "vat_number",
   "company_name",
@@ -76,6 +86,7 @@ const GENERIC_MESSAGES: Record<string, string> = {
 /** Per-field tables for the codes produced by the shared validators. */
 const VALIDATOR_MESSAGES: Record<string, Record<string, string>> = {
   phone: PHONE_MESSAGES,
+  email: EMAIL_MESSAGES,
   tax_code: CODICE_FISCALE_MESSAGES,
   vat_number: PARTITA_IVA_MESSAGES,
   pod: POD_MESSAGES,
@@ -259,6 +270,9 @@ export function validateStepA(state: FlowState): FieldErrors {
   if (!filled(state.firstName)) errors.first_name = FIELD_REQUIRED_MESSAGES.first_name;
   if (!filled(state.lastName)) errors.last_name = FIELD_REQUIRED_MESSAGES.last_name;
   set("phone", codeMessage("phone", validatePhone(state.phone)));
+  // Email is required on Page 1, but a customer who began before it existed arrives here with a
+  // blank one: blank is allowed in this step, a typed-but-invalid address is an error.
+  if (filled(state.email)) set("email", codeMessage("email", validateEmail(state.email)));
   set(
     "tax_code",
     codeMessage(
@@ -452,6 +466,7 @@ export function normalizeForSubmit(state: FlowState): FlowState {
     firstName: state.firstName.trim(),
     lastName: state.lastName.trim(),
     phone: state.phone.trim(),
+    email: state.email.trim(),
     companyName: state.companyName.trim(),
     activation: normalizeActivation(state),
   };
@@ -479,11 +494,44 @@ export function activationRedirect(state: FlowState): string | null {
 }
 
 /** Adds a document to the list in the latest state (safe against overlapping async uploads). */
-export function addDocumentPatch(state: FlowState, doc: FlowState["activation"]["documents"][number]): FlowPatch {
-  return { activation: { documents: [...state.activation.documents, doc] } };
+export function addDocumentPatch(
+  state: FlowState,
+  doc: FlowState["activation"]["documents"][number],
+  side?: DocumentSide,
+): FlowPatch {
+  const added = side ? { ...doc, side } : doc;
+  return { activation: { documents: [...state.activation.documents, added] } };
 }
 
 /** Removes a document from the list in the latest state (safe against overlapping async actions). */
 export function removeDocumentPatch(state: FlowState, id: string): FlowPatch {
   return { activation: { documents: state.activation.documents.filter((d) => d.id !== id) } };
+}
+
+export interface DocumentSlots {
+  front: FlowUploadedDocument | null;
+  back: FlowUploadedDocument | null;
+  /** Never expected (max 2 files); kept so no document is ever hidden. */
+  extra: FlowUploadedDocument[];
+}
+
+/**
+ * Places identity documents (not the bill) in the front/back slots. A document keeps its own
+ * `side` when that slot is still free; the others (saved before the sides existed, or clashing)
+ * take the first free slot, front first. A slot holds one document at most.
+ */
+export function assignDocumentSlots(documents: readonly FlowUploadedDocument[]): DocumentSlots {
+  const slots: DocumentSlots = { front: null, back: null, extra: [] };
+  const rest: FlowUploadedDocument[] = [];
+  for (const d of documents) {
+    if (d.kind === "bill") continue;
+    if ((d.side === "front" || d.side === "back") && !slots[d.side]) slots[d.side] = d;
+    else rest.push(d);
+  }
+  for (const d of rest) {
+    if (!slots.front) slots.front = d;
+    else if (!slots.back) slots.back = d;
+    else slots.extra.push(d);
+  }
+  return slots;
 }

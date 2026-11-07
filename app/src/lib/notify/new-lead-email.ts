@@ -19,6 +19,7 @@ export interface NewLeadEmailInput {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
+  email?: string | null;
   /** Human labels, already resolved. */
   commodityLabel: string | null;
   customerTypeLabel: string | null;
@@ -78,6 +79,7 @@ export function buildNewLeadEmail(input: NewLeadEmailInput): BuiltEmail {
   const rows: Array<[string, string]> = [
     ["Nome", fullName || DASH],
     ["Telefono", cleanLine(input.phone, 40) || DASH],
+    ["Email", cleanLine(input.email, 254) || DASH],
     ["Servizio", cleanLine(input.commodityLabel) || DASH],
     ["Tipo cliente", cleanLine(input.customerTypeLabel) || DASH],
     ["Comune", cleanLine(input.comuneLabel) || DASH],

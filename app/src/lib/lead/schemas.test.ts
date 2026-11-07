@@ -23,8 +23,32 @@ describe("createBodySchema", () => {
     expect(r.data?.data.phone).toBe("3331234567");
   });
 
-  it("accepts consent only (all Page 1 fields optional)", () => {
+  it("accepts consent only: the email is optional on create, like the phone", () => {
     expect(createBodySchema.safeParse({ data: { privacy_consent: true } }).success).toBe(true);
+    expect(createBodySchema.safeParse({ data: { privacy_consent: true, email: "a@b.it" } }).success).toBe(true);
+  });
+
+  it("normalises the email (trim + lower case)", () => {
+    const r = createBodySchema.safeParse({ data: page1Data({ email: "  Mario.Rossi@Example.IT " }) });
+    expect(r.data?.data.email).toBe("mario.rossi@example.it");
+  });
+
+  it("validates a present email on create (empty or malformed is refused)", () => {
+    expect(errors(createBodySchema, { data: page1Data({ email: "" }) })).toEqual({ email: "empty" });
+    expect(errors(createBodySchema, { data: page1Data({ email: "mario@" }) })).toEqual({ email: "format" });
+    expect(errors(createBodySchema, { data: page1Data({ email: `${"a".repeat(250)}@b.it` }) })).toEqual({ email: "format" });
+  });
+
+  it("does not require the email on patch and complete (leads created before it existed)", () => {
+    expect(patchBodySchema.safeParse({ data: { first_name: "Mario" } }).success).toBe(true);
+    expect(completeBodySchema.safeParse({ data: completeData({ email: undefined }) }).success).toBe(true);
+    expect(checkCompletion(completeDataSchema.parse(completeData({ email: undefined }))).fields).toEqual({});
+  });
+
+  it("validates and normalises the email on patch", () => {
+    const r = patchBodySchema.safeParse({ data: { email: " X@Y.it " } });
+    expect(r.data?.data.email).toBe("x@y.it");
+    expect(errors(patchBodySchema, { data: { email: "nope" } })).toEqual({ email: "format" });
   });
 
   it("does not accept activation fields at creation", () => {

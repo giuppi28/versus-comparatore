@@ -72,6 +72,7 @@ function casaLuce(over: Json = {}): Json {
     firstName: "Mario",
     lastName: "Rossi",
     phone: "333 123 4567",
+    email: "mario.rossi@example.it",
     comune: milano,
     privacyConsent: true,
     serviceType: "cambio_fornitore",
@@ -191,7 +192,7 @@ test.describe("activation form", () => {
     await expect(field(page, "first_name")).toHaveValue("Mario");
     await expect(field(page, "last_name")).toHaveValue("Rossi");
     await expect(field(page, "phone")).toHaveValue("333 123 4567");
-    await expect(field(page, "email")).toHaveCount(0);
+    await expect(field(page, "email")).toHaveValue("mario.rossi@example.it");
     await expect(field(page, "vat_number")).toHaveCount(0);
     await expect(page.getByTestId("summary-total")).toHaveText(/^50,00\s€$/);
     await expectNoOverflow(page);
@@ -245,6 +246,7 @@ test.describe("activation form", () => {
       first_name: "Mario",
       last_name: "Rossi",
       phone: "333 123 4567",
+      email: "mario.rossi@example.it",
       tax_code: CF_MARIO_ROSSI,
       housing_title: "proprietario",
       cap: "20122",
@@ -261,7 +263,6 @@ test.describe("activation form", () => {
     });
     expect(body.data).not.toHaveProperty("vat_number");
     expect(body.data).not.toHaveProperty("pdr");
-    expect(body.data).not.toHaveProperty("email");
 
     // Contract with /grazie: leadCompleted is set before navigating (the thank-you page
     // redirects to "/" otherwise) and the names + chosen offers stay in the flow state.
@@ -415,6 +416,85 @@ test.describe("activation form", () => {
     await fillAddress(page);
     await page.getByTestId("activation-submit").click();
     await expect(page).toHaveURL(/\/grazie$/);
+  });
+
+  test("step A: a flow begun before the email existed can proceed with a blank email; an invalid one blocks", async ({ page }) => {
+    const mock = await mockComplete(page);
+    await open(page, casaLuce({ email: "" }));
+    await expect(field(page, "email")).toHaveValue("");
+    await fillStepA(page);
+    await page.getByTestId("activation-next").click();
+    await expect(page.getByTestId("activation-step-b")).toBeVisible();
+    await page.getByRole("button", { name: "Indietro" }).click();
+
+    await field(page, "email").fill("mario.rossi@");
+    await page.getByTestId("activation-next").click();
+    await expect(page.getByTestId("activation-step-a")).toBeVisible();
+    await expect(page.getByText("Inserisci un indirizzo email valido (es. nome@esempio.it).")).toBeVisible();
+
+    await field(page, "email").fill(" Mario.Rossi@Example.IT ");
+    await page.getByTestId("activation-next").click();
+    await expect(page.getByTestId("activation-step-b")).toBeVisible();
+    await fillAddress(page);
+    await field(page, "pod").fill(POD);
+    await field(page, "power_kw").selectOption("4.5");
+    await radio(page, "voltage-220").click();
+    await page.getByTestId("activation-submit").click();
+    await expect(page).toHaveURL(/\/grazie$/);
+    const sent = (mock.requests[0] as { data: Json }).data;
+    expect(sent.email).toBe("Mario.Rossi@Example.IT");
+  });
+
+  test("autofill tokens and names on steps A and B", async ({ page }) => {
+    await open(page, businessDual());
+    const tokens: Array<[string, string]> = [
+      ["company_name", "organization"],
+      ["first_name", "given-name"],
+      ["last_name", "family-name"],
+      ["phone", "tel"],
+      ["email", "email"],
+      // No standard token: "on" + a meaningful name so browsers can suggest earlier values.
+      ["vat_number", "on"],
+      ["tax_code", "on"],
+    ];
+    for (const [name, token] of tokens) {
+      await expect(field(page, name), name).toHaveAttribute("autocomplete", token);
+    }
+    const email = field(page, "email");
+    await expect(email).toHaveAttribute("type", "email");
+    await expect(email).toHaveAttribute("inputmode", "email");
+    await expect(email).toHaveAttribute("autocapitalize", "none");
+    await expect(page.locator("form[data-testid=activation-step-a] [name=email]")).toHaveCount(1);
+
+    await fillStepA(page, { cf: CF_GIULIA_BIANCHI, piva: PIVA });
+    await page.getByTestId("activation-next").click();
+    await expect(page.getByTestId("activation-step-b")).toBeVisible();
+    const stepB: Array<[string, string]> = [
+      ["address", "address-line1"],
+      ["street_number", "on"],
+      ["pod", "on"],
+      ["pdr", "on"],
+      // Sensitive: kept out of the browser's saved-values history.
+      ["iban", "off"],
+      ["document_number", "off"],
+      ["document_expiry", "off"],
+      ["document_issuer", "off"],
+    ];
+    for (const [name, token] of stepB) {
+      await expect(field(page, name), name).toHaveAttribute("autocomplete", token);
+    }
+    await expect(page.locator("form[data-testid=activation-step-b] [name=address]")).toHaveCount(1);
+    // CAP: a single-CAP comune renders a text input with the postal-code token.
+    const cap = field(page, "cap");
+    if ((await cap.evaluate((el) => el.tagName)) === "INPUT") {
+      await expect(cap).toHaveAttribute("autocomplete", "postal-code");
+    }
+    // The IBAN holder is a different person: its own autofill section.
+    await field(page, "iban").fill("IT60X0542811101000000123456");
+    await page.getByTestId("iban-holder-different").check();
+    await expect(field(page, "iban_holder_first_name")).toHaveAttribute("autocomplete", "section-intestatario given-name");
+    await expect(field(page, "iban_holder_last_name")).toHaveAttribute("autocomplete", "section-intestatario family-name");
+    await expect(field(page, "iban_holder_tax_code")).toHaveAttribute("autocomplete", "off");
   });
 
   test("step A validation: required fields, CF format, CF mismatch, P.IVA", async ({ page }) => {
@@ -682,7 +762,7 @@ test.describe("activation form", () => {
     await expect(page.getByTestId("summary-price-gas")).toHaveText(/^0,4500\s€\/Smc$/);
 
     const text = (await page.locator("body").innerText()).toLowerCase();
-    for (const word of ["demo", "chiam", "richiamat", "call", "club", "e-mail", "email"]) {
+    for (const word of ["demo", "chiam", "richiamat", "call", "club"]) {
       expect(text, `forbidden wording "${word}"`).not.toContain(word);
     }
     await shot(page, testInfo.project.name, "summary");

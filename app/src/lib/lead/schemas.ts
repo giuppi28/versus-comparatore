@@ -22,6 +22,7 @@ import {
   validateIban,
   validatePartitaIva,
   validatePdr,
+  validateEmail,
   validatePhone,
   validatePod,
   type ValidationResult,
@@ -118,6 +119,8 @@ const page1Fields = {
   first_name: text(80).nullable(),
   last_name: text(80).nullable(),
   phone: validated(validatePhone).nullable(),
+  /** Customer email (trimmed, lower-cased). Optional everywhere on the server (like phone): the lead is created at the consent tick, before any personal data; the page 1 form requires it. */
+  email: validated(validateEmail).nullable(),
   company_name: text(160).nullable(),
   comune_istat: z.string().regex(/^\d{6}$/).nullable(),
   service_type: z.enum(["cambio_fornitore", "subentro", "voltura", "primo_allaccio"]).nullable(),

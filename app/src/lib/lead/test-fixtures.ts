@@ -17,6 +17,7 @@ export function page1Data(overrides: Partial<LeadCreateData> = {}): LeadCreateDa
     first_name: "Mario",
     last_name: "Rossi",
     phone: "333 123 4567",
+    email: "Mario.Rossi@Example.it",
     comune_istat: MILANO_ISTAT,
     privacy_consent: true,
     ...overrides,

@@ -11,6 +11,7 @@ const BASE: NewLeadEmailInput = {
   firstName: "Mario",
   lastName: "Rossi",
   phone: "3331234567",
+  email: "mario@example.it",
   commodityLabel: "Luce + Gas",
   customerTypeLabel: "Casa",
   comuneLabel: "Milano (MI)",
@@ -54,6 +55,15 @@ describe("buildNewLeadEmail", () => {
     expect(e.text).toContain("Totale mensile mostrato");
     expect(e.text).toContain("https://versus.example/admin/leads/lead-1");
     expect(e.html).toContain('href="https://versus.example/admin/leads/lead-1"');
+  });
+
+  it("shows the customer email, a dash when missing, and escapes it", () => {
+    const e = buildNewLeadEmail(BASE);
+    expect(e.text).toContain("Email: mario@example.it");
+    expect(e.html).toContain("mario@example.it");
+    expect(buildNewLeadEmail({ ...BASE, email: null }).text).toContain("Email: —");
+    const evil = buildNewLeadEmail({ ...BASE, email: `"><img src=x>@a.it` });
+    expect(evil.html).not.toContain("<img");
   });
 
   it("escapes HTML in every user-supplied value", () => {

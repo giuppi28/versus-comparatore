@@ -232,6 +232,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
 
   return (
     <form
+      method="post"
       noValidate
       onSubmit={onSubmit}
       data-hydrated={hydrated}
@@ -290,6 +291,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
             <Input
               id="p1-company"
               data-testid="company-name"
+              name="company_name"
               label="Ragione sociale"
               autoComplete="organization"
               required
@@ -304,6 +306,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
             <Input
               id="p1-first-name"
               data-testid="first-name"
+              name="first_name"
               label="Nome"
               autoComplete="given-name"
               required
@@ -316,6 +319,7 @@ export function Page1Form({ suppliers }: Page1FormProps) {
             <Input
               id="p1-last-name"
               data-testid="last-name"
+              name="last_name"
               label="Cognome"
               autoComplete="family-name"
               required
@@ -325,24 +329,47 @@ export function Page1Form({ suppliers }: Page1FormProps) {
             />
           </Anchor>
         </div>
-        <Anchor fieldKey="phone">
-          <Input
-            id="p1-phone"
-            data-testid="phone"
-            label="Cellulare"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="Es. 333 123 4567"
-            required
-            value={state.phone}
-            onChange={(e) => change({ phone: e.target.value })}
-            error={errors.phone}
-          />
-        </Anchor>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Anchor fieldKey="phone">
+            <Input
+              id="p1-phone"
+              data-testid="phone"
+              name="phone"
+              label="Cellulare"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="Es. 333 123 4567"
+              required
+              value={state.phone}
+              onChange={(e) => change({ phone: e.target.value })}
+              error={errors.phone}
+            />
+          </Anchor>
+          <Anchor fieldKey="email">
+            <Input
+              id="p1-email"
+              data-testid="email"
+              name="email"
+              label="Email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="Es. nome@esempio.it"
+              required
+              value={state.email}
+              onChange={(e) => change({ email: e.target.value })}
+              error={errors.email}
+            />
+          </Anchor>
+        </div>
         <Anchor fieldKey="comune">
           <Autocomplete<ComuneSuggestion>
             id="p1-comune"
+            name="city"
+            autoComplete="address-level2"
             label="Comune"
             placeholder="Cerca il tuo comune"
             hint="Inizia a digitare il nome e scegli dall'elenco."

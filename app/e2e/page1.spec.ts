@@ -57,6 +57,7 @@ async function fillPersonal(page: Page, opts: { business?: boolean } = {}) {
   await page.getByTestId("first-name").fill("Mario");
   await page.getByTestId("last-name").fill("Rossi");
   await page.getByTestId("phone").fill("333 123 4567");
+  await page.getByTestId("email").fill("mario.rossi@example.it");
   await chooseComune(page);
 }
 
@@ -409,6 +410,89 @@ test.describe("Page 1 — validation", () => {
     await expect(page.getByText(/numero di cellulare italiano valido/)).toHaveCount(0);
   });
 
+  test("email is required and validated with the shared validator", async ({ page }) => {
+    await open(page);
+    await page.getByTestId("submit").click();
+    await expect(page.getByText("Inserisci la tua email.")).toBeVisible();
+    await page.getByTestId("email").fill("mario.rossi@");
+    await expect(page.getByText("Inserisci un indirizzo email valido (es. nome@esempio.it).")).toBeVisible();
+    await expect(page.getByText("Inserisci la tua email.")).toHaveCount(0);
+    // Surrounding spaces and capitals (autofill / mobile keyboards) are accepted.
+    await page.getByTestId("email").fill("  Mario.Rossi@Example.IT ");
+    await expect(page.getByText(/indirizzo email valido/)).toHaveCount(0);
+  });
+
+  test("a malformed email blocks the submit and scrolls to the email field", async ({ page }) => {
+    await open(page);
+    await pick(page, "commodity-luce", "customer-casa", "service-subentro", "people-2");
+    await fillPersonal(page);
+    await consent(page);
+    await page.getByTestId("email").fill("non-una-email");
+    // Move away from the field first so the scroll to it is observable.
+    await page.getByTestId("submit").scrollIntoViewIfNeeded();
+    await page.getByTestId("submit").click();
+    await expect(page.getByText("Inserisci un indirizzo email valido (es. nome@esempio.it).")).toBeVisible();
+    await expect(page.getByTestId("email")).toBeFocused();
+    await expect(page.getByTestId("email")).toBeInViewport();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("email is sent normalised in the lead creation payload", async ({ page }) => {
+    await open(page);
+    await pick(page, "commodity-luce", "customer-casa", "service-subentro", "people-2");
+    await fillPersonal(page);
+    await page.getByTestId("email").fill("  Mario.Rossi@Example.IT ");
+    const created = page.waitForRequest((r) => r.url().endsWith("/api/lead") && r.method() === "POST");
+    await page.getByTestId("privacy-consent").check();
+    expect((await created).postDataJSON().data.email).toBe("mario.rossi@example.it");
+  });
+
+  test("every field carries the autocomplete token and name browsers rely on", async ({ page }) => {
+    await open(page);
+    await pick(page, "commodity-luce", "customer-casa");
+    const expected: Array<[string, string, string]> = [
+      ["first-name", "given-name", "first_name"],
+      ["last-name", "family-name", "last_name"],
+      ["phone", "tel", "phone"],
+      ["email", "email", "email"],
+    ];
+    for (const [testId, token, name] of expected) {
+      const el = page.getByTestId(testId);
+      await expect(el, testId).toHaveAttribute("autocomplete", token);
+      await expect(el, testId).toHaveAttribute("name", name);
+    }
+    const email = page.getByTestId("email");
+    await expect(email).toHaveAttribute("type", "email");
+    await expect(email).toHaveAttribute("inputmode", "email");
+    await expect(email).toHaveAttribute("autocapitalize", "none");
+    await expect(email).toHaveAttribute("spellcheck", "false");
+    // Comune: a real autofill token, so Chrome / Safari can fill the city.
+    await expect(page.locator("#p1-comune")).toHaveAttribute("autocomplete", "address-level2");
+    await expect(page.locator("#p1-comune")).toHaveAttribute("name", "city");
+    // All inside the one <form>.
+    for (const id of ["p1-first-name", "p1-last-name", "p1-phone", "p1-email", "p1-comune"]) {
+      await expect(page.locator(`form[data-testid="page1-form"] #${id}`), id).toHaveCount(1);
+    }
+    await pick(page, "customer-business");
+    const company = page.getByTestId("company-name");
+    await expect(company).toHaveAttribute("autocomplete", "organization");
+    await expect(company).toHaveAttribute("name", "company_name");
+  });
+
+  test("a browser-filled comune (input event, no typing) opens the suggestions", async ({ page }) => {
+    await open(page);
+    // Autofill sets the value and dispatches input/change events, like this.
+    await page.locator("#p1-comune").evaluate((el: HTMLInputElement) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+      setter.call(el, "Milano");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await expect(page.getByRole("option", { name: /^Milano/ }).first()).toBeVisible();
+    await page.getByRole("option", { name: /^Milano/ }).first().click();
+    await expect(page.locator("#p1-comune")).toHaveValue("Milano");
+  });
+
   test("Partita IVA: company name and manual consumption are required", async ({ page }) => {
     await open(page);
     await pick(page, "commodity-dual", "customer-business", "service-subentro");
@@ -463,10 +547,35 @@ test.describe("Page 1 — lead creation and submit", () => {
   test("consent creation sends only what is valid so far (no personal data needed)", async ({ page }) => {
     await open(page);
     const request = page.waitForRequest((r) => r.url().endsWith("/api/lead") && r.method() === "POST");
-    await consent(page);
+    const response = await consent(page);
+    expect(response.status()).toBe(201);
     const body = (await request).postDataJSON();
     // Cambio fornitore is preselected, so it is part of what is "valid so far".
     expect(body).toEqual({ data: { privacy_consent: true, service_type: "cambio_fornitore" } });
+  });
+
+  test("a partial or invalid email at the consent tick does not fail the creation", async ({ page }) => {
+    await open(page);
+    await page.getByTestId("email").fill("mario@");
+    const response = await consent(page);
+    expect(response.status()).toBe(201);
+    expect(response.request().postDataJSON().data).not.toHaveProperty("email");
+    await expect(page.getByTestId("consent-error")).toHaveCount(0);
+  });
+
+  test("consent first, email typed afterwards: the email reaches the lead on submit (PATCH)", async ({ page }) => {
+    await open(page);
+    await pick(page, "commodity-luce", "customer-casa", "service-subentro", "people-2");
+    const created = await consent(page);
+    expect(created.status()).toBe(201);
+    expect(created.request().postDataJSON().data).not.toHaveProperty("email");
+    await fillPersonal(page);
+    const patched = page.waitForResponse((r) => r.url().endsWith("/api/lead") && r.request().method() === "PATCH");
+    await page.getByTestId("submit").click();
+    const res = await patched;
+    expect(res.status()).toBe(200);
+    expect(res.request().postDataJSON().data.email).toBe("mario.rossi@example.it");
+    await expect(page).toHaveURL(/\/offerte$/);
   });
 
   test("API errors are shown inline (429 → 'Troppe richieste, riprova tra poco.')", async ({ page }) => {
@@ -501,6 +610,7 @@ test.describe("Page 1 — lead creation and submit", () => {
       first_name: "Mario",
       last_name: "Rossi",
       phone: "3331234567",
+      email: "mario.rossi@example.it",
       comune_istat: "015146",
       service_type: "cambio_fornitore",
       current_supplier_luce: "enel-energia",
@@ -621,6 +731,7 @@ test.describe("Page 1 — persistence", () => {
     await expect(page.getByTestId("first-name")).toHaveValue("Mario");
     await expect(page.getByTestId("last-name")).toHaveValue("Rossi");
     await expect(page.getByTestId("phone")).toHaveValue("333 123 4567");
+    await expect(page.getByTestId("email")).toHaveValue("mario.rossi@example.it");
     await expect(page.locator("#p1-comune")).toHaveValue("Milano");
     await expect(page.getByTestId("privacy-consent")).toBeChecked();
     await expect(page.getByTestId("estimate-luce")).toHaveText("Consumo stimato: ~1.450 kWh/anno");
@@ -676,5 +787,21 @@ test.describe("Page 1 — layout screenshots", () => {
     await noOverflow(page);
     await settleAnimations(page);
     await page.screenshot({ path: path.join(SHOTS, `page1-${testInfo.project.name}-business.png`), fullPage: true });
+  });
+});
+
+test.describe("page 1 without JavaScript", () => {
+  test("submitting before hydration never puts personal data in the URL", async ({ browser, baseURL }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+    const page = await context.newPage();
+    await page.goto("/");
+    await page.getByTestId("first-name").fill("Mario");
+    await page.getByTestId("first-name").press("Enter");
+    // The native submit is a POST: the data is in the body, never in the query string.
+    await page.waitForLoadState("load");
+    const url = new URL(page.url());
+    expect(url.search).toBe("");
+    expect(page.url()).not.toContain("Mario");
+    await context.close();
   });
 });

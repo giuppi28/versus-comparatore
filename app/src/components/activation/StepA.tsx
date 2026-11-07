@@ -46,7 +46,7 @@ export function StepA({
   }
 
   return (
-    <form noValidate onSubmit={submit} data-testid="activation-step-a" className="space-y-8">
+    <form method="post" noValidate onSubmit={submit} data-testid="activation-step-a" className="space-y-8">
       <div>
         <h2 className="heading-section text-ink">Dati intestatario</h2>
         <p className="mt-1 text-base text-ink-muted">
@@ -74,7 +74,7 @@ export function StepA({
             name="vat_number"
             required
             inputMode="numeric"
-            autoComplete="off"
+            autoComplete="on"
             maxLength={16}
             value={a.vatNumber}
             error={errorFor("vat_number")}
@@ -122,7 +122,7 @@ export function StepA({
           type="tel"
           required
           inputMode="tel"
-          autoComplete="tel-national"
+          autoComplete="tel"
           value={state.phone}
           error={errorFor("phone")}
           onChange={(e) => {
@@ -132,11 +132,27 @@ export function StepA({
           onBlur={() => touch("phone")}
         />
         <Input
+          label="Email"
+          name="email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={state.email}
+          error={errorFor("email")}
+          onChange={(e) => {
+            edited("email");
+            update({ email: e.target.value });
+          }}
+          onBlur={() => touch("email")}
+        />
+        <Input
           label="Codice fiscale"
           name="tax_code"
           required
           autoCapitalize="characters"
-          autoComplete="off"
+          autoComplete="on"
           spellCheck={false}
           maxLength={20}
           value={a.taxCode}

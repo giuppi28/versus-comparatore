@@ -115,6 +115,7 @@ export default async function AdminLeadDetailPage({ params }: { params: Promise<
             <Field label="Nome" value={lead.first_name} />
             <Field label="Cognome" value={lead.last_name} />
             <Field label="Telefono" value={lead.phone} />
+            <Field label="Email" value={lead.email} />
             <Field label="Tipo cliente" value={lead.customer_type ? CUSTOMER_TYPE_LABELS[lead.customer_type] : null} />
             {isBusiness ? (
               <>

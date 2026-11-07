@@ -136,6 +136,7 @@ export function ActivationForm({ suppliers }: { suppliers: Supplier[] }) {
       firstName: state.firstName.trim(),
       lastName: state.lastName.trim(),
       phone: state.phone.trim(),
+      email: state.email.trim(),
       companyName: state.companyName.trim(),
       activation: normalizeActivation(state),
     });

@@ -2,7 +2,7 @@
  * Activation step B extras (Phase 12 / T12.7): optional IBAN (+ different holder), identity
  * document data + upload, POD/PDR cross-detection, POD/comune warning.
  * Mock data mode. Test ids: activation-payment, activation-document, iban-holder-different,
- * iban-holder-fields, document-file, document-item, document-upload-error, pod-warning.
+ * iban-holder-fields, document-file-front/back, document-slot-front/back, document-item, document-upload-error, pod-warning.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { page1Data } from "../src/lib/lead/test-fixtures";
@@ -203,48 +203,82 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     await openStepB(page, flowState());
     const jpeg = await makeImage(page, { type: "image/jpeg", width: 200, height: 120 });
 
-    await page.getByTestId("document-file").setInputFiles({ name: "falso.jpg", mimeType: "image/jpeg", buffer: Buffer.from("not an image at all") });
+    await page.getByTestId("document-file-front").setInputFiles({ name: "falso.jpg", mimeType: "image/jpeg", buffer: Buffer.from("not an image at all") });
     await expect(page.getByTestId("document-upload-error")).toHaveText(
       "Formato immagine non supportato da questo browser. Carica una foto JPG o un PDF.",
     );
     await expect(page.getByTestId("document-item")).toHaveCount(0);
 
-    await page.getByTestId("document-file").setInputFiles({ name: "doc.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await page.getByTestId("document-file-front").setInputFiles({ name: "doc.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(1);
     await expect(page.getByTestId("document-item")).toContainText("doc.jpg");
     await expect(page.getByTestId("document-upload-error")).toHaveCount(0);
 
-    await page.getByTestId("document-file").setInputFiles({ name: "doc2.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await page.getByTestId("document-file-back").setInputFiles({ name: "doc2.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(2);
-    await expect(page.getByTestId("document-file")).toHaveCount(0);
+    await expect(page.getByTestId("document-file-front")).toHaveCount(0);
+    await expect(page.getByTestId("document-file-back")).toHaveCount(0);
     await noOverflow(page);
   });
 
-  test("upload: remove a file, the input comes back and a new upload works", async ({ page }, testInfo) => {
+  test("upload: remove a file, only its slot empties and a new upload works", async ({ page }, testInfo) => {
     await createLead(page, String(testInfo.project.use.baseURL));
     await openStepB(page, flowState());
     const jpeg = await makeImage(page, { type: "image/jpeg", width: 200, height: 120 });
-    const input = page.getByTestId("document-file");
+    const front = page.getByTestId("document-slot-front");
 
-    await input.setInputFiles({ name: "uno.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await page.getByTestId("document-file-front").setInputFiles({ name: "uno.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(1);
-    const remove = page.getByRole("button", { name: "Rimuovi uno.jpg" });
+    const remove = page.getByRole("button", { name: "Rimuovi fronte del documento: uno.jpg" });
     await expect(remove).toHaveText("Rimuovi");
     expect((await remove.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await remove.click();
     await expect(page.getByTestId("document-item")).toHaveCount(0);
-    await expect(input).toHaveCount(1);
-    await input.setInputFiles({ name: "due.jpg", mimeType: "image/jpeg", buffer: jpeg });
-    await expect(page.getByTestId("document-item")).toHaveCount(1);
-    await expect(page.getByTestId("document-item")).toContainText("due.jpg");
+    await expect(page.getByTestId("document-file-front")).toHaveCount(1);
+    await page.getByTestId("document-file-front").setInputFiles({ name: "due.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await expect(front.getByTestId("document-item")).toContainText("due.jpg");
 
-    // Two files hide the input; removing one brings it back.
-    await input.setInputFiles({ name: "tre.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    // Two files hide both inputs; removing one brings back only its own.
+    await page.getByTestId("document-file-back").setInputFiles({ name: "tre.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(2);
-    await expect(input).toHaveCount(0);
-    await page.getByRole("button", { name: "Rimuovi due.jpg" }).click();
+    await expect(page.getByTestId("document-file-front")).toHaveCount(0);
+    await expect(page.getByTestId("document-file-back")).toHaveCount(0);
+    await page.getByRole("button", { name: "Rimuovi fronte del documento: due.jpg" }).click();
     await expect(page.getByTestId("document-item")).toHaveCount(1);
-    await expect(page.getByTestId("document-file")).toHaveCount(1);
+    await expect(page.getByTestId("document-file-front")).toHaveCount(1);
+    await expect(page.getByTestId("document-file-back")).toHaveCount(0);
+    await expect(page.getByTestId("document-slot-back").getByTestId("document-item")).toContainText("tre.jpg");
+    await noOverflow(page);
+  });
+
+  test("upload: front then back land in the right slots, survive a reload, an error stays in its slot", async ({ page }, testInfo) => {
+    await createLead(page, String(testInfo.project.use.baseURL));
+    await openStepB(page, flowState());
+    const jpeg = await makeImage(page, { type: "image/jpeg", width: 200, height: 120 });
+    const front = page.getByTestId("document-slot-front");
+    const back = page.getByTestId("document-slot-back");
+
+    // Back alone is valid and does not touch the front slot.
+    await page.getByTestId("document-file-back").setInputFiles({ name: "retro.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await expect(back.getByTestId("document-item")).toContainText("retro.jpg");
+    await expect(front.getByTestId("document-item")).toHaveCount(0);
+    await expect(front.getByTestId("document-status")).toHaveText("Nessun file selezionato");
+
+    // Error in the front slot only.
+    await page.getByTestId("document-file-front").setInputFiles({ name: "a.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
+    await expect(front.getByTestId("document-upload-error")).toHaveText("Formato non supportato: carica un file JPG o PDF.");
+    await expect(back.getByTestId("document-upload-error")).toHaveCount(0);
+
+    await page.getByTestId("document-file-front").setInputFiles({ name: "fronte.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await expect(front.getByTestId("document-item")).toContainText("fronte.jpg");
+    await expect(back.getByTestId("document-item")).toContainText("retro.jpg");
+    await expect(page.getByTestId("document-upload-error")).toHaveCount(0);
+
+    // Reload (flow kept in sessionStorage): both stay in the right slots.
+    await page.reload();
+    await expect(page.getByTestId("activation-step-b")).toBeVisible();
+    await expect(page.getByTestId("document-slot-front").getByTestId("document-item")).toContainText("fronte.jpg");
+    await expect(page.getByTestId("document-slot-back").getByTestId("document-item")).toContainText("retro.jpg");
     await noOverflow(page);
   });
 
@@ -252,7 +286,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     await createLead(page, String(testInfo.project.use.baseURL));
     await openStepB(page, flowState());
     const jpeg = await makeImage(page, { type: "image/jpeg", width: 200, height: 120 });
-    await page.getByTestId("document-file").setInputFiles({ name: "uno.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await page.getByTestId("document-file-front").setInputFiles({ name: "uno.jpg", mimeType: "image/jpeg", buffer: jpeg });
     await expect(page.getByTestId("document-item")).toHaveCount(1);
 
     await page.route("**/api/lead/document", (route) =>
@@ -260,7 +294,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
         ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ ok: false, error: "server_error" }) })
         : route.fallback(),
     );
-    await page.getByRole("button", { name: "Rimuovi uno.jpg" }).click();
+    await page.getByRole("button", { name: "Rimuovi fronte del documento: uno.jpg" }).click();
     await expect(page.getByTestId("document-remove-error")).toHaveText("Non siamo riusciti a rimuovere il file, riprova.");
     await expect(page.getByTestId("document-item")).toHaveCount(1);
 
@@ -270,7 +304,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
         ? route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ ok: false, error: "document_not_found" }) })
         : route.fallback(),
     );
-    await page.getByRole("button", { name: "Rimuovi uno.jpg" }).click();
+    await page.getByRole("button", { name: "Rimuovi fronte del documento: uno.jpg" }).click();
     await expect(page.getByTestId("document-item")).toHaveCount(0);
     await expect(page.getByTestId("document-remove-error")).toHaveCount(0);
   });
@@ -281,7 +315,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     const png = await makeImage(page, { type: "image/png", width: 3000, height: 2000, blocky: 2 });
     expect(png.length).toBeGreaterThan(4 * 1024 * 1024);
 
-    await page.getByTestId("document-file").setInputFiles({ name: "Carta identita.png", mimeType: "image/png", buffer: png });
+    await page.getByTestId("document-file-front").setInputFiles({ name: "Carta identita.png", mimeType: "image/png", buffer: png });
     await expect(page.getByTestId("document-item")).toHaveCount(1, { timeout: 30_000 });
     await expect(page.getByTestId("document-item")).toContainText("Carta identita.jpg");
     await expect(page.getByTestId("document-upload-error")).toHaveCount(0);
@@ -290,7 +324,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
   test("upload: an undecodable .heic shows the decode error", async ({ page }) => {
     await openStepB(page, flowState());
     const junk = Buffer.from(Array.from({ length: 2048 }, (_, i) => (i * 37 + 11) % 256));
-    await page.getByTestId("document-file").setInputFiles({ name: "IMG_0001.heic", mimeType: "image/heic", buffer: junk });
+    await page.getByTestId("document-file-front").setInputFiles({ name: "IMG_0001.heic", mimeType: "image/heic", buffer: junk });
     await expect(page.getByTestId("document-upload-error")).toHaveText(
       "Formato immagine non supportato da questo browser. Carica una foto JPG o un PDF.",
     );
@@ -298,7 +332,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
 
   test("upload: other types are rejected client-side", async ({ page }) => {
     await openStepB(page, flowState());
-    await page.getByTestId("document-file").setInputFiles({ name: "a.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
+    await page.getByTestId("document-file-front").setInputFiles({ name: "a.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
     await expect(page.getByTestId("document-upload-error")).toHaveText("Formato non supportato: carica un file JPG o PDF.");
   });
 
@@ -338,7 +372,7 @@ test.describe("activation step B: IBAN, document, POD/PDR", () => {
     await field(page, "document_number").fill("U1A234567B");
     await field(page, "document_expiry").fill("2031-01-05");
     await field(page, "document_issuer").fill("MIT-UCO");
-    await page.getByTestId("document-file").setInputFiles({
+    await page.getByTestId("document-file-front").setInputFiles({
       name: "doc.jpg",
       mimeType: "image/jpeg",
       buffer: await makeImage(page, { type: "image/jpeg", width: 200, height: 120 }),

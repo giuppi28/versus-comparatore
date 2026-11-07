@@ -22,7 +22,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 const DATA_COLLECTED = [
   "nome e cognome",
-  "numero di telefono",
+  "numero di telefono e indirizzo email",
   "codice fiscale",
   "ragione sociale e partita IVA (per le utenze non domestiche)",
   "comune, CAP e indirizzo di fornitura, e se sei residente a quell’indirizzo",
@@ -240,14 +240,14 @@ export default function PrivacyPage() {
 
             <Section title="10. Conferimento dei dati">
               <p>
-                Nome, cognome, telefono, codice fiscale, indirizzo e codici POD/PDR sono necessari per
+                Nome, cognome, telefono, email, codice fiscale, indirizzo e codici POD/PDR sono necessari per
                 confrontare e attivare l&apos;offerta: senza, la richiesta non può essere completata.
                 L&apos;IBAN è necessario solo per le offerte che lo indicano. Il documento
                 d&apos;identità e la bolletta sono facoltativi.
               </p>
             </Section>
 
-            <p className="text-sm text-ink-muted">Ultimo aggiornamento: 4 novembre 2026.</p>
+            <p className="text-sm text-ink-muted">Ultimo aggiornamento: 5 novembre 2026.</p>
           </article>
 
           <div className="py-8">

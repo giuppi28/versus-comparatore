@@ -2,7 +2,7 @@
  * Pure Page 1 logic (PRD §6): derived flow-state fields, visibility rules, validation and
  * API error mapping. No React here so everything is unit-testable.
  */
-import { estimateGas, estimateLuce, PHONE_MESSAGES, validatePhone } from "@/lib/logic";
+import { EMAIL_MESSAGES, estimateGas, estimateLuce, PHONE_MESSAGES, validateEmail, validatePhone } from "@/lib/logic";
 import { LeadApiError } from "@/lib/lead/client";
 import {
   applyFlowPatch,
@@ -204,6 +204,7 @@ export const FIELD_ORDER = [
   "firstName",
   "lastName",
   "phone",
+  "email",
   "companyName",
   "comune",
   "privacy",
@@ -260,6 +261,8 @@ export function validatePage1(state: FlowState, suppliers: readonly SupplierOpti
   if (!state.lastName.trim()) e.lastName = ERROR_MESSAGES.lastName;
   const phone = validatePhone(state.phone);
   if (!phone.ok) e.phone = PHONE_MESSAGES[phone.error];
+  const email = validateEmail(state.email);
+  if (!email.ok) e.email = EMAIL_MESSAGES[email.error];
   if (business && !state.companyName.trim()) e.companyName = ERROR_MESSAGES.companyName;
   if (!state.comune) e.comune = ERROR_MESSAGES.comune;
   if (!state.privacyConsent) e.privacy = ERROR_MESSAGES.privacy;
@@ -329,6 +332,7 @@ const SERVER_FIELD_TO_KEY: Record<string, FieldKey> = {
   first_name: "firstName",
   last_name: "lastName",
   phone: "phone",
+  email: "email",
   company_name: "companyName",
   comune_istat: "comune",
 };
@@ -353,7 +357,9 @@ export function mapApiError(error: unknown): MappedApiError {
             ? PHONE_MESSAGES.empty
             : key === "phone"
               ? PHONE_MESSAGES.format
-              : "Controlla questo campo.";
+              : key === "email"
+                ? EMAIL_MESSAGES[code === "empty" || code === "required" ? "empty" : "format"]
+                : "Controlla questo campo.";
       }
       return { message: "Alcuni dati non sono validi. Controlla i campi evidenziati.", fields };
     }

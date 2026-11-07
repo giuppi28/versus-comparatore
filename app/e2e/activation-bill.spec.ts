@@ -162,7 +162,8 @@ test.describe("activation step B: bill", () => {
     await expect(page.getByTestId("bill-item")).toContainText("bolletta.pdf");
     // The ID document section is untouched by the bill.
     await expect(page.getByTestId("document-item")).toHaveCount(0);
-    await expect(page.getByTestId("document-file")).toHaveCount(1);
+    await expect(page.getByTestId("document-file-front")).toHaveCount(1);
+    await expect(page.getByTestId("document-file-back")).toHaveCount(1);
 
     await page.getByTestId("bill-remove").click();
     await expect(page.getByTestId("bill-item")).toHaveCount(0);

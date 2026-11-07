@@ -1390,5 +1390,62 @@ begin
 end $$;
 
 reset role;
+
+-- =====================================================================================
+-- PHASE 18 (T18.1): leads.email - optional everywhere in the DB, normalised, format-checked
+-- =====================================================================================
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  v    jsonb;
+  w    jsonb;
+  ok   boolean;
+  err  text;
+  s    text := 'rls-test-secret-not-the-real-one';
+  base jsonb := '{"privacy_consent":true,"commodity":"luce","customer_type":"casa","first_name":"Eva","last_name":"Neri","phone":"3330004444","comune_istat":"999999","service_type":"subentro","tax_code":"NREVAE80A41H501Y","housing_title":"inquilino","cap":"99999","address":"Via Po","street_number":"7","is_resident":true,"chosen_offer_luce":"00000000-0000-4000-8000-00000000c001"}';
+begin
+  -- create with email: trimmed + lower-cased; patch changes it; blank clears it
+  v := public.create_lead(s, base || '{"email":"  Eva.Neri@Example.IT "}');
+  perform set_config('rls.e_id', v ->> 'id', true);
+  perform public.update_lead(s, v ->> 'token', '{"first_name":"Eva"}');
+  -- anon cannot read it back directly; verified as owner below
+  ok := false; begin perform email from public.leads limit 1; exception when insufficient_privilege then ok := true; end;
+  if not ok then raise exception 'FAIL: anon can read leads.email'; end if;
+  -- invalid formats are refused by the table check
+  ok := false; begin perform public.update_lead(s, v ->> 'token', '{"email":"not-an-email"}'); exception when check_violation then ok := true; err := sqlerrm; end;
+  if not ok then raise exception 'FAIL: invalid email accepted'; end if;
+  ok := false; begin perform public.update_lead(s, v ->> 'token', jsonb_build_object('email', repeat('a', 250) || '@b.it')); exception when check_violation then ok := true; end;
+  if not ok then raise exception 'FAIL: 255-char email accepted'; end if;
+
+  -- a lead WITHOUT email (production app, old leads) still completes
+  w := public.create_lead(s, base);
+  perform set_config('rls.e2_id', w ->> 'id', true);
+  perform public.complete_lead(s, w ->> 'token', '{}');
+  -- ... and a lead can get its email on completion
+  w := public.create_lead(s, base);
+  perform set_config('rls.e3_id', w ->> 'id', true);
+  perform public.complete_lead(s, w ->> 'token', '{"email":"x@y.it"}');
+  raise notice 'ok: phase 18 email (anon)';
+end $$;
+
+reset role;
+do $$
+begin
+  if (select email from public.leads where id = current_setting('rls.e_id')::uuid) <> 'eva.neri@example.it' then
+    raise exception 'FAIL: email not normalised';
+  end if;
+  if (select email from public.leads where id = current_setting('rls.e2_id')::uuid) is not null then
+    raise exception 'FAIL: lead without email has one';
+  end if;
+  if (select step_reached from public.leads where id = current_setting('rls.e2_id')::uuid) <> 'completed' then
+    raise exception 'FAIL: lead without email did not complete';
+  end if;
+  if (select email from public.leads where id = current_setting('rls.e3_id')::uuid) <> 'x@y.it' then
+    raise exception 'FAIL: email on completion not stored';
+  end if;
+  raise notice 'ok: phase 18 email values (owner)';
+end $$;
+
 do $$ begin raise notice 'ALL RLS TESTS PASSED'; end $$;
 rollback;

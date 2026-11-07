@@ -88,7 +88,7 @@ export function StepB({
   }
 
   return (
-    <form noValidate onSubmit={submit} data-testid="activation-step-b" className="space-y-8">
+    <form method="post" noValidate onSubmit={submit} data-testid="activation-step-b" className="space-y-8">
       <div>
         <h2 className="heading-section text-ink">Fornitura</h2>
         <p className="mt-1 text-base text-ink-muted">Dove attivare la fornitura e i dati del contatore.</p>
@@ -157,7 +157,7 @@ export function StepB({
             label="Civico"
             name="street_number"
             required
-            autoComplete="off"
+            autoComplete="on"
             maxLength={20}
             value={a.streetNumber}
             error={errorFor("street_number")}
@@ -220,7 +220,7 @@ export function StepB({
               name="pod"
               required={podRequired}
               autoCapitalize="characters"
-              autoComplete="off"
+              autoComplete="on"
               spellCheck={false}
               maxLength={24}
               hint={
@@ -317,7 +317,7 @@ export function StepB({
             name="pdr"
             required={pdrRequired}
             inputMode="numeric"
-            autoComplete="off"
+            autoComplete="on"
             maxLength={20}
             className="sm:max-w-sm"
             hint={

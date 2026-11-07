@@ -39,6 +39,7 @@ function validCasaLuce(): FlowState {
     firstName: "Mario",
     lastName: "Rossi",
     phone: "333 123 4567",
+    email: "mario.rossi@example.it",
     comune: MILANO,
     privacyConsent: true,
     serviceType: "subentro",
@@ -261,7 +262,7 @@ describe("validatePage1", () => {
   it("an empty form reports the basics, in page order", () => {
     const errors = validatePage1(INITIAL_FLOW_STATE, SUPPLIERS);
     expect(Object.keys(errors)).toEqual(
-      expect.arrayContaining(["commodity", "customerType", "firstName", "lastName", "phone", "comune", "privacy", "serviceType"]),
+      expect.arrayContaining(["commodity", "customerType", "firstName", "lastName", "phone", "email", "comune", "privacy", "serviceType"]),
     );
     expect(firstErrorKey(errors)).toBe("commodity");
     expect(errors.commodity).toBe("Scegli cosa vuoi confrontare.");
@@ -273,6 +274,21 @@ describe("validatePage1", () => {
 
   it("appliances are optional", () => {
     expect(validatePage1(edit(validCasaLuce(), { appliances: [] }), SUPPLIERS)).toEqual({});
+  });
+
+  it("email is required and uses the shared validator messages", () => {
+    expect(validatePage1(edit(validCasaLuce(), { email: "" }), SUPPLIERS).email).toBe("Inserisci la tua email.");
+    expect(validatePage1(edit(validCasaLuce(), { email: "   " }), SUPPLIERS).email).toBe("Inserisci la tua email.");
+    expect(validatePage1(edit(validCasaLuce(), { email: "mario@" }), SUPPLIERS).email).toMatch(/email valido|indirizzo email/);
+    expect(validatePage1(edit(validCasaLuce(), { email: " Mario.Rossi@Example.IT " }), SUPPLIERS).email).toBeUndefined();
+    expect(firstErrorKey({ comune: "x", email: "y", phone: "z" })).toBe("phone");
+    expect(firstErrorKey({ comune: "x", email: "y" })).toBe("email");
+  });
+
+  it("maps a server email error to the Italian message", () => {
+    const mapped = mapApiError(new LeadApiError(422, "validation", { email: "required" }));
+    expect(mapped.fields.email).toBe("Inserisci la tua email.");
+    expect(mapApiError(new LeadApiError(422, "validation", { email: "format" })).fields.email).toMatch(/email valido/);
   });
 
   it("phone uses the shared validator messages", () => {
