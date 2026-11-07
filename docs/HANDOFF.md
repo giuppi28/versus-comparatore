@@ -1,10 +1,10 @@
 # HANDOFF — VERSUS
-Updated: 2026-11-05 · Phase: 18 on `dev`, not live (lead email migration not applied); T17.7 and T17.9 leftovers open · Branch: dev · Last commit: see `git log -1`
+Updated: 2026-11-05 · Phase: 18 on `dev`, not live (lead email migration not applied); T17.9 leftovers open · Branch: dev · Last commit: see `git log -1`
 
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
-**2026-11-07 (latest) — RESUME HERE: T18.8 (mandatory identity document, spec in `docs/TASKS.md` Phase 18).** Giuseppe's decision: the customer picks the document type first; carta d'identità and patente need front and back, passaporto one file. Start with `backend-builder` (server completion rule) or `frontend-builder`, sequentially, then reviews, full suite + matrix. Checks at 1c799fe: typecheck ✓ lint ✓ Vitest 1370 ✓ build ✓ e2e 452 passed / 2 skipped ✓ matrix 435/435 ✓. `docs/geo/T17.7-search-console-plan.md` is being edited by another session: leave it.
+**2026-11-07 (latest) — RESUME HERE: T18.8 (mandatory identity document, spec in `docs/TASKS.md` Phase 18).** Giuseppe's decision: the customer picks the document type first; carta d'identità and patente need front and back, passaporto one file. Start with `backend-builder` (server completion rule) or `frontend-builder`, sequentially, then reviews, full suite + matrix. Checks at 1c799fe: typecheck ✓ lint ✓ Vitest 1370 ✓ build ✓ e2e 452 passed / 2 skipped ✓ matrix 435/435 ✓.
 
 **2026-11-07 (later) — T18.5–T18.7 committed on `dev`, not pushed, not live.** T18.5 affeda1 + c6d2400: a blocked submit on page 1 and activation steps A/B scrolls to and focuses the first missing or failed part (card groups included, `src/lib/focus-problem.ts`); card groups with an error expose `aria-invalid` + `aria-describedby`. T18.6 62137de: animated green check badge on uploaded document slots (fresh uploads only, reduced motion respected). T18.7 1c799fe: step B button "Accetta" with the consent sentence under it (SPEC #37). Live test 2026-11-07 on production: full flow OK, test lead `TEST Verifica` (5b62fff1-…) completed with email, 2 documents and callback: Giuseppe deletes it from admin. Two identical-name Iren gas casa offers are intended (0.34 with IBAN, 0.45 without, as in Aldo's CSV). Review lows → Later: no scroll margin for a future sticky header (`focus-problem.ts`); `aria-invalid` on the checkbox `group` role (gas uses); a legacy document without `side` can get a fresh badge after a removal; bill section has no badge; file names truncate hard in slots.
 
@@ -74,6 +74,7 @@ Phase 15 complete (T15.1–T15.4). Giuseppe: OK to the reviewer for `## APPLY: 2
 - Accepted residual exposure in the 1-minute document-removal window (QUESTIONS.md APPLY 20261023110000).
 
 ## Log (current phase)
+- 2026-11-07 T17.7 done (account info@sitexp.it, not giuppips@gmail.com): Domain property verified via `TXT @` google-site-verification on IONOS (keep it forever); sitemap submitted, 5 pages discovered; indexing requested for home + 4 guides; Bing imported from GSC, same sitemap. Open: add Aldo as a Search Console user (needs his email); a harmless unverified property on giuppips@gmail.com can be removed by Giuseppe.
 - 2026-11-05 T17.8 done: test wrong, layout fine; test now checks the form's scroll range; activation.spec 18/18 on both projects — 5939426.
 - 2026-11-05 T17.15 done: 4 guides indexable, canonical, in the sitemap with `reviewedOn`; 4 offers pages unchanged; SPEC #35 updated; seo e2e 39/39 desktop — 6965c3a.
 - 2026-11-05 T17.14 done: `favicon.ico` (16/32/48), `icon.svg`, `apple-icon.png`; seo e2e 8/8 desktop — a5a59cf.
