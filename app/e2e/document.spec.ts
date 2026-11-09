@@ -187,7 +187,9 @@ test.describe("identity document: blocked submit", () => {
     await typeSelect(page).selectOption("carta_identita");
     await uploadSide(page, "front", ID_FRONT);
     await page.getByTestId("activation-submit").click();
-    await expect(page.getByTestId("document-missing-error")).toHaveText("Carica entrambi i lati: fronte e retro del documento.");
+    // Photos incomplete: the manual data is required (SPEC #39), the first missing field is focused.
+    await expect(page.getByTestId("doc-number")).toBeFocused();
+    await expect(page.getByText("Inserisci il numero del documento.")).toBeVisible();
     await expect
       .poll(() =>
         page.evaluate(() => document.querySelector('[data-testid="document-section"]')?.contains(document.activeElement) ?? false),
@@ -198,17 +200,18 @@ test.describe("identity document: blocked submit", () => {
 
     // Uploading the missing side clears the error and the submit goes through.
     await uploadSide(page, "back", ID_BACK);
-    await expect(page.getByTestId("document-missing-error")).toHaveCount(0);
+    await expect(page.getByTestId("doc-manual-block")).toBeHidden();
     await expect(collapsed(page)).toBeVisible();
     await page.getByTestId("activation-submit").click();
     await expect(page).toHaveURL(/\/grazie$/);
   });
 
-  test("passport without the photo page: the passport wording", async ({ page }) => {
+  test("passport without the photo page: the manual data is required", async ({ page }) => {
     await openStepB(page);
     await typeSelect(page).selectOption("passaporto");
     await page.getByTestId("activation-submit").click();
-    await expect(page.getByTestId("document-missing-error")).toHaveText("Carica la pagina del passaporto con la foto.");
+    await expect(page.getByTestId("doc-number")).toBeFocused();
+    await expect(page.getByText("Inserisci il numero del documento.")).toBeVisible();
   });
 
   test("the server answers id_document required: mapped to the document section", async ({ page }) => {
@@ -221,7 +224,7 @@ test.describe("identity document: blocked submit", () => {
     await expect(page.getByTestId("activation-step-b")).toBeVisible();
     await expect(page).toHaveURL(/\/attivazione/);
     await expect(collapsed(page)).toHaveCount(0);
-    await expect(page.getByTestId("document-missing-error")).toContainText("documento d'identità");
+    await expect(page.getByTestId("document-missing-error")).toContainText("inserisci i dati del documento");
   });
 });
 

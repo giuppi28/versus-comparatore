@@ -382,26 +382,40 @@ describe("IBAN, holder and document validation (step B extras)", () => {
     expect(e.document_type).toBe("Seleziona il tipo di documento.");
     expect(e.id_document).toBeUndefined();
   });
-  it("document: carta d'identità and patente need front and back", () => {
+  const MANUAL = { documentNumber: "AX1234567", documentIssuer: "Comune di Roma", documentExpiry: "2099-01-01" };
+  it("document: carta d'identità and patente need both sides, or the manual data", () => {
     for (const documentType of ["carta_identita", "patente"] as const) {
-      expect(validatePaymentAndDocument(withAct({ documentType, documents: [] })).id_document).toMatch(/fronte e retro/);
-      expect(validatePaymentAndDocument(withAct({ documentType, documents: [idDoc("f", "front")] })).id_document).toBeDefined();
-      expect(validatePaymentAndDocument(withAct({ documentType, documents: [idDoc("b", "back")] })).id_document).toBeDefined();
+      const e = validatePaymentAndDocument(withAct({ documentType, documents: [] }));
+      expect(Object.keys(e).sort()).toEqual(["document_expiry", "document_issuer", "document_number"]);
+      expect(validatePaymentAndDocument(withAct({ documentType, documents: [idDoc("f", "front")] })).document_number).toBeDefined();
+      expect(validatePaymentAndDocument(withAct({ documentType, documents: [idDoc("b", "back")] })).document_number).toBeDefined();
       expect(validatePaymentAndDocument(withAct({ documentType, documents: BOTH_SIDES }))).toEqual({});
+      // Partial photos + manual data completes.
+      expect(validatePaymentAndDocument(withAct({ documentType, documents: [idDoc("f", "front")], ...MANUAL }))).toEqual({});
     }
   });
-  it("document: the passport needs only the photo page", () => {
-    const passport = (documents: FlowState["activation"]["documents"]) =>
-      validatePaymentAndDocument(withAct({ documentType: "passaporto", documents }));
-    expect(passport([]).id_document).toMatch(/passaporto/);
+  it("document: the passport needs only the photo page, or the manual data", () => {
+    const passport = (documents: FlowState["activation"]["documents"], extra = {}) =>
+      validatePaymentAndDocument(withAct({ documentType: "passaporto", documents, ...extra }));
+    expect(passport([]).document_number).toBeDefined();
+    expect(passport([])).not.toHaveProperty("id_document");
     expect(passport([idDoc("f", "front")])).toEqual({});
+    expect(passport([], MANUAL)).toEqual({});
   });
-  it("document: legacy numbers, expiry and issuer are ignored; the bill does not count", () => {
+  it("document: manual data is validated like the server (format, issuer length, expiry not past)", () => {
+    const manual = (extra: object) =>
+      validatePaymentAndDocument(withAct({ documentType: "patente", documents: [], ...MANUAL, ...extra }));
+    expect(manual({ documentNumber: "12" }).document_number).toMatch(/non valido/);
+    expect(manual({ documentIssuer: "x" }).document_issuer).toBeDefined();
+    expect(manual({ documentExpiry: "2020-01-01" }).document_expiry).toBe("Il documento è scaduto.");
+    expect(manual({ documentExpiry: "" }).document_expiry).toBe("Inserisci la data di scadenza.");
+  });
+  it("document: stale manual values are ignored with complete photos; the bill does not count", () => {
     expect(
       validatePaymentAndDocument(withAct({ documentNumber: "12", documentExpiry: "2020-01-01", documentIssuer: "x" })),
     ).toEqual({});
     const bill = { ...idDoc("bill"), kind: "bill" } as unknown as FlowState["activation"]["documents"][number];
-    expect(validatePaymentAndDocument(withAct({ documents: [bill, idDoc("f", "front")] })).id_document).toBeDefined();
+    expect(validatePaymentAndDocument(withAct({ documents: [bill, idDoc("f", "front")] })).document_number).toBeDefined();
   });
   it("document: requiredDocumentSides per type", () => {
     expect(requiredDocumentSides(null)).toEqual([]);

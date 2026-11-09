@@ -32,7 +32,7 @@ const DATA_COLLECTED = [
   "fornitore attuale di luce e gas",
   "offerta scelta e relativa spesa mensile mostrata",
   "IBAN ed eventuali dati dell’intestatario del conto, se diverso dal titolare (obbligatori solo per le offerte che prevedono il pagamento con IBAN, altrimenti facoltativi)",
-  "tipo di documento d’identità e copia del documento caricata (fronte e retro, oppure la pagina con la foto per il passaporto), obbligatori per attivare la fornitura; per le richieste precedenti possono essere presenti anche numero, scadenza ed ente di rilascio",
+  "tipo di documento d’identità, obbligatorio per attivare la fornitura, insieme alla copia del documento caricata (fronte e retro, oppure la pagina con la foto per il passaporto) oppure, in alternativa, ai dati del documento (numero, ente di rilascio e data di scadenza)",
   "copia della bolletta in PDF (facoltativa), conservata come il documento d’identità; i dati che contiene (POD, PDR, codice fiscale, fornitore) sono letti solo nel tuo browser per precompilare il modulo, senza servizi esterni",
 ];
 
