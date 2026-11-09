@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 // Raw HTML via the request fixture: no JavaScript runs, like a crawler.
-const TITLE = "Offerte luce e gas: comparatore gratuito | VERSUS";
+const TITLE = "Comparatore luce e gas: confronta le offerte gratis | VERSUS";
 const DESCRIPTION =
-  "Confronta gratis le offerte luce e gas per casa e partita IVA: rispondi a poche domande, scegli l'offerta e attivala online.";
+  "Comparatore luce e gas gratuito per casa e partita IVA: rispondi a poche domande, confronta le offerte e attiva online quella che scegli.";
 
 test.describe("SEO (raw HTML)", () => {
   test("home metadata and JSON-LD", async ({ request }) => {
@@ -23,6 +23,11 @@ test.describe("SEO (raw HTML)", () => {
     const types = data["@graph"].map((n: { "@type": string }) => n["@type"]);
     expect(types).toEqual(["Organization", "WebSite", "Service", "FAQPage"]);
     expect(m![1]).not.toContain("telephone");
+    const org = data["@graph"][0];
+    expect(org.logo.url).toMatch(/\/brand\/versus_icona\.png$/);
+    const logo = await request.get(new URL(org.logo.url).pathname);
+    expect(logo.status()).toBe(200);
+    expect(logo.headers()["content-type"]).toMatch(/image\/png/);
   });
 
   test("favicon, icon.svg and apple-icon are served and linked", async ({ request }) => {
@@ -75,8 +80,18 @@ test.describe("SEO (raw HTML)", () => {
     expect(res.headers()["content-type"]).toContain("text/plain");
     const body = await res.text();
     expect(body.startsWith("# VERSUS")).toBe(true);
-    expect(body).toContain("Ultimo aggiornamento: 2026-11-07");
+    expect(body).toContain("Ultimo aggiornamento: 2026-11-09");
     expect(body).toContain("KEHILA S.r.l.s.");
+    expect(body).not.toMatch(/\+39|\b0\d{1,3}[ .]\d{3,4}[ .]\d{3,4}\b/);
+  });
+
+  test("llms-full.txt", async ({ request }) => {
+    const res = await request.get("/llms-full.txt");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toContain("text/plain");
+    const body = await res.text();
+    expect(body.split("\n")[0]).toBe("# VERSUS — comparatore luce e gas");
+    expect(body).toContain("## Cambio fornitore di luce e gas: come funziona");
     expect(body).not.toMatch(/\+39|\b0\d{1,3}[ .]\d{3,4}[ .]\d{3,4}\b/);
   });
 

@@ -9,7 +9,7 @@ describe("buildLlmsTxt", () => {
     const t = buildLlmsTxt(URL, ["Enel Energia"]);
     expect(t.startsWith("# VERSUS")).toBe(true);
     expect(t).toContain("\n> ");
-    expect(t).toContain("Ultimo aggiornamento: 2026-11-07");
+    expect(t).toContain("Ultimo aggiornamento: 2026-11-09");
     expect(t).toContain("- Enel Energia");
     expect(t).toContain("KEHILA S.r.l.s.");
     expect(t).toContain(`${URL}/privacy`);
@@ -20,10 +20,16 @@ describe("buildLlmsTxt", () => {
 
   it("lists the 10 SEO pages under Pagine principali, without prices", () => {
     const t = buildLlmsTxt(URL, null);
-    const section = t.slice(t.indexOf("## Pagine principali"));
+    const section = t.slice(t.indexOf("## Pagine principali"), t.indexOf("## Versione estesa"));
     expect(ALL_SEO_PAGES).toHaveLength(10);
     for (const p of ALL_SEO_PAGES) expect(section).toContain(`(${URL}${p.path})`);
     expect(section).not.toMatch(/€|\d,\d{2,4}/);
+  });
+
+  it("labels the home link and points to llms-full.txt", () => {
+    const t = buildLlmsTxt(URL, null);
+    expect(t).toContain(`- [Home: comparatore luce e gas](${URL}/)`);
+    expect(t).toContain(`## Versione estesa\n- [llms-full.txt](${URL}/llms-full.txt)`);
   });
 
   it("omits the supplier section when unavailable or empty", () => {

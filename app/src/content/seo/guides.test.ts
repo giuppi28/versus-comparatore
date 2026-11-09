@@ -28,4 +28,11 @@ describe("guides registry", () => {
       expect(text).not.toMatch(/chiam|demo|club|\+39|numero verde|migliore/i);
     }
   });
+
+  it("each intro names the brand once as \"VERSUS, comparatore luce e gas\" and stays within 95 words", () => {
+    for (const g of GUIDE_PAGES) {
+      expect(g.intro.split("VERSUS, comparatore luce e gas").length - 1, g.path).toBe(1);
+      expect(g.intro.trim().split(/\s+/).length, g.path).toBeLessThanOrEqual(95);
+    }
+  });
 });

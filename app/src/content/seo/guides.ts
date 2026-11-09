@@ -146,7 +146,7 @@ export const GUIDE_PAGES: SeoPage[] = [
       "Come cambiare fornitore di luce e gas: chi avvia la pratica, costi, tempi, ripensamento e cosa non cambia. Guida basata sulle pagine di ARERA.",
     h1: "Cambio fornitore di luce e gas: come funziona",
     intro:
-      "Per cambiare fornitore di luce o gas firmi un nuovo contratto con il venditore scelto. Per il gas il venditore entrante avvia la procedura e chiude il vecchio rapporto; per la luce invia il recesso al vecchio venditore con una tua procura. Di norma non resti senza energia. Per il gas, secondo ARERA, servono di norma uno o due mesi.",
+      "Per cambiare fornitore di luce o gas firmi un nuovo contratto con il venditore scelto. Per il gas il venditore entrante avvia la procedura e chiude il vecchio rapporto; per la luce invia il recesso al vecchio venditore con una tua procura. Di norma non resti senza energia. Per il gas, secondo ARERA, servono di norma uno o due mesi. Prima di cambiare puoi confrontare gratis le offerte con VERSUS, comparatore luce e gas, che mostra quelle dei venditori con cui collaboriamo.",
     sections: [
       {
         heading: "Come si cambia fornitore di luce e gas",
@@ -236,7 +236,7 @@ export const GUIDE_PAGES: SeoPage[] = [
       "Cos'è la voltura di luce e gas, chi la richiede, quali documenti servono, tempi e costi, e differenza dal subentro. Guida basata su ARERA.",
     h1: "Voltura di luce e gas: cos'è e come si fa",
     intro:
-      "La voltura è il cambio di intestatario di un contratto già attivo. Per il gas, ARERA la definisce come passaggio senza interruzione della fornitura e con lo stesso venditore. Per la luce la chiede il nuovo cliente. Secondo ARERA servono circa 5 giorni lavorativi per la luce, se non cambi venditore, e 4 per il gas.",
+      "La voltura è il cambio di intestatario di un contratto già attivo. Per il gas, ARERA la definisce come passaggio senza interruzione della fornitura e con lo stesso venditore. Per la luce la chiede il nuovo cliente. Secondo ARERA servono circa 5 giorni lavorativi per la luce, se non cambi venditore, e 4 per il gas. Questa guida è pubblicata da VERSUS, comparatore luce e gas, che ti fa confrontare gratis le offerte per la casa e per la partita IVA.",
     sections: [
       {
         heading: "Cos'è la voltura",
@@ -336,7 +336,7 @@ export const GUIDE_PAGES: SeoPage[] = [
       "Cos'è il subentro di luce e gas, quando serve al posto della voltura, documenti, tempi di riattivazione e costi. Guida basata su ARERA.",
     h1: "Subentro di luce e gas: quando serve",
     intro:
-      "Il subentro è l'attivazione di una fornitura da parte di un nuovo cliente dopo che il precedente ha chiuso il contratto e il contatore è stato disattivato. Lo chiedi al venditore che scegli. Per la luce il distributore attiva di norma entro 5 giorni lavorativi, per il gas entro 10, secondo ARERA.",
+      "Il subentro è l'attivazione di una fornitura da parte di un nuovo cliente dopo che il precedente ha chiuso il contratto e il contatore è stato disattivato. Lo chiedi al venditore che scegli. Per la luce il distributore attiva di norma entro 5 giorni lavorativi, per il gas entro 10, secondo ARERA. Per il subentro puoi partire da VERSUS, comparatore luce e gas: indichi il tipo di fornitura e i consumi e vedi una stima della spesa mensile, IVA esclusa.",
     sections: [
       {
         heading: "Cos'è il subentro",
@@ -431,7 +431,7 @@ export const GUIDE_PAGES: SeoPage[] = [
       "Primo allaccio di luce e gas: differenza tra allacciamento e attivazione, a chi rivolgersi, passaggi e tempi indicati da ARERA.",
     h1: "Primo allaccio di luce e gas: allacciamento e attivazione",
     intro:
-      "“Primo allaccio” è un'etichetta commerciale: nelle pagine di ARERA si parla di allacciamento, il collegamento fisico fatto dal distributore, e di attivazione, l'avvio della fornitura. Per la luce puoi chiedere entrambi a un venditore, che inoltra la richiesta al distributore entro 2 giorni lavorativi. I tempi dei lavori dipendono dalla loro complessità.",
+      "“Primo allaccio” è un'etichetta commerciale: nelle pagine di ARERA si parla di allacciamento, il collegamento fisico fatto dal distributore, e di attivazione, l'avvio della fornitura. Per la luce puoi chiedere entrambi a un venditore, che inoltra la richiesta al distributore entro 2 giorni lavorativi. I tempi dei lavori dipendono dalla loro complessità. Se ti serve una nuova fornitura, VERSUS, comparatore luce e gas, ti aiuta a scegliere l'offerta e a richiederne l'attivazione online.",
     sections: [
       {
         heading: "Cosa significa primo allaccio o nuova attivazione",
@@ -532,7 +532,7 @@ export const GUIDE_PAGES: SeoPage[] = [
       "Come scegliere un'offerta luce e gas: dati da avere, prezzo fisso o variabile, PLACET, Scheda sintetica e controlli prima di firmare. Guida basata su ARERA.",
     h1: "Come scegliere un'offerta luce e gas",
     intro:
-      "Per scegliere un'offerta luce o gas guarda il tipo di prezzo (fisso o variabile), i tuoi consumi, le altre voci della bolletta e le condizioni del contratto, che trovi nella Scheda sintetica. Non esiste un'offerta giusta per tutti: dipende dai consumi e da come vuoi gestire il rischio di variazioni di prezzo.",
+      "Per scegliere un'offerta luce o gas guarda il tipo di prezzo (fisso o variabile), i tuoi consumi, le altre voci della bolletta e le condizioni del contratto, che trovi nella Scheda sintetica. Non esiste un'offerta giusta per tutti: dipende dai consumi e da come vuoi gestire il rischio di variazioni di prezzo. Per confrontare le offerte con questi criteri c'è VERSUS, comparatore luce e gas: è gratuito e mostra una stima della spesa mensile IVA esclusa.",
     sections: [
       {
         heading: "I dati da avere in mano",
@@ -655,7 +655,7 @@ export const GUIDE_PAGES: SeoPage[] = [
       "Fine della maggior tutela e del Servizio a Tutele Graduali per luce e gas: date, clienti vulnerabili e cosa fare prima del 1 aprile 2027. Guida basata su ARERA.",
     h1: "Fine della tutela e passaggio al mercato libero",
     intro:
-      "Per la luce, dal 1 luglio 2024 la maggior tutela è riservata ai clienti vulnerabili. I clienti non vulnerabili che non avevano scelto il mercato libero sono nel Servizio a Tutele Graduali, che dal 1 aprile 2027 non sarà più disponibile. Per il gas, dal gennaio 2024 il servizio di tutela è riservato ai clienti vulnerabili. Le date sono quelle indicate da ARERA a novembre 2026: ricontrollale sul sito di ARERA.",
+      "Per la luce, dal 1 luglio 2024 la maggior tutela è riservata ai clienti vulnerabili. I clienti non vulnerabili che non avevano scelto il mercato libero sono nel Servizio a Tutele Graduali, che dal 1 aprile 2027 non sarà più disponibile. Per il gas, dal gennaio 2024 il servizio di tutela è riservato ai clienti vulnerabili. Le date sono quelle indicate da ARERA a novembre 2026: ricontrollale sul sito di ARERA. Se vuoi passare al mercato libero, puoi cercare l'offerta con VERSUS, comparatore luce e gas, indicando consumi e tipo di cliente.",
     sections: [
       {
         heading: "Cosa è cambiato per la luce",

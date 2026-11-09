@@ -9,7 +9,7 @@ export interface ExplainerBlock {
 export const EXPLAINER_TITLE = "Come funziona il confronto luce e gas su VERSUS";
 
 export const EXPLAINER_INTRO =
-  "VERSUS è un comparatore di offerte luce e gas per la casa e per la partita IVA. Scegli se confrontare luce, gas o luce e gas, indichi il tipo di fornitura e i consumi, e vedi le offerte dei venditori con cui collaboriamo, con una stima della spesa mensile IVA esclusa. Il confronto è gratuito. Se un'offerta fa per te, puoi attivarla online: cambio fornitore, subentro, voltura o primo allaccio.";
+  "VERSUS è un comparatore luce e gas per la casa e per la partita IVA. Scegli se confrontare luce, gas o luce e gas, indichi il tipo di fornitura e i consumi, e vedi le offerte dei venditori con cui collaboriamo, con una stima della spesa mensile IVA esclusa. Il confronto è gratuito. Se un'offerta fa per te, puoi attivarla online: cambio fornitore, subentro, voltura o primo allaccio.";
 
 export const EXPLAINER_BLOCKS: ExplainerBlock[] = [
   {
