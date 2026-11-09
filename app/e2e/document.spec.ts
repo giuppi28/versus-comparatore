@@ -298,3 +298,172 @@ test.describe("identity document: reversible", () => {
     expect(await overflow()).toBeLessThanOrEqual(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// SPEC #39 (T20.3): the photos OR the manual data (number + issuer + expiry) complete the document.
+
+const manualBlock = (page: Page) => page.getByTestId("doc-manual-block");
+/** The manual block is hidden: closed while the upload section is shown, unmounted once it collapses into "Documento caricato". */
+const expectManualHidden = (page: Page) =>
+  expect
+    .poll(async () => ((await manualBlock(page).count()) === 0 ? "closed" : await manualBlock(page).getAttribute("data-state")))
+    .toBe("closed");
+const futureExpiry = () => `${new Date().getFullYear() + 5}-06-15`;
+const MANUAL_BY_TYPE = {
+  carta_identita: { number: "ca12345bc", issuer: "Comune di Milano" },
+  patente: { number: "u1a234567b", issuer: "Motorizzazione Civile di Milano" },
+  passaporto: { number: "yb1234567", issuer: "Questura di Milano" },
+} as const;
+const TYPE_LABEL = { carta_identita: "Carta d'identità", patente: "Patente", passaporto: "Passaporto" } as const;
+
+async function fillManual(page: Page, v: { number: string; issuer: string; expiry: string }) {
+  await page.getByTestId("doc-number").fill(v.number);
+  await page.getByTestId("doc-issuer").fill(v.issuer);
+  await page.getByTestId("doc-expiry").fill(v.expiry);
+}
+
+test.describe("identity document: manual data instead of photos (SPEC #39)", () => {
+  for (const type of ["carta_identita", "patente", "passaporto"] as const) {
+    test(`${type}: completes with the manual data only, no photo is uploaded`, async ({ page }) => {
+      const mocks = await openStepB(page);
+      await expect(page.getByTestId("doc-manual-block")).toHaveCount(0); // nothing before the type
+      await typeSelect(page).selectOption(type);
+      await expect(manualBlock(page)).toHaveAttribute("data-state", "open");
+      await expect(page.getByTestId("doc-issuer")).toBeVisible();
+      await expect(page.getByTestId("document-section")).toContainText(
+        { carta_identita: "Comune che l'ha rilasciata", patente: "Motorizzazione, UCO o Prefettura", passaporto: "Questura" }[type],
+      );
+      const expiry = futureExpiry();
+      await fillManual(page, { ...MANUAL_BY_TYPE[type], expiry });
+      await expect(collapsed(page)).toHaveCount(0); // "Documento caricato" is only for the photo path
+
+      await page.getByTestId("activation-submit").click();
+      await expect(page).toHaveURL(/\/grazie$/);
+      expect(mocks.complete).toHaveLength(1);
+      expect(sent(mocks)).toMatchObject({
+        document_type: type,
+        document_number: MANUAL_BY_TYPE[type].number.toUpperCase(),
+        document_issuer: MANUAL_BY_TYPE[type].issuer,
+        document_expiry: expiry,
+      });
+    });
+
+    test(`${type}: completes via photos, the manual block closes and its values are not sent`, async ({ page }) => {
+      const mocks = await openStepB(page);
+      await uploadRequiredSides(page, type);
+      await expectManualHidden(page);
+      await expect(collapsed(page)).toBeVisible();
+      await expect(collapsed(page)).toContainText(TYPE_LABEL[type]);
+      await page.getByTestId("activation-submit").click();
+      await expect(page).toHaveURL(/\/grazie$/);
+      expect(sent(mocks)).toMatchObject({ document_type: type });
+      for (const k of ["document_number", "document_expiry", "document_issuer"]) {
+        expect(sent(mocks)).not.toHaveProperty(k);
+      }
+    });
+  }
+
+  test("photos complete, then one side removed: the manual block comes back, open and required", async ({ page }) => {
+    const mocks = await openStepB(page, SEEDED_ID_DOCUMENT);
+    await expect(collapsed(page)).toBeVisible();
+    await page.getByTestId("document-edit").click();
+    await expectManualHidden(page);
+    await expect(page.getByTestId("doc-number")).toBeHidden();
+
+    await page.getByTestId("document-slot-back").getByTestId("document-remove").click();
+    await expect.poll(() => mocks.deleted).toEqual(["e2e-doc-back"]);
+    await expect(manualBlock(page)).toHaveAttribute("data-state", "open");
+    await expect(page.getByTestId("doc-number")).toBeVisible();
+    await expect(page.getByTestId("doc-number")).toBeEditable();
+
+    // Required again: the submit is blocked on the first empty manual field.
+    await page.getByTestId("activation-submit").click();
+    await expect(page.getByText("Inserisci il numero del documento.")).toBeVisible();
+    await expect(page.getByTestId("doc-number")).toBeFocused();
+    expect(mocks.complete).toHaveLength(0);
+
+    // Uploading the side again hides it once more and the photo path completes.
+    await uploadSide(page, "back", ID_BACK);
+    await expectManualHidden(page);
+    await expect(collapsed(page)).toBeVisible();
+    await page.getByTestId("activation-submit").click();
+    await expect(page).toHaveURL(/\/grazie$/);
+    expect(sent(mocks)).not.toHaveProperty("document_number");
+  });
+
+  test("partial photos plus manual data completes (the manual values are sent)", async ({ page }) => {
+    const mocks = await openStepB(page);
+    await typeSelect(page).selectOption("carta_identita");
+    await uploadSide(page, "front", ID_FRONT);
+    await expect(manualBlock(page)).toHaveAttribute("data-state", "open"); // the back is still missing
+    const expiry = futureExpiry();
+    await fillManual(page, { ...MANUAL_BY_TYPE.carta_identita, expiry });
+    await page.getByTestId("activation-submit").click();
+    await expect(page).toHaveURL(/\/grazie$/);
+    expect(sent(mocks)).toMatchObject({
+      document_type: "carta_identita",
+      document_number: "CA12345BC",
+      document_issuer: "Comune di Milano",
+      document_expiry: expiry,
+    });
+  });
+
+  test("blocked submit with empty manual fields: Italian errors, first missing field focused", async ({ page }) => {
+    const mocks = await openStepB(page);
+    await typeSelect(page).selectOption("patente");
+    await page.getByTestId("activation-submit").click();
+    await expect(page.getByText("Inserisci il numero del documento.")).toBeVisible();
+    await expect(page.getByText("Indica chi ha rilasciato il documento.")).toBeVisible();
+    await expect(page.getByText("Inserisci la data di scadenza.")).toBeVisible();
+    await expect(page.getByTestId("doc-number")).toBeFocused();
+    await expect(page.getByTestId("document-section")).toBeInViewport();
+    expect(mocks.complete).toHaveLength(0);
+
+    // Number filled: the next missing field takes the focus on the next attempt.
+    await page.getByTestId("doc-number").fill("U1A234567B");
+    await page.getByTestId("activation-submit").click();
+    await expect(page.getByTestId("doc-issuer")).toBeFocused();
+    await expect(page.getByText("Inserisci il numero del documento.")).toHaveCount(0);
+    expect(mocks.complete).toHaveLength(0);
+
+    await page.getByTestId("doc-issuer").fill("UCO Milano");
+    await page.getByTestId("activation-submit").click();
+    await expect(page.getByTestId("doc-expiry")).toBeFocused();
+    await expect(page.getByText("Inserisci la data di scadenza.")).toBeVisible();
+    expect(mocks.complete).toHaveLength(0);
+  });
+
+  test("an expired document is blocked with 'Il documento è scaduto.'", async ({ page }) => {
+    const mocks = await openStepB(page);
+    await typeSelect(page).selectOption("carta_identita");
+    await fillManual(page, { ...MANUAL_BY_TYPE.carta_identita, expiry: "2020-01-01" });
+    await page.getByTestId("activation-submit").click();
+    await expect(page.getByText("Il documento è scaduto.")).toBeVisible();
+    await expect(page.getByTestId("doc-expiry")).toBeFocused();
+    await expect(page).toHaveURL(/\/attivazione/);
+    expect(mocks.complete).toHaveLength(0);
+
+    // Fixing the date lets the submit through.
+    await page.getByTestId("doc-expiry").fill(futureExpiry());
+    await page.getByTestId("activation-submit").click();
+    await expect(page).toHaveURL(/\/grazie$/);
+  });
+
+  test("an invalid number is blocked with the format message", async ({ page }) => {
+    const mocks = await openStepB(page);
+    await typeSelect(page).selectOption("passaporto");
+    await fillManual(page, { number: "AB1", issuer: "Questura di Roma", expiry: futureExpiry() });
+    await page.getByTestId("activation-submit").click();
+    await expect(page.getByText("Numero non valido: usa da 5 a 20 lettere o cifre.")).toBeVisible();
+    await expect(page.getByTestId("doc-number")).toBeFocused();
+    expect(mocks.complete).toHaveLength(0);
+  });
+
+  test("no horizontal overflow with the manual block open", async ({ page }) => {
+    await openStepB(page);
+    await typeSelect(page).selectOption("carta_identita");
+    await expect(manualBlock(page)).toHaveAttribute("data-state", "open");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
