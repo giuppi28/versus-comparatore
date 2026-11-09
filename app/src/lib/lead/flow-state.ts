@@ -93,7 +93,7 @@ export interface ActivationData {
   ibanHolderFirstName: string;
   ibanHolderLastName: string;
   ibanHolderTaxCode: string;
-  /** Identity document type (mandatory at completion). Number, expiry and issuer are no longer asked or sent; kept so saved sessions still load. */
+  /** Identity document type (mandatory at completion). Number, issuer and expiry are the manual alternative to the photos (SPEC #39); sent only when the photos are incomplete. */
   documentType: DocumentType | null;
   documentNumber: string;
   /** ISO date "YYYY-MM-DD" (value of an <input type="date">), "" = empty. */
@@ -516,6 +516,12 @@ export function toLeadCompleteData(state: FlowState): LeadCompleteData {
 function activationExtras(a: ActivationData): Partial<LeadCompleteData> {
   const iban = trimmed(a.iban);
   const holder = iban !== undefined && a.ibanHolderDifferent;
+  // Manual document data only when the photos are not enough: the server validates their formats
+  // before counting the photos, so stale typed values must never travel with a complete upload.
+  const needed = a.documentType === "passaporto" ? 1 : 2;
+  const photosComplete =
+    a.documentType !== null && a.documents.filter((d) => d.kind !== "bill").length >= needed;
+  const manual = a.documentType !== null && !photosComplete;
   return {
     iban,
     iban_holder_different: iban !== undefined ? a.ibanHolderDifferent : undefined,
@@ -523,6 +529,9 @@ function activationExtras(a: ActivationData): Partial<LeadCompleteData> {
     iban_holder_last_name: holder ? trimmed(a.ibanHolderLastName) : undefined,
     iban_holder_tax_code: holder ? trimmed(a.ibanHolderTaxCode) : undefined,
     document_type: a.documentType ?? undefined,
+    document_number: manual ? trimmed(a.documentNumber) : undefined,
+    document_issuer: manual ? trimmed(a.documentIssuer) : undefined,
+    document_expiry: manual ? trimmed(a.documentExpiry) : undefined,
   };
 }
 

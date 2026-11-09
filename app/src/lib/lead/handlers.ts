@@ -46,7 +46,7 @@ import {
 import {
   checkCompletion,
   checkCompletionReferences,
-  requiredIdDocumentsMissing,
+  resolveIdentityDocument,
   checkPatchActivation,
   italianToday,
 } from "./completion";
@@ -400,9 +400,13 @@ export function createLeadHandlers(deps: LeadHandlerDeps): LeadHandlers {
       const refFields = await checkCompletionReferences(repo, data);
       if (Object.keys(refFields).length > 0) throw validationError(refFields);
 
-      // Identity document files are mandatory (T18.8). Fail closed: a count error is a 500.
-      const missingDoc = requiredIdDocumentsMissing(data.document_type, await repo.countLeadIdDocuments(token));
-      if (missingDoc) throw validationError({ [missingDoc]: "required" });
+      // Identity document: photos OR manual data (SPEC #39). Fail closed: a count error is a 500.
+      const docFields = resolveIdentityDocument(
+        data,
+        await repo.countLeadIdDocuments(token),
+        italianToday(deps.now?.() ?? new Date()),
+      );
+      if (Object.keys(docFields).length > 0) throw validationError(docFields);
 
       // The submit is the explicit callback request (SPEC #28): the text recorded with it is the
       // server constant shown above the button. The strict body schema rejects any client copy.

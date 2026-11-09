@@ -111,4 +111,52 @@ test.describe("admin lead detail: payment, document, distributor", () => {
     await page.getByTestId("confirm-dialog-confirm").click();
     await expect(page).toHaveURL(/\/admin\/leads\?deleted=1$/);
   });
+  // T20.3 (SPEC #39): a lead completed through the manual path (no photos) shows number, issuer and expiry.
+  test("shows the manual document data of a lead without photos", async ({ page, playwright }, testInfo) => {
+    const baseURL = String(testInfo.project.use.baseURL);
+    const surname = `Manu${rand()}`;
+    const ip = `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+    const ctx = await playwright.request.newContext({
+      baseURL,
+      extraHTTPHeaders: { Origin: baseURL, "x-forwarded-for": ip },
+    });
+    const created = await ctx.post("/api/lead", {
+      data: { data: page1Data({ first_name: "Livia", last_name: surname }) },
+    });
+    expect(created.status(), await created.text()).toBeLessThan(300);
+    const patched = await ctx.patch("/api/lead", {
+      data: {
+        data: {
+          document_type: "passaporto",
+          document_number: "YB1234567",
+          document_expiry: "2033-03-09",
+          document_issuer: "Questura di Milano",
+        },
+      },
+    });
+    expect(patched.status(), await patched.text()).toBeLessThan(300);
+    await ctx.dispose();
+
+    await login(page);
+    await page.goto(`/admin/leads?tab=tutti&q=${surname}`);
+    await page
+      .locator('[data-testid="lead-item"]:visible')
+      .first()
+      .getByRole("link", { name: new RegExp(surname) })
+      .click();
+    await expect(page).toHaveURL(/\/admin\/leads\/[^/?]+$/);
+
+    const doc = page.getByTestId("group-documento");
+    await expect(doc).toContainText("Passaporto");
+    await expect(doc).toContainText("YB1234567");
+    await expect(doc).toContainText("09/03/2033");
+    await expect(doc).toContainText("Questura di Milano");
+    await expect(page.getByTestId("lead-document")).toHaveCount(0);
+    await expect(doc).toContainText("Nessun file caricato");
+
+    // Cleanup (own lead).
+    await page.getByTestId("lead-delete").click();
+    await page.getByTestId("confirm-dialog-confirm").click();
+    await expect(page).toHaveURL(/\/admin\/leads\?deleted=1$/);
+  });
 });

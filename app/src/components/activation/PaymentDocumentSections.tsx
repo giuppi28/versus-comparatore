@@ -191,8 +191,9 @@ function uploadedSummary(type: DocumentType): string {
 
 /**
  * "Documento d'identità" (mandatory): the type first, then one upload per required side (front and
- * back, or the passport photo page). When every required side is there the section collapses into
- * one big "Documento caricato" state; "Modifica" reopens it with the per-side checks.
+ * back, or the passport photo page) or, alternatively, the manual number/issuer/expiry. When every
+ * required side is there the manual block hides and the section collapses into one big "Documento
+ * caricato" state (photo path only); "Modifica" reopens it with the per-side checks.
  */
 export function DocumentFields({
   state,
@@ -257,6 +258,7 @@ export function DocumentFields({
       const prepared = await prepareDocumentFile(file);
       const doc = await uploadLeadDocument(prepared);
       edited("id_document");
+      for (const f of MANUAL_FIELDS) edited(f);
       update((s) => addDocumentPatch(s, { ...doc, name: prepared.name }, side));
       setFreshDocId(doc.id);
     } catch (err) {
@@ -421,6 +423,16 @@ export function DocumentFields({
               <p id={hintId} className="text-sm text-ink-muted">
                 Foto (JPG, PNG, HEIC) o PDF, max 4 MB; le foto vengono ridotte in automatico.
               </p>
+              <ManualDocumentBlock
+                type={type}
+                // Hidden (kept mounted, so what was typed survives) once every required side is uploaded.
+                visible={!complete}
+                state={state}
+                update={update}
+                errorFor={errorFor}
+                touch={touch}
+                edited={edited}
+              />
               {documentError && (
                 <p
                   id={missingId}
@@ -455,6 +467,106 @@ export function DocumentFields({
 }
 
 const COLLAPSE_DELAY_MS = 800;
+
+const MANUAL_FIELDS = ["document_number", "document_issuer", "document_expiry"] as const;
+
+/** Type-specific hint for "Rilasciato da" (the issuing body differs per document). */
+const ISSUER_HINTS: Record<DocumentType, string> = {
+  carta_identita: "Comune che l'ha rilasciata",
+  patente: "Motorizzazione, UCO o Prefettura",
+  passaporto: "Questura",
+};
+
+/**
+ * Manual alternative to the photos (SPEC #39): number, issuer, expiry. It collapses (grid rows
+ * 1fr to 0fr, instant under reduced motion) once the photos are complete and comes back when a
+ * side is removed. `invisible` flips at the end of the hide, so hidden fields are neither
+ * focusable nor read by screen readers.
+ */
+function ManualDocumentBlock({
+  type,
+  visible,
+  state,
+  update,
+  errorFor,
+  touch,
+  edited,
+}: SectionProps & { type: DocumentType; visible: boolean }) {
+  const a = state.activation;
+  return (
+    <div
+      data-testid="doc-manual-block"
+      data-state={visible ? "open" : "closed"}
+      aria-hidden={visible ? undefined : true}
+      className={cn(
+        "grid transition-[grid-template-rows,opacity,visibility] duration-300 ease-out motion-reduce:transition-none",
+        visible ? "grid-rows-[1fr] opacity-100" : "invisible mt-0! grid-rows-[0fr] opacity-0",
+      )}
+    >
+      {/* Horizontal padding offset by an equal negative margin: focus rings are not clipped and the fields stay flush with the slots. */}
+      <div className="-mx-1 min-h-0 overflow-hidden px-1">
+        <div className="space-y-4 pb-1">
+          <p className="text-sm text-ink-muted">
+            Non hai le foto? Inserisci i dati del documento. Se carichi le foto, i dati non servono.
+          </p>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Input
+              label="Numero documento"
+              name="document_number"
+              data-testid="doc-number"
+              required
+              autoCapitalize="characters"
+              // Identity data: never remembered by the browser.
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={24}
+              value={a.documentNumber}
+              error={errorFor("document_number")}
+              onChange={(e) => {
+                edited("document_number");
+                update({ activation: { documentNumber: e.target.value.toUpperCase() } });
+              }}
+              onBlur={() => touch("document_number")}
+            />
+            <Input
+              label="Rilasciato da"
+              name="document_issuer"
+              data-testid="doc-issuer"
+              required
+              hint={ISSUER_HINTS[type]}
+              autoComplete="off"
+              maxLength={80}
+              value={a.documentIssuer}
+              error={errorFor("document_issuer")}
+              onChange={(e) => {
+                edited("document_issuer");
+                update({ activation: { documentIssuer: e.target.value } });
+              }}
+              onBlur={() => touch("document_issuer")}
+            />
+          </div>
+          <Input
+            label="Data di scadenza"
+            name="document_expiry"
+            data-testid="doc-expiry"
+            type="date"
+            required
+            max="2100-12-31"
+            autoComplete="off"
+            className="sm:max-w-xs"
+            value={a.documentExpiry}
+            error={errorFor("document_expiry")}
+            onChange={(e) => {
+              edited("document_expiry");
+              update({ activation: { documentExpiry: e.target.value } });
+            }}
+            onBlur={() => touch("document_expiry")}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type SideMessage = { side: DocumentSide; message: string };
 

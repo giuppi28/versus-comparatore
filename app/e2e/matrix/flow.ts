@@ -25,6 +25,7 @@ import { needsCurrentSupplier, needsMeterCode } from "../../src/lib/lead/rules";
 import {
   COMMODITY_LABELS,
   CUSTOMER_TYPE_LABELS,
+  DOCUMENT_TYPE_LABELS,
   HOUSING_TITLE_LABELS,
   SERVICE_TYPE_LABELS,
   applianceLabel,
@@ -501,10 +502,24 @@ export async function fillActivation(
   }
   await expect(page.getByText(/Codice (POD|PDR) \(facoltativo\)/)).toHaveCount(expectedOptional);
 
-  // ---- Identity document: mandatory (T18.8). Real uploads through the UI, so the server count passes; the type varies per case. ----
+  // ---- Identity document: mandatory (T18.8, SPEC #39). The type rotates by row index (% 3) and the path alternates
+  // photos / manual data (% 2), so every type runs on both paths (period 6). Photos are real uploads through the UI. ----
   const documentType = (["carta_identita", "patente", "passaporto"] as const)[c.index % 3];
-  await uploadRequiredSides(page, documentType);
-  await expect(page.getByTestId("document-collapsed")).toBeVisible();
+  const documentPath = documentPathOf(c);
+  const manualDoc = manualDocumentOf(c);
+  if (documentPath === "photos") {
+    await uploadRequiredSides(page, documentType);
+    await expect(page.getByTestId("document-collapsed")).toBeVisible();
+    await expect(page.getByTestId("doc-manual-block")).toHaveCount(0); // the collapsed state replaces the whole section
+  } else {
+    await field(page, "document_type").selectOption(documentType);
+    await expect(page.getByTestId("doc-manual-block")).toHaveAttribute("data-state", "open");
+    await page.getByTestId("doc-number").fill(manualDoc.number.toLowerCase()); // normalised to upper case
+    await page.getByTestId("doc-issuer").fill(manualDoc.issuer);
+    await page.getByTestId("doc-expiry").fill(manualDoc.expiryIso);
+    await expect(page.getByTestId("doc-number")).toHaveValue(manualDoc.number);
+    await expect(page.getByTestId("document-collapsed")).toHaveCount(0);
+  }
 
   // ---- IBAN: optional, required when a chosen offer needs it (then the submit is blocked until filled) ----
   const ibanNeeded = needsIban(chosen);
@@ -526,6 +541,32 @@ export async function fillActivation(
   expect(response.status(), `POST /api/lead/complete: ${await response.text()}`).toBe(200);
   await expect(page).toHaveURL(/\/grazie$/);
   return { filledOptionalMeter: fillMeter, cap, ibanFilled: ibanNeeded };
+}
+
+/** Photos on even rows, manual data on odd rows; with `index % 3` for the type all six combinations run. */
+export function documentPathOf(c: MatrixCase): "photos" | "manual" {
+  return c.index % 2 === 0 ? "photos" : "manual";
+}
+
+const DOCUMENT_TYPES = ["carta_identita", "patente", "passaporto"] as const;
+const DOCUMENT_ISSUERS = {
+  carta_identita: "Comune di Roma",
+  patente: "Motorizzazione Civile di Napoli",
+  passaporto: "Questura di Milano",
+} as const;
+
+/** Manual document data of a case: the number is unique per row, the expiry is always 5 years ahead (never "past"). */
+export function manualDocumentOf(c: MatrixCase) {
+  const type = DOCUMENT_TYPES[c.index % 3];
+  const year = new Date().getFullYear() + 5;
+  const day = String((c.index % 28) + 1).padStart(2, "0");
+  return {
+    type,
+    number: `QA${String(c.index).padStart(5, "0")}X`,
+    issuer: DOCUMENT_ISSUERS[type],
+    expiryIso: `${year}-06-${day}`,
+    expiryShown: `${day}/06/${year}`,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -648,6 +689,15 @@ export function expectCompletedLead(
   same(f["Tensione"], d.luce ? `${c.voltage} V` : null, "Tensione");
   same(f["PDR"], pdrStored, "PDR");
   same(f["Privacy"], "Sì", "Privacy");
+
+  // Identity document (admin "Documento d'identità"): the type always; number, issuer and expiry only on the manual path
+  // (with the required photos uploaded the manual values are dropped, SPEC #39).
+  const manualDoc = manualDocumentOf(c);
+  same(f["Tipo"], DOCUMENT_TYPE_LABELS[manualDoc.type], "Tipo documento");
+  const manual = documentPathOf(c) === "manual";
+  same(f["Numero"], manual ? manualDoc.number : null, "Numero documento");
+  same(f["Ente di rilascio"], manual ? manualDoc.issuer : null, "Ente di rilascio");
+  same(f["Scadenza"], manual ? manualDoc.expiryShown : null, "Scadenza documento");
 }
 
 // ---------------------------------------------------------------------------

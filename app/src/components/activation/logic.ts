@@ -21,6 +21,7 @@ import {
   needsMeterCode,
   POWER_KW_OPTIONS,
 } from "@/lib/lead/rules";
+import { validateDocumentNumber, validateIsoDate } from "@/lib/lead/schemas";
 import { podDistributorComuneWarning } from "@/lib/logic/distributors";
 import {
   CODICE_FISCALE_MESSAGES,
@@ -91,6 +92,16 @@ const VALIDATOR_MESSAGES: Record<string, Record<string, string>> = {
   pdr: PDR_MESSAGES,
   iban: IBAN_MESSAGES,
   iban_holder_tax_code: CODICE_FISCALE_MESSAGES,
+  document_number: {
+    empty: "Inserisci il numero del documento.",
+    format: "Numero non valido: usa da 5 a 20 lettere o cifre.",
+  },
+  document_issuer: { invalid: "Indica l'ente che ha rilasciato il documento (da 2 a 80 caratteri)." },
+  document_expiry: {
+    empty: "Inserisci la data di scadenza.",
+    invalid: "Data non valida.",
+    past: "Il documento è scaduto.",
+  },
 };
 
 const FIELD_REQUIRED_MESSAGES: Record<string, string> = {
@@ -117,7 +128,10 @@ const FIELD_REQUIRED_MESSAGES: Record<string, string> = {
   iban_holder_tax_code: CODICE_FISCALE_MESSAGES.empty,
   document_type: "Seleziona il tipo di documento.",
   // Server code "required" carries no detail: the generic wording covers both document types.
-  id_document: "Carica le foto del documento d'identità: tutti i lati richiesti.",
+  id_document: "Carica le foto del documento oppure inserisci i dati del documento.",
+  document_number: "Inserisci il numero del documento.",
+  document_issuer: "Indica chi ha rilasciato il documento.",
+  document_expiry: "Inserisci la data di scadenza.",
 };
 
 /** Sides of the identity document the customer must upload for each type (front only for the passport). */
@@ -175,6 +189,9 @@ const FORM_FIELDS = new Set([
   "iban_holder_tax_code",
   "document_type",
   "id_document",
+  "document_number",
+  "document_issuer",
+  "document_expiry",
 ]);
 
 /**
@@ -373,11 +390,49 @@ export function validatePaymentAndDocument(state: FlowState): FieldErrors {
   if (a.documentType === null) {
     errors.document_type = FIELD_REQUIRED_MESSAGES.document_type;
   } else {
-    const slots = assignDocumentSlots(a.documents);
-    if (requiredDocumentSides(a.documentType).some((side) => slots[side] === null)) {
-      errors.id_document = missingDocumentMessage(a.documentType);
+    // Photos OR manual data (SPEC #39): with every required side uploaded the manual values are ignored.
+    if (!documentPhotosComplete(a.documentType, a.documents)) {
+      Object.assign(errors, validateManualDocument(a));
     }
   }
+  return errors;
+}
+
+/** True when every side the document type needs is uploaded. */
+export function documentPhotosComplete(
+  type: DocumentType | null,
+  documents: readonly FlowUploadedDocument[],
+): boolean {
+  if (type === null) return false;
+  const slots = assignDocumentSlots(documents);
+  return requiredDocumentSides(type).every((side) => slots[side] !== null);
+}
+
+/** Today in Italy as "YYYY-MM-DD" (same clock as the server's expiry check). */
+function italianTodayIso(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Rome",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+/** Manual document data (number, issuer, expiry), mirroring the server rules. */
+export function validateManualDocument(a: FlowState["activation"]): FieldErrors {
+  const errors: FieldErrors = {};
+  const number = validateDocumentNumber(a.documentNumber);
+  if (!number.ok) {
+    errors.document_number = VALIDATOR_MESSAGES.document_number[number.error];
+  }
+  const issuer = a.documentIssuer.trim();
+  if (issuer === "") errors.document_issuer = FIELD_REQUIRED_MESSAGES.document_issuer;
+  else if (issuer.length < 2 || issuer.length > 80) {
+    errors.document_issuer = VALIDATOR_MESSAGES.document_issuer.invalid;
+  }
+  const expiry = validateIsoDate(a.documentExpiry);
+  if (!expiry.ok) errors.document_expiry = VALIDATOR_MESSAGES.document_expiry[expiry.error];
+  else if (expiry.value < italianTodayIso()) errors.document_expiry = VALIDATOR_MESSAGES.document_expiry.past;
   return errors;
 }
 

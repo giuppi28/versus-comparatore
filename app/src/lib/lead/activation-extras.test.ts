@@ -116,34 +116,11 @@ describe("identity document data (complete)", () => {
     expect(r.data).toMatchObject({ ...DOC, document_number: "CA12345AB" });
   });
 
-  it("none given → all null", () => {
-    const r = complete({ document_type: null, document_number: "  " });
+  it("document values pass through; the photos-or-manual rule runs in resolveIdentityDocument", () => {
+    const r = complete({ document_type: "patente", document_expiry: "2020-01-01" });
     expect(r.fields).toEqual({});
-    expect(r.data).toMatchObject({
-      document_type: null,
-      document_number: null,
-      document_expiry: null,
-      document_issuer: null,
-    });
+    expect(r.data).toMatchObject({ document_type: "patente", document_expiry: "2020-01-01" });
   });
-
-  it("independent: one field only is fine, the others become null", () => {
-    const r = complete({ document_type: "patente" });
-    expect(r.fields).toEqual({});
-    expect(r.data).toMatchObject({
-      document_type: "patente",
-      document_number: null,
-      document_expiry: null,
-      document_issuer: null,
-    });
-    expect(complete({ document_expiry: "2020-01-01" }).fields).toEqual({ document_expiry: "past" });
-  });
-
-  it("expiry today is fine, yesterday is past", () => {
-    expect(complete({ ...DOC, document_expiry: TODAY }).fields).toEqual({});
-    expect(complete({ ...DOC, document_expiry: "2026-10-14" }).fields).toEqual({ document_expiry: "past" });
-  });
-
   it.each([
     [{ document_type: "tessera" }, "document_type", "invalid"],
     [{ document_number: "AB12" }, "document_number", "format"],
@@ -246,8 +223,9 @@ describe("handlers (mock repository)", () => {
     return `${LEAD_COOKIE}=${token}; ${LEAD_STEP_COOKIE}=page1`;
   }
 
-  it("complete stores IBAN, different holder and document data", async () => {
+  it("complete stores IBAN, different holder and manual document data (no photos)", async () => {
     const c = await cookie();
+    repo.countLeadIdDocuments = async () => 0;
     const res = await handlers.complete(
       json(
         "POST",
@@ -405,9 +383,24 @@ describe("flow state (activation extras)", () => {
       iban_holder_tax_code: HOLDER_CF,
       document_type: "patente",
     });
-    // Number, expiry and issuer are no longer asked: never sent, even from an older saved session.
-    expect(full).not.toHaveProperty("document_number");
-    expect(full).not.toHaveProperty("document_expiry");
-    expect(full).not.toHaveProperty("document_issuer");
+    // No photos: the manual data travels (SPEC #39).
+    expect(full).toMatchObject({ document_number: "U1A123456B", document_expiry: "2031-01-01", document_issuer: "MCTC" });
+    // Both sides uploaded: typed manual values are never sent.
+    const doc = (id: string, side: "front" | "back") => ({ id, kind: "id_document", mime_type: "image/jpeg", size_bytes: 1, name: id, side });
+    const withPhotos = toLeadCompleteData(
+      applyFlowPatch(base, {
+        activation: {
+          documentType: "patente",
+          documentNumber: "U1A123456B",
+          documentExpiry: "2031-01-01",
+          documentIssuer: "MCTC",
+          documents: [doc("f", "front"), doc("b", "back")] as never,
+        },
+      }),
+    );
+    expect(withPhotos).toMatchObject({ document_type: "patente" });
+    expect(withPhotos).not.toHaveProperty("document_number");
+    expect(withPhotos).not.toHaveProperty("document_expiry");
+    expect(withPhotos).not.toHaveProperty("document_issuer");
   });
 });
