@@ -377,6 +377,25 @@ describe("POST /api/lead/complete", () => {
     expect(ok.status).toBe(200);
   });
 
+  it("completes with manual document data and stores it; refuses incomplete or expired manual data", async () => {
+    const cookie = await createAndGetCookie();
+    repo.countLeadIdDocuments = async () => 0;
+    const partial = await complete(completeData({ document_type: "patente", document_number: "AB12345" }), cookie);
+    expect(partial.status).toBe(422);
+    expect((await partial.json()).fields).toEqual({ document_issuer: "required", document_expiry: "required" });
+    const expired = await complete(
+      completeData({ document_type: "patente", document_number: "AB12345", document_issuer: "UCO", document_expiry: "2020-01-01" }),
+      cookie,
+    );
+    expect((await expired.json()).fields).toEqual({ document_expiry: "past" });
+    const ok = await complete(
+      completeData({ document_type: "patente", document_number: "ab 12345", document_issuer: "UCO", document_expiry: "2030-01-01" }),
+      cookie,
+    );
+    expect(ok.status).toBe(200);
+    expect(await onlyLead()).toMatchObject({ document_number: "AB12345", document_issuer: "UCO", document_expiry: "2030-01-01" });
+  });
+
   it("refuses completion without a document type (fields.document_type)", async () => {
     const cookie = await createAndGetCookie();
     const res = await complete(completeData({ document_type: null }), cookie);

@@ -38,8 +38,6 @@ const IBAN_HOLDER_FIELDS = [
   "iban_holder_tax_code",
 ] as const;
 
-const DOCUMENT_FIELDS = ["document_type", "document_number", "document_expiry", "document_issuer"] as const;
-
 /**
  * PATCH /api/lead: light consistency on a partial update (formats already checked by the
  * schema). Clearing the IBAN or unticking "intestatario diverso" also clears the holder
@@ -70,7 +68,6 @@ function checkActivationExtras(
   input: ParsedCompleteData,
   data: LeadData,
   fields: FieldErrors,
-  today: string,
 ) {
   // IBAN: optional. The holder fields only mean something with an IBAN and the box ticked.
   if (isBlank(input.iban)) {
@@ -94,18 +91,15 @@ function checkActivationExtras(
     for (const k of IBAN_HOLDER_FIELDS) data[k] = null;
   }
 
-  // Identity document data: each field optional and independent; blank → null.
-  for (const k of DOCUMENT_FIELDS) {
-    if (isBlank(input[k])) data[k] = null;
-  }
-  if (input.document_expiry && input.document_expiry < today) fields.document_expiry ??= "past";
+  // Identity document: resolved by resolveIdentityDocument() once the uploaded count is known.
 }
 
 /**
  * Synchronous rules: required fields per flow, CF ↔ name consistency, hidden fields
- * cleared, optional IBAN / document rules. `today` = italianToday() by default.
+ * cleared, optional IBAN rules. `_today` is unused (document rules: resolveIdentityDocument).
  */
-export function checkCompletion(input: ParsedCompleteData, today: string = italianToday()): CompletionCheck {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function checkCompletion(input: ParsedCompleteData, _today: string = italianToday()): CompletionCheck {
   const fields: FieldErrors = {};
   const data: LeadData = { ...input };
   const require = (key: keyof ParsedCompleteData) => {
@@ -178,7 +172,7 @@ export function checkCompletion(input: ParsedCompleteData, today: string = itali
     Object.assign(data, { chosen_offer_gas: null, current_supplier_gas: null, pdr: null });
   }
 
-  checkActivationExtras(input, data, fields, today);
+  checkActivationExtras(input, data, fields);
 
   return { fields, data };
 }
@@ -219,15 +213,48 @@ export async function checkCompletionReferences(
 }
 
 /**
- * Identity document is mandatory (T18.8): passport = 1 uploaded file, carta d'identità and
- * patente = 2 (front and back). The server stores no side, so files are only counted.
- * Returns the field the UI maps the error to, or null when the requirement is met.
+ * Identity document is mandatory (SPEC #39): the type is required, then EITHER enough uploaded
+ * files (passport = 1, carta d'identità / patente = 2; the server stores no side, files are only
+ * counted) OR manual number + issuer + expiry (formats already checked by the schema, expiry
+ * not in the past). With the photo path satisfied the manual values are dropped (stored null).
+ * Writes the normalised values into `data` and returns the 422 field errors:
+ * - `document_type` required: no type;
+ * - manual path attempted (at least one manual field sent): `document_number` /
+ *   `document_issuer` / `document_expiry` = "required" (missing) or "past" (expiry);
+ * - nothing attempted (photos not enough and no manual field): `id_document` = "required".
  */
-export function requiredIdDocumentsMissing(
-  type: DocumentType | null | undefined,
+export function resolveIdentityDocument(
+  data: LeadData,
   uploadedCount: number,
-): "document_type" | "id_document" | null {
-  if (!type) return "document_type";
+  today: string,
+): FieldErrors {
+  const type: DocumentType | null | undefined = data.document_type;
+  if (!type) return { document_type: "required" };
   const needed = type === "passaporto" ? 1 : 2;
-  return uploadedCount >= needed ? null : "id_document";
+  if (uploadedCount >= needed) {
+    data.document_number = null;
+    data.document_issuer = null;
+    data.document_expiry = null;
+    return {};
+  }
+  const issuer = typeof data.document_issuer === "string" ? data.document_issuer.trim() : "";
+  const manual = {
+    document_number: !isBlank(data.document_number),
+    document_issuer: issuer !== "",
+    document_expiry: !isBlank(data.document_expiry),
+  };
+  data.document_issuer = issuer === "" ? null : issuer;
+  if (!manual.document_number) data.document_number = null;
+  if (!manual.document_expiry) data.document_expiry = null;
+  if (!manual.document_number && !manual.document_issuer && !manual.document_expiry) {
+    return { id_document: "required" };
+  }
+  const fields: FieldErrors = {};
+  for (const k of ["document_number", "document_issuer", "document_expiry"] as const) {
+    if (!manual[k]) fields[k] = "required";
+  }
+  if (manual.document_expiry && data.document_expiry && data.document_expiry < today) {
+    fields.document_expiry = "past";
+  }
+  return fields;
 }
