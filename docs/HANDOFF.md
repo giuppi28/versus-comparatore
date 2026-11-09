@@ -1,9 +1,11 @@
 # HANDOFF — VERSUS
-Updated: 2026-11-07 · Phases 18 + 19 LIVE (PR #10, merge 07c7c0a on `main`) · Branch: dev · Last commit: see `git log -1`
+Updated: 2026-11-09 · Phase 20 complete on `dev` (not pushed) · Phases 18 + 19 LIVE (PR #10, merge 07c7c0a on `main`) · Branch: dev · Last commit: see `git log -1`
 
 Single handoff since the 2026-10-24 adoption into the build-orchestrator workflow. Older handoffs (root `HANDOFF_VERSUS_*.md`) are history.
 
 ## Next step
+**2026-11-09 (latest) — RESUME HERE: Phase 20 complete on `dev`, waiting for Giuseppe's browser check and push.** Phase-end run at 5af39c6: typecheck ✓ lint ✓ Vitest 1406 ✓ build (supabase) + bundle guard ✓ full e2e 514 passed / 2 skipped ✓ (desktop + mobile); matrix 427 + 8 ✓ at 901d4de (no app code since). Reviews: critical T20.1 and reviewer T20.2 → no high/medium (lows in Later). No migration (existing `document_*` columns, `complete_lead` already accepts them). Giuseppe: check step B in the browser at 1440/390 (each type via photos and via manual data, remove a side → manual block back, expired date) and the `/privacy` sentence; then push `dev` and merge to `main` when happy. Delete the live `TEST Verifica` lead if not done. No next phase specified.
+
 **2026-11-09 — T20.1 done (9e7044f):** `resolveIdentityDocument` in `completion.ts`; 422 `document_type` > photos ok (manual stored null) > `id_document` (no manual field sent) > `document_number`/`document_issuer`/`document_expiry` `required`, expiry `past`; schema checks manual format before photo count, so the UI must not send manual values when photos are complete. Next: T20.2.
 
 **2026-11-09 — T20.2 done (e4f66f6):** `ManualDocumentBlock` in `PaymentDocumentSections.tsx` (stays mounted, grid-rows/opacity hide, instant under reduced motion); payload omits manual values when photos complete (`flow-state.ts`); test ids `doc-manual-block` (`data-state=open|closed`), `doc-number`, `doc-issuer`, `doc-expiry`; `/privacy` + FEATURES updated. Next: T20.3.
