@@ -280,6 +280,16 @@ detect these with the publishable key, so the admin page shows them as informati
 
 ---
 
+## IndexNow (Bing and engines sharing its feed)
+
+`public/<key>.txt` holds the IndexNow key (32 hex chars, public by design) and is served at
+`https://versuscomparatorelucegas.it/<key>.txt`. `npm run indexnow` (from `app/`) is a dry run: it checks
+the key file is live, reads the production sitemap and lists the URLs. `npm run indexnow -- --submit` sends
+them to api.indexnow.org; run it only after a merge to `main` that changes indexable pages. The same key
+can be entered in Bing Webmaster Tools.
+
+---
+
 ## 12. Compatibility notes (Vercel)
 
 - Runtime: all routes run as Node.js Vercel Functions (no Edge-runtime routes). `src/proxy.ts`
