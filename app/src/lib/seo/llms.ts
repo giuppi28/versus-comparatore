@@ -1,7 +1,7 @@
 import { COMPANY } from "@/lib/legal/company";
 import { ALL_SEO_PAGES } from "./pages";
 
-export const LLMS_LAST_UPDATE = "2026-11-07";
+export const LLMS_LAST_UPDATE = "2026-11-09";
 
 /** Pure builder of /llms.txt. `suppliers` = real suppliers with at least one active offer (null = unavailable: section omitted). */
 export function buildLlmsTxt(siteUrl: string, suppliers: string[] | null): string {
@@ -43,9 +43,12 @@ export function buildLlmsTxt(siteUrl: string, suppliers: string[] | null): strin
     `- Email: ${COMPANY.email}`,
     "",
     "## Pagine principali",
-    `- [Home: confronto offerte luce e gas](${siteUrl}/)`,
+    `- [Home: comparatore luce e gas](${siteUrl}/)`,
     ...ALL_SEO_PAGES.map((p) => `- [${p.h1}](${siteUrl}${p.path})`),
     `- [Informativa sulla privacy](${siteUrl}/privacy)`,
+    "",
+    "## Versione estesa",
+    `- [llms-full.txt](${siteUrl}/llms-full.txt)`,
     "",
   );
   return lines.join("\n");

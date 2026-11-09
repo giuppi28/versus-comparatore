@@ -10,12 +10,12 @@ import { loadHomeModifiedDay } from "@/lib/seo/home-modified";
 import { buildJsonLd, serializeJsonLd } from "@/lib/seo/jsonld";
 import { SITE_URL } from "@/lib/seo/site";
 
-const TITLE = "Offerte luce e gas: comparatore gratuito | VERSUS";
+const TITLE = "Comparatore luce e gas: confronta le offerte gratis | VERSUS";
 // Page-level openGraph/twitter replace the layout's, so the file-convention image is referenced explicitly.
 const OG_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: "VERSUS — comparatore luce e gas" };
 
 const DESCRIPTION =
-  "Confronta gratis le offerte luce e gas per casa e partita IVA: rispondi a poche domande, scegli l'offerta e attivala online.";
+  "Comparatore luce e gas gratuito per casa e partita IVA: rispondi a poche domande, confronta le offerte e attiva online quella che scegli.";
 
 export const metadata: Metadata = {
   title: TITLE,
