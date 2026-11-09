@@ -1,6 +1,7 @@
 import type { OffersSeoPage, SeoPage } from "@/content/seo/types";
 import type { OfferWithSupplier } from "@/lib/data/types";
 import { formatVariablePrice } from "@/lib/logic/pricing";
+import { BRAND_ALTERNATE_NAMES } from "./jsonld";
 
 type Node = Record<string, unknown>;
 
@@ -8,10 +9,10 @@ const orgId = (siteUrl: string) => `${siteUrl}/#organization`;
 
 /** Minimal inline nodes: the full Organization/WebSite live on the home graph only, so a page graph must be self-contained. */
 function organizationNode(siteUrl: string): Node {
-  return { "@type": "Organization", "@id": orgId(siteUrl), name: "VERSUS", url: siteUrl };
+  return { "@type": "Organization", "@id": orgId(siteUrl), name: "VERSUS", alternateName: BRAND_ALTERNATE_NAMES, url: siteUrl };
 }
 function websiteNode(siteUrl: string): Node {
-  return { "@type": "WebSite", "@id": `${siteUrl}/#website`, name: "VERSUS", url: siteUrl };
+  return { "@type": "WebSite", "@id": `${siteUrl}/#website`, name: "VERSUS", alternateName: BRAND_ALTERNATE_NAMES, url: siteUrl };
 }
 
 export function buildBreadcrumb(page: SeoPage, siteUrl: string): Node {

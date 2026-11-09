@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FAQ } from "@/components/page1/faq";
 import { buildJsonLd, serializeJsonLd } from "./jsonld";
@@ -35,11 +37,31 @@ describe("buildJsonLd", () => {
   it("has the organization address and no telephone, sameAs, offers or ratings", () => {
     const org = graph[0] as { address: Record<string, string>; logo: string };
     expect(org.address.streetAddress).toBe("Via Umberto 326 B");
-    expect(org.logo).toBe(`${URL}/brand/versus_icona.svg`);
     const text = JSON.stringify(graph);
     for (const key of ["telephone", "sameAs", "offers", "aggregateRating", "review", "potentialAction"]) {
       expect(text).not.toContain(`"${key}"`);
     }
+  });
+
+  it("has alternateName on Organization and WebSite, WebSite name stays VERSUS", () => {
+    const alt = ["VERSUS comparatore luce e gas", "Versus Comparatore", "VERSUS luce e gas"];
+    const [org, site] = graph as { name: string; alternateName: string[] }[];
+    expect(org.alternateName).toEqual(alt);
+    expect(site.alternateName).toEqual(alt);
+    expect(org.name).toBe("VERSUS");
+    expect(site.name).toBe("VERSUS");
+  });
+
+  it("logo is a PNG ImageObject whose file exists with the declared size", () => {
+    const logo = (graph[0] as { logo: { "@type": string; url: string; width: number; height: number } }).logo;
+    expect(logo["@type"]).toBe("ImageObject");
+    expect(logo.url).toBe(`${URL}/brand/versus_icona.png`);
+    expect(logo.width).toBeGreaterThanOrEqual(112);
+    expect(logo.height).toBeGreaterThanOrEqual(112);
+    const png = readFileSync(join(process.cwd(), "public", new globalThis.URL(logo.url).pathname));
+    expect(png.subarray(1, 4).toString()).toBe("PNG");
+    expect(png.readUInt32BE(16)).toBe(logo.width);
+    expect(png.readUInt32BE(20)).toBe(logo.height);
   });
 
   it("serializes without a literal <", () => {

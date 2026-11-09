@@ -6,8 +6,9 @@ import { serializeJsonLd } from "./jsonld";
 import { buildGuideJsonLd, buildOfferNode, buildOffersJsonLd } from "./pages-jsonld";
 
 const URL = "https://versuscomparatorelucegas.it";
-const ORG = { "@type": "Organization", "@id": `${URL}/#organization`, name: "VERSUS", url: URL };
-const SITE = { "@type": "WebSite", "@id": `${URL}/#website`, name: "VERSUS", url: URL };
+const ALT = ["VERSUS comparatore luce e gas", "Versus Comparatore", "VERSUS luce e gas"];
+const ORG = { "@type": "Organization", "@id": `${URL}/#organization`, name: "VERSUS", alternateName: ALT, url: URL };
+const SITE = { "@type": "WebSite", "@id": `${URL}/#website`, name: "VERSUS", alternateName: ALT, url: URL };
 
 const base = {
   id: "o1",

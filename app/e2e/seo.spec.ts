@@ -23,6 +23,11 @@ test.describe("SEO (raw HTML)", () => {
     const types = data["@graph"].map((n: { "@type": string }) => n["@type"]);
     expect(types).toEqual(["Organization", "WebSite", "Service", "FAQPage"]);
     expect(m![1]).not.toContain("telephone");
+    const org = data["@graph"][0];
+    expect(org.logo.url).toMatch(/\/brand\/versus_icona\.png$/);
+    const logo = await request.get(new URL(org.logo.url).pathname);
+    expect(logo.status()).toBe(200);
+    expect(logo.headers()["content-type"]).toMatch(/image\/png/);
   });
 
   test("favicon, icon.svg and apple-icon are served and linked", async ({ request }) => {
