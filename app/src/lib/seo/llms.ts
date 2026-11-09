@@ -8,7 +8,7 @@ export function buildLlmsTxt(siteUrl: string, suppliers: string[] | null): strin
   const lines: string[] = [
     "# VERSUS — comparatore luce e gas",
     "",
-    "> VERSUS è un comparatore online gratuito di offerte luce e gas per casa e partita IVA: si risponde a poche domande, si sceglie l'offerta e la si attiva online.",
+    "> VERSUS è un comparatore luce e gas online e gratuito per casa e partita IVA: si risponde a poche domande, si sceglie l'offerta e la si attiva online.",
     "",
     `Ultimo aggiornamento: ${LLMS_LAST_UPDATE}`,
     "",

@@ -24,7 +24,7 @@ export interface SeoPage {
   /** meta description, max 155 characters */
   description: string;
   h1: string;
-  /** answer-first: direct answer to the page's main question, max 60 words */
+  /** answer-first: the direct answer to the page's main question comes first; one closing brand sentence is allowed (about 95 words max in total) */
   intro: string;
   sections: SeoSection[];
   /** 4 to 6 items */

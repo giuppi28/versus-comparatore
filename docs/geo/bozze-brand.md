@@ -1,5 +1,7 @@
 # Brand words in visible copy — drafts for approval (T21.2)
 
+**Status 2026-11-09: Giuseppe approved items 1 (home explainer) and 2 (six guide intros), built the same day on `dev`. Item 3 (guide title suffix) rejected: titles stay as they are.** The text below is the proposal as written before the decision.
+
 Proposal only. Nothing in `app/` is changed. Each item below is a before/after pair for Giuseppe to approve or reject on its own. Written 2026-11-09. Facts used: only the ✅ rows of `docs/geo/canonical-facts.md` (free comparison, casa and partita IVA, a few questions, estimate of the monthly cost excluding IVA, online activation, offers of the suppliers VERSUS works with, not the whole market). No savings claims, no ratings, no phone wording, no names, none of the six logo-only brands.
 
 ## Recommendation (read this first)
