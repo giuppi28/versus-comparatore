@@ -5,6 +5,7 @@ const COVERAGE =
 const AGENT = "VERSUS opera come agente ed è remunerato dai venditori.";
 const REVIEWED = "2026-11-07";
 const REVIEWED_NEW = "2026-11-07";
+const REVIEWED_COMPARATORE = "2026-11-09";
 
 const A = "https://www.arera.it/atlante-per-il-consumatore";
 
@@ -754,5 +755,113 @@ export const GUIDE_PAGES: SeoPage[] = [
     related: ["/guida/come-scegliere-offerta-luce-gas", "/guida/cambio-fornitore-luce-gas", "/guida/voltura-luce-gas", "/guida/primo-allaccio-luce-gas"],
     publishedOn: "2026-11-07",
     reviewedOn: REVIEWED_NEW,
+  },
+
+  // ---------------------------------------------------------------------
+  {
+    path: "/guida/come-funziona-comparatore-luce-gas",
+    footerLabel: "Come funziona un comparatore",
+    title: "Come funziona un comparatore luce e gas | VERSUS",
+    description:
+      "Come funziona un comparatore luce e gas: dati richiesti, Portale Offerte di ARERA e controlli da fare prima di scegliere. Guida con fonti ufficiali.",
+    h1: "Come funziona un comparatore luce e gas",
+    intro:
+      "Un comparatore luce e gas raccoglie offerte di più venditori e le mostra in un elenco, con una stima della spesa calcolata sui dati che inserisci, di solito consumi e tipo di cliente. La stima non è la bolletta, e un comparatore può mostrare tutto il mercato o solo una parte: per questo conviene sapere quali venditori include e come ordina i risultati. Su VERSUS, comparatore luce e gas, il confronto è gratuito e le stime sono IVA esclusa.",
+    sections: [
+      {
+        heading: "Che cosa chiede e che cosa mostra",
+        paragraphs: [
+          "Per confrontare servono pochi dati: se vuoi luce, gas o entrambi, se sei una casa o una partita IVA e quanto consumi in un anno. Per la luce trovi in bolletta il consumo in kWh e la potenza impegnata in kW, per il gas il consumo in Smc. Lo storico dei consumi è consultabile anche sul Portale Consumi di ARERA, con SPID o CIE.",
+          "Il risultato è un elenco di offerte con una stima della spesa. È una stima, non una bolletta: il prezzo di un'offerta riguarda l'energia, mentre la bolletta comprende anche trasporto e gestione del contatore, oneri di sistema e imposte, e dipende da quanto consumi davvero.",
+          "Controlla anche su quale base è calcolata la stima. Nel Portale Offerte, per esempio, le FAQ spiegano che la spesa finale comprende le imposte, cioè accisa e IVA, mentre le stime di VERSUS sono IVA esclusa. Due cifre prese da siti diversi possono quindi non essere confrontabili tra loro.",
+        ],
+      },
+      {
+        heading: "Il comparatore pubblico: il Portale Offerte di ARERA",
+        paragraphs: [
+          "Il Portale Offerte è realizzato e gestito da Acquirente Unico su disposizione di ARERA, in attuazione della legge 124/2017. È online dal 1 luglio 2018 e permette a famiglie e piccole imprese di confrontare gratis le offerte di luce, gas e luce e gas insieme (dual fuel). Per cercare indichi il tipo di offerta e il comune o il CAP della fornitura; se vuoi, accedi con SPID o CIE per partire dal tuo storico dei consumi.",
+          "ARERA lo descrive come lo strumento che raccoglie e pubblica tutte le offerte presenti sul mercato di vendita al dettaglio di luce e gas. Le FAQ del portale precisano che sono pubblicate le offerte rivolte al pubblico, presentate sui siti o negli uffici dei venditori o su media almeno regionali, e che per ora sono escluse, tra le altre, quelle riservate a gruppi chiusi, trattate individualmente o proposte solo a clienti raggiunti direttamente dal venditore.",
+          "Per avere una vista d'insieme del mercato è il punto di partenza più ampio. Il portale ricorda però che le informazioni sulle offerte sono fornite dai venditori, che ne sono gli unici responsabili: prima di firmare, controlla le condizioni nella Scheda sintetica, che il venditore deve consegnarti prima della firma.",
+        ],
+      },
+      {
+        heading: "I comparatori privati: che cosa guardare",
+        paragraphs: [
+          "Un comparatore privato è un sito gestito da un'azienda, che decide quali offerte mostrare, come ordinarle e quali servizi aggiungere. Per valutarlo ti servono dei criteri.",
+        ],
+      },
+      {
+        heading: "Come valutare un comparatore: la lista di controllo",
+        paragraphs: [],
+        bullets: [
+          "Chi c'è dietro: ragione sociale, sede e partita IVA dovrebbero essere facili da trovare sul sito.",
+          "Quali venditori confronta: il sito dovrebbe dire se mostra tutto il mercato o solo una parte, e come sceglie i venditori da includere.",
+          "Come ordina i risultati: per spesa stimata, per accordi commerciali o con altri criteri. Cerca la sezione che lo spiega.",
+          "Come è remunerato: il sito dovrebbe spiegare chi lo paga e se questo può influire sui risultati.",
+          "Che cosa comprende la stima: IVA, imposte e quote fisse sono dentro o fuori? È una spesa mensile o annua?",
+          "Quanto sono aggiornate le offerte: cerca una data di aggiornamento e verifica sempre le condizioni nella Scheda sintetica del venditore.",
+          "Che cosa succede dopo la scelta: il sito si limita al confronto o raccoglie i tuoi dati per attivare l'offerta? Controlla a chi li affida e per quale scopo.",
+        ],
+      },
+      {
+        heading: "L'ordine dei risultati: cosa prevede il Codice del consumo",
+        paragraphs: [
+          "Sull'ordine dei risultati il Codice del consumo dà due indicazioni. Quando puoi cercare prodotti offerti da professionisti diversi, sono considerate rilevanti le informazioni sui principali parametri che determinano la classificazione dei risultati, in una sezione raggiungibile dalla pagina dei risultati (art. 22, comma 4-bis). Inoltre è in ogni caso ingannevole mostrare risultati di ricerca senza indicare chiaramente un annuncio a pagamento, o un pagamento specifico per ottenere una posizione più alta nei risultati (art. 23, lettera m-bis).",
+        ],
+      },
+      {
+        heading: "Come risponde VERSUS alla lista di controllo",
+        paragraphs: [
+          "Su VERSUS scegli luce, gas o luce e gas, indichi se sei una casa o una partita IVA e inserisci i consumi: la scelta resta tua.",
+        ],
+        bullets: [
+          "Chi c'è dietro: KEHILA S.r.l.s., con sede in Via Umberto 326 B, 95055 San Pietro Clarenza (CT), partita IVA 06237360877.",
+          `Quali venditori confronta: ${COVERAGE}`,
+          "Come ordina i risultati: prima le offerte «In evidenza», una scelta commerciale di VERSUS, poi le offerte a prezzo fisso, dalla spesa mensile stimata più bassa alla più alta, infine quelle a prezzo variabile.",
+          `Come è remunerato: ${AGENT} Per te il confronto è gratuito.`,
+          "Che cosa comprende la stima: è una stima della spesa mensile, IVA esclusa.",
+          "Che cosa succede dopo la scelta: se un'offerta fa per te, puoi richiedere l'attivazione online, per un cambio fornitore, un subentro, una voltura o un primo allaccio.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Qual è il miglior comparatore di luce e gas?",
+        a: "Non c'è un comparatore che vada bene per tutti. Il Portale Offerte di ARERA è lo strumento pubblico e quello con la copertura più ampia, mentre i comparatori privati cambiano per venditori inclusi, criteri di ordinamento e servizi dopo la scelta. Usa la lista di controllo di questa guida per valutarli, VERSUS compreso.",
+      },
+      {
+        q: "Qual è un buon comparatore di energia elettrica?",
+        a: "Un buon comparatore dice chiaramente chi lo gestisce, quali venditori confronta, come ordina i risultati, come è remunerato e che cosa comprende la stima. Prima di firmare leggi sempre la Scheda sintetica del venditore.",
+      },
+      {
+        q: "Dove posso trovare un comparatore del prezzo del gas?",
+        a: "Puoi usare il Portale Offerte di ARERA, che copre luce, gas e offerte dual fuel, oppure un comparatore privato. Per il gas ti serve il consumo annuo in Smc, che trovi in bolletta. Su VERSUS scegli «gas» e vedi le offerte dei venditori con cui collaboriamo, con una stima della spesa mensile IVA esclusa.",
+      },
+      {
+        q: "I comparatori mostrano tutte le offerte del mercato?",
+        a: `Non necessariamente. Il Portale Offerte punta a raccogliere tutte le offerte rivolte al pubblico, con alcune esclusioni, per esempio quelle riservate a gruppi chiusi. Un comparatore privato può mostrarne solo una parte, e il sito dovrebbe dirlo. ${COVERAGE}`,
+      },
+      {
+        q: "I comparatori luce e gas sono affidabili?",
+        a: "Dipende da come sono costruiti, non dal solo fatto di essere un comparatore. Una stima non è una bolletta, e anche il Portale Offerte ricorda che le informazioni sulle offerte sono fornite dai venditori. Controlla chi gestisce il sito, come ordina i risultati e come è remunerato: per VERSUS la risposta è nella sezione sopra.",
+      },
+      {
+        q: "Il Portale Offerte è il comparatore ufficiale?",
+        a: "È il portale pubblico previsto dalla legge 124/2017, realizzato e gestito da Acquirente Unico su disposizione di ARERA, gratuito per famiglie e piccole imprese. VERSUS è un servizio privato: non sostituisce il Portale, e puoi usare entrambi per farti un'idea del mercato.",
+      },
+    ],
+    sources: [
+      { label: "ARERA, il Portale Offerte", url: "https://www.arera.it/consumatori/il-portale-offerte" },
+      { label: "Portale Offerte, domande frequenti", url: "https://www.ilportaleofferte.it/portaleOfferte/it/domande_frequenti.page" },
+      { label: "Portale Offerte, informazioni legali", url: "https://www.ilportaleofferte.it/portaleOfferte/it/informazioni-legali.page" },
+      { label: "Portale Offerte, confronta le offerte", url: "https://www.ilportaleofferte.it/portaleOfferte/it/confronto-tariffe-prezzi-luce-gas.page" },
+      { label: "ARERA, guida alla lettura delle voci di spesa", url: "https://www.arera.it/bolletta/guida-alla-lettura-delle-voci-di-spesa" },
+      { label: "ARERA, clienti vulnerabili e Servizio a Tutele Graduali", url: "https://www.arera.it/consumatori/clienti-vulnerabili-e-servizio-tutele-graduali-1" },
+      { label: "Codice del consumo, art. 22 (Normattiva)", url: "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2005-09-06;206~art22" },
+      { label: "Codice del consumo, art. 23 (Normattiva)", url: "https://www.normattiva.it/uri-res/N2Ls?urn:nir:stato:decreto.legislativo:2005-09-06;206~art23" },
+    ],
+    related: ["/guida/come-scegliere-offerta-luce-gas", "/guida/fine-tutela-mercato-libero", "/guida/cambio-fornitore-luce-gas"],
+    publishedOn: REVIEWED_COMPARATORE,
+    reviewedOn: REVIEWED_COMPARATORE,
   },
 ];

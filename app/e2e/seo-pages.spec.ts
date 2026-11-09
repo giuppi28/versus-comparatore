@@ -98,7 +98,8 @@ test.describe("SEO pages (raw HTML)", () => {
         expect(text).not.toMatch(/e-?mail/i);
         expect(text).not.toMatch(/\bcall\b/i);
         expect(text).not.toMatch(/\+39|\b\d{2,4}[ .]\d{3,4}[ .]\d{3,4}\b/);
-        expect(text).not.toMatch(/In evidenza/);
+        // the comparator guide explains VERSUS ordering, so it names the «In evidenza» label on purpose
+        if (page.path !== "/guida/come-funziona-comparatore-luce-gas") expect(text).not.toMatch(/In evidenza/);
       });
     });
   }
@@ -135,12 +136,12 @@ test.describe("SEO pages (raw HTML)", () => {
     });
   }
 
-  test("the home stays indexable with its canonical, the sitemap lists it with the 6 guides", async ({ request }) => {
+  test("the home stays indexable with its canonical, the sitemap lists it with the 7 guides", async ({ request }) => {
     const html = await (await request.get("/")).text();
     expect(html).toMatch(/<link rel="canonical" href="https:\/\/[^"]+"/);
     expect(html).not.toMatch(/<meta name="robots" content="[^"]*noindex/);
     const sitemap = await (await request.get("/sitemap.xml")).text();
-    expect(sitemap.match(/<loc>/g)).toHaveLength(7);
+    expect(sitemap.match(/<loc>/g)).toHaveLength(8);
   });
 
   test("home text block and the 12 FAQ rows are in the raw HTML, visible, with the copy rules (T19.4e)", async ({ request }) => {
@@ -169,7 +170,7 @@ test.describe("SEO pages (raw HTML)", () => {
     expect((await request.get("/guida/non-esiste")).status()).toBe(404);
   });
 
-  test("public pages link the 6 guides from the footer row and never the 4 offers pages (T19.4b)", async ({ request }) => {
+  test("public pages link the 7 guides from the footer row and never the 4 offers pages (T19.4b)", async ({ request }) => {
     for (const from of ["/", "/privacy", "/offerte", "/attivazione", "/grazie"]) {
       const html = await (await request.get(from)).text();
       expect(html, `${from} must have the footer guides row`).toContain('data-testid="footer-guides"');
