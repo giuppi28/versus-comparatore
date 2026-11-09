@@ -420,6 +420,9 @@ export function DocumentFields({
                   ))}
                 </ul>
               )}
+              <p id={hintId} className="text-sm text-ink-muted">
+                Foto (JPG, PNG, HEIC) o PDF, max 4 MB; le foto vengono ridotte in automatico.
+              </p>
               <ManualDocumentBlock
                 type={type}
                 // Hidden (kept mounted, so what was typed survives) once every required side is uploaded.
@@ -430,9 +433,6 @@ export function DocumentFields({
                 touch={touch}
                 edited={edited}
               />
-              <p id={hintId} className="text-sm text-ink-muted">
-                Foto (JPG, PNG, HEIC) o PDF, max 4 MB; le foto vengono ridotte in automatico.
-              </p>
               {documentError && (
                 <p
                   id={missingId}
@@ -500,12 +500,12 @@ function ManualDocumentBlock({
       aria-hidden={visible ? undefined : true}
       className={cn(
         "grid transition-[grid-template-rows,opacity,visibility] duration-300 ease-out motion-reduce:transition-none",
-        visible ? "grid-rows-[1fr] opacity-100" : "invisible grid-rows-[0fr] opacity-0",
+        visible ? "grid-rows-[1fr] opacity-100" : "invisible mt-0! grid-rows-[0fr] opacity-0",
       )}
     >
-      <div className="min-h-0 overflow-hidden">
-        {/* Padding inside the clipped box so focus rings are not cut. */}
-        <div className="space-y-4 p-1">
+      {/* Horizontal padding offset by an equal negative margin: focus rings are not clipped and the fields stay flush with the slots. */}
+      <div className="-mx-1 min-h-0 overflow-hidden px-1">
+        <div className="space-y-4 pb-1">
           <p className="text-sm text-ink-muted">
             Non hai le foto? Inserisci i dati del documento. Se carichi le foto, i dati non servono.
           </p>
