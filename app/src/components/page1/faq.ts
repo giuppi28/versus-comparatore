@@ -48,4 +48,16 @@ export const FAQ: { q: string; a: string }[] = [
     q: "Cos'è la Scheda sintetica?",
     a: "È il documento che il venditore deve consegnarti prima della firma, con le condizioni principali del contratto e la spesa annua stimata. Riporta anche le modalità e gli oneri per il recesso, e per le offerte variabili il meccanismo di indicizzazione. È il documento pensato per confrontare le offerte.",
   },
+  {
+    q: "Qual è il miglior comparatore di luce e gas?",
+    a: "Non c'è un comparatore adatto a tutti: cambiano i venditori inclusi, l'ordine dei risultati e i servizi dopo la scelta. Il Portale Offerte di ARERA è lo strumento pubblico e gratuito, con la copertura più ampia. VERSUS confronta le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato.",
+  },
+  {
+    q: "Qual è la compagnia che fa pagare meno luce e gas?",
+    a: "Dipende dai tuoi consumi, dal tipo di prezzo (fisso o variabile) e dalle altre voci della bolletta: non c'è una compagnia più economica per tutti. Su VERSUS inserisci i consumi e vedi una stima della spesa mensile, IVA esclusa, per le offerte dei venditori con cui collaboriamo.",
+  },
+  {
+    q: "Dove posso trovare un comparatore del prezzo del gas?",
+    a: "Puoi usare il Portale Offerte di ARERA, che copre luce, gas e luce più gas, oppure un comparatore privato come VERSUS: scegli «Gas» e inserisci il consumo annuo in Smc, che trovi in bolletta.",
+  },
 ];

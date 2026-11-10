@@ -151,7 +151,7 @@ test.describe("SEO pages (raw HTML)", () => {
     expect(sitemap.match(/<loc>/g)).toHaveLength(8);
   });
 
-  test("home text block and the 12 FAQ rows are in the raw HTML, visible, with the copy rules (T19.4e)", async ({ request }) => {
+  test("home text block and the 15 FAQ rows are in the raw HTML, visible, with the copy rules (T19.4e)", async ({ request }) => {
     const html = await (await request.get("/")).text();
     const block = html.match(/<section[^>]*aria-labelledby="come-funziona-confronto"[\s\S]*?<\/section>/);
     expect(block, "home explainer section").not.toBeNull();
@@ -169,7 +169,7 @@ test.describe("SEO pages (raw HTML)", () => {
     // no new links from the home block (the footer Guide row already links the guides)
     expect(block![0]).not.toMatch(/<a /);
     const body = textOf(html);
-    expect(FAQ).toHaveLength(12);
+    expect(FAQ).toHaveLength(15);
     for (const f of FAQ) expect(body).toContain(f.a);
   });
 

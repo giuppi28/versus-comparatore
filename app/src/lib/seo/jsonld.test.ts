@@ -47,6 +47,7 @@ describe("buildJsonLd", () => {
   it("lists every FAQ item byte-identical", () => {
     const faq = graph[3] as { mainEntity: { name: string; acceptedAnswer: { text: string } }[] };
     expect(faq.mainEntity).toHaveLength(FAQ.length);
+    expect(faq.mainEntity).toHaveLength(15);
     FAQ.forEach((item, i) => {
       expect(faq.mainEntity[i].name).toBe(item.q);
       expect(faq.mainEntity[i].acceptedAnswer.text).toBe(item.a);
