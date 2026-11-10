@@ -9,25 +9,45 @@ const URL = "https://versuscomparatorelucegas.it";
 describe("buildJsonLd", () => {
   const graph = (buildJsonLd(URL)["@graph"] as Record<string, unknown>[]);
 
-  it("has the four types with stable ids", () => {
-    expect(graph.map((n) => n["@type"])).toEqual(["Organization", "WebSite", "Service", "FAQPage"]);
+  it("has the five types with stable ids", () => {
+    expect(graph.map((n) => n["@type"])).toEqual(["Organization", "WebSite", "Service", "FAQPage", "WebPage"]);
     expect(graph.map((n) => n["@id"])).toEqual([
       `${URL}/#organization`,
       `${URL}/#website`,
       `${URL}/#service`,
       `${URL}/#faq`,
+      `${URL}/#webpage`,
     ]);
   });
 
-  it("puts dateModified on the WebSite node, floored at 2026-11-07 by default", () => {
-    expect((graph[1] as { dateModified: string }).dateModified).toBe("2026-11-07");
+  it("puts the same dateModified on WebSite and WebPage, defaulting to the home content date", () => {
+    expect((graph[1] as { dateModified: string }).dateModified).toBe("2026-11-10");
+    expect((graph[4] as { dateModified: string }).dateModified).toBe("2026-11-10");
     const custom = buildJsonLd(URL, "2026-12-03")["@graph"] as { dateModified?: string }[];
     expect(custom[1].dateModified).toBe("2026-12-03");
+    expect(custom[4].dateModified).toBe("2026-12-03");
+  });
+
+  it("has a home WebPage linked to the website and the service", () => {
+    expect(graph[4]).toMatchObject({
+      url: `${URL}/`,
+      name: "Comparatore luce e gas: confronta le offerte gratis | VERSUS",
+      isPartOf: { "@id": `${URL}/#website` },
+      about: { "@id": `${URL}/#service` },
+      inLanguage: "it-IT",
+    });
+  });
+
+  it("has an Organization description from the published llms.txt summary", () => {
+    const org = graph[0] as { description: string };
+    expect(org.description).toContain("comparatore luce e gas");
+    expect(org.description).not.toMatch(/telefon|chiam|risparmi|migliore/i);
   });
 
   it("lists every FAQ item byte-identical", () => {
     const faq = graph[3] as { mainEntity: { name: string; acceptedAnswer: { text: string } }[] };
     expect(faq.mainEntity).toHaveLength(FAQ.length);
+    expect(faq.mainEntity).toHaveLength(15);
     FAQ.forEach((item, i) => {
       expect(faq.mainEntity[i].name).toBe(item.q);
       expect(faq.mainEntity[i].acceptedAnswer.text).toBe(item.a);

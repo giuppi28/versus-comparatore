@@ -9,7 +9,7 @@ describe("buildLlmsTxt", () => {
     const t = buildLlmsTxt(URL, ["Enel Energia"]);
     expect(t.startsWith("# VERSUS")).toBe(true);
     expect(t).toContain("\n> ");
-    expect(t).toContain("Ultimo aggiornamento: 2026-11-09");
+    expect(t).toContain("Ultimo aggiornamento: 2026-11-10");
     expect(t).toContain("- Enel Energia");
     expect(t).toContain("KEHILA S.r.l.s.");
     expect(t).toContain(`${URL}/privacy`);

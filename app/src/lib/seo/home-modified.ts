@@ -1,9 +1,9 @@
 import { getRepository } from "@/lib/data";
-import { latestUpdateDay, UPDATED_FLOOR } from "./dates";
+import { HOME_CONTENT_UPDATED, homeModifiedDay } from "./dates";
 
 /**
- * Home `dateModified` / sitemap `lastModified`: latest `updated_at` among the active offers (floored at
- * UPDATED_FLOOR). Four small reads of the public offers view; any failure falls back to the floor.
+ * Home `dateModified` / sitemap `lastModified`: later of HOME_CONTENT_UPDATED and the latest active-offer
+ * `updated_at`. Four small reads of the public offers view; any failure falls back to HOME_CONTENT_UPDATED.
  */
 export async function loadHomeModifiedDay(): Promise<string> {
   try {
@@ -14,9 +14,9 @@ export async function loadHomeModifiedDay(): Promise<string> {
       repo.listActiveOffers("gas", "casa"),
       repo.listActiveOffers("gas", "business"),
     ]);
-    return latestUpdateDay(lists.flat().map((o) => o.updated_at));
+    return homeModifiedDay(lists.flat().map((o) => o.updated_at));
   } catch (error) {
     console.error("home dateModified: could not load the active offers", error);
-    return UPDATED_FLOOR;
+    return HOME_CONTENT_UPDATED;
   }
 }

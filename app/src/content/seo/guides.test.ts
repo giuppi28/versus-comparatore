@@ -24,7 +24,7 @@ describe("guides registry", () => {
       }
       expect(g.faq.length, g.path).toBeGreaterThanOrEqual(4);
       expect(g.faq.length, g.path).toBeLessThanOrEqual(6);
-      for (const r of g.related) expect(GUIDE_PAGES.some((x) => x.path === r) || r.startsWith("/offerte"), `${g.path} -> ${r}`).toBe(true);
+      for (const r of g.related) expect(GUIDE_PAGES.some((x) => x.path === r), `${g.path} -> ${r}`).toBe(true);
     }
   });
 
@@ -34,6 +34,16 @@ describe("guides registry", () => {
       expect(text).toContain("Confrontiamo le offerte dei venditori con cui collaboriamo, non tutte quelle disponibili sul mercato.");
       expect(text).toContain("VERSUS opera come agente ed è remunerato dai venditori.");
       expect(text).not.toMatch(/chiam|demo|club|\+39|numero verde|migliore/i);
+    }
+  });
+
+  it("no guide links an /offerte page, and every other guide lists guide 7 in related", () => {
+    for (const g of GUIDE_PAGES) {
+      expect(g.related.some((r) => r.startsWith("/offerte")), g.path).toBe(false);
+      expect(new Set(g.related).size, g.path).toBe(g.related.length);
+      expect(g.related.length, g.path).toBeGreaterThanOrEqual(3);
+      expect(g.related.length, g.path).toBeLessThanOrEqual(4);
+      if (g.path !== COMPARATORE) expect(g.related, g.path).toContain(COMPARATORE);
     }
   });
 

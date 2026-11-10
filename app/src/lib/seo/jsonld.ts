@@ -1,18 +1,26 @@
 import { FAQ } from "@/components/page1/faq";
 import { COMPANY, COMPANY_ADDRESS } from "@/lib/legal/company";
-import { UPDATED_FLOOR } from "./dates";
+import { HOME_CONTENT_UPDATED } from "./dates";
 
 /** Alternative names for the brand entity; WebSite `name` stays "VERSUS" (Google site-name rule). */
 export const BRAND_ALTERNATE_NAMES = ["VERSUS comparatore luce e gas", "Versus Comparatore", "VERSUS luce e gas"];
+
+/** Home `<title>`, also the home WebPage name. */
+export const HOME_TITLE = "Comparatore luce e gas: confronta le offerte gratis | VERSUS";
+
+/** Already published on the site (llms.txt summary line): reused as the Organization description. */
+export const ORG_DESCRIPTION =
+  "VERSUS è un comparatore luce e gas online e gratuito per casa e partita IVA: si risponde a poche domande, si sceglie l'offerta e la si attiva online.";
 
 /** Square raster mark (Google wants a crawlable raster logo of at least 112 px). Real size is checked by a test. */
 export const LOGO_PNG_PATH = "/brand/versus_icona.png";
 export const LOGO_PNG_SIZE = 512;
 
 /** Facts only (docs/geo/canonical-facts.md): no prices, savings, ratings, reviews, telephone or sameAs. */
-export function buildJsonLd(siteUrl: string, dateModified: string = UPDATED_FLOOR): Record<string, unknown> {
+export function buildJsonLd(siteUrl: string, dateModified: string = HOME_CONTENT_UPDATED): Record<string, unknown> {
   const orgId = `${siteUrl}/#organization`;
   const siteId = `${siteUrl}/#website`;
+  const serviceId = `${siteUrl}/#service`;
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -29,6 +37,7 @@ export function buildJsonLd(siteUrl: string, dateModified: string = UPDATED_FLOO
           width: LOGO_PNG_SIZE,
           height: LOGO_PNG_SIZE,
         },
+        description: ORG_DESCRIPTION,
         email: COMPANY.email,
         vatID: COMPANY.partitaIva,
         address: { "@type": "PostalAddress", ...COMPANY_ADDRESS },
@@ -45,7 +54,7 @@ export function buildJsonLd(siteUrl: string, dateModified: string = UPDATED_FLOO
       },
       {
         "@type": "Service",
-        "@id": `${siteUrl}/#service`,
+        "@id": serviceId,
         name: "VERSUS — comparatore luce e gas",
         serviceType: "Confronto offerte luce e gas",
         provider: { "@id": orgId },
@@ -62,6 +71,16 @@ export function buildJsonLd(siteUrl: string, dateModified: string = UPDATED_FLOO
           name: item.q,
           acceptedAnswer: { "@type": "Answer", text: item.a },
         })),
+      },
+      {
+        "@type": "WebPage",
+        "@id": `${siteUrl}/#webpage`,
+        url: `${siteUrl}/`,
+        name: HOME_TITLE,
+        isPartOf: { "@id": siteId },
+        about: { "@id": serviceId },
+        inLanguage: "it-IT",
+        dateModified,
       },
     ],
   };

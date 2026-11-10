@@ -4,6 +4,8 @@ import {
   latestUpdateDay,
   offerUpdatedLabel,
   UPDATED_FLOOR,
+  HOME_CONTENT_UPDATED,
+  homeModifiedDay,
 } from "./dates";
 
 describe("update dates floor", () => {
@@ -34,4 +36,11 @@ describe("update dates floor", () => {
     expect(offerUpdatedLabel("2026-12-03T09:00:00Z")).toBe("Aggiornata il 3 dicembre 2026");
   });
 
+
+  it("homeModifiedDay is the later of the home content date and the latest offer update", () => {
+    expect(homeModifiedDay([])).toBe(HOME_CONTENT_UPDATED);
+    expect(homeModifiedDay(["2026-11-08T09:00:00Z"])).toBe(HOME_CONTENT_UPDATED);
+    expect(homeModifiedDay(["2026-12-03T09:00:00Z"])).toBe("2026-12-03");
+    expect(offerUpdatedLabel(null)).toBe("Aggiornata il 7 novembre 2026");
+  });
 });

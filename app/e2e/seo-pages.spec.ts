@@ -70,7 +70,14 @@ test.describe("SEO pages (raw HTML)", () => {
         expect(h1s).toEqual([page.h1]);
 
         const body = textOf(mainOf(html));
-        expect(body).toContain(page.intro);
+        const introHtml = html.match(/<h1[\s\S]*?<\/h1>\s*<p[^>]*>([\s\S]*?)<\/p>/)![1];
+        expect(decode(introHtml.replace(/<[^>]+>/g, ""))).toBe(page.intro);
+        if (guide) {
+          // the brand phrase in the intro is the one inline link to the home
+          const links = [...introHtml.matchAll(/<a [^>]*?href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g)];
+          expect(links.map((m) => [m[1], m[2]])).toEqual([["/", "VERSUS, comparatore luce e gas"]]);
+        }
+        if (guide) expect(html).not.toMatch(/href="\/offerte/);
         for (const f of page.faq) expect(body).toContain(f.a);
         expect(body).toMatch(/Ultima verifica delle fonti: \d{1,2} [a-z]+ \d{4}/);
         expect(html).toContain('href="/"');
@@ -144,7 +151,7 @@ test.describe("SEO pages (raw HTML)", () => {
     expect(sitemap.match(/<loc>/g)).toHaveLength(8);
   });
 
-  test("home text block and the 12 FAQ rows are in the raw HTML, visible, with the copy rules (T19.4e)", async ({ request }) => {
+  test("home text block and the 15 FAQ rows are in the raw HTML, visible, with the copy rules (T19.4e)", async ({ request }) => {
     const html = await (await request.get("/")).text();
     const block = html.match(/<section[^>]*aria-labelledby="come-funziona-confronto"[\s\S]*?<\/section>/);
     expect(block, "home explainer section").not.toBeNull();
@@ -162,8 +169,19 @@ test.describe("SEO pages (raw HTML)", () => {
     // no new links from the home block (the footer Guide row already links the guides)
     expect(block![0]).not.toMatch(/<a /);
     const body = textOf(html);
-    expect(FAQ).toHaveLength(12);
+    expect(FAQ).toHaveLength(15);
     for (const f of FAQ) expect(body).toContain(f.a);
+  });
+
+  test("unknown URL is an Italian 404 with a single title (T23.2)", async ({ request }) => {
+    const res = await request.get("/qualsiasi-url-inesistente");
+    expect(res.status()).toBe(404);
+    const html = await res.text();
+    expect([...html.matchAll(/<title>([\s\S]*?)<\/title>/g)].map((m) => decode(m[1]))).toEqual(["Pagina non trovata | VERSUS"]);
+    expect(html).toMatch(/<meta name="robots" content="[^"]*noindex/);
+    expect([...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/g)].map((m) => m[1])).toEqual(["Pagina non trovata"]);
+    expect(html).toContain("Torna al comparatore luce e gas");
+    expect(html).not.toMatch(/could not be found|demo/i);
   });
 
   test("unknown guide slug is a 404", async ({ request }) => {

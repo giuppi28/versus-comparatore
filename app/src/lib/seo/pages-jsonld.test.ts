@@ -35,6 +35,9 @@ describe("guide JSON-LD", () => {
       expect(article.author).toEqual(ORG);
       expect(article.publisher).toEqual(ORG);
       expect(article.inLanguage).toBe("it-IT");
+      expect(article.image).toBe(`${URL}/opengraph-image`);
+      expect(article.isPartOf).toEqual({ "@id": `${URL}/#website` });
+      expect(article.about).toEqual({ "@id": `${URL}/#service` });
       const faq = graph[2].mainEntity as { name: string; acceptedAnswer: { text: string } }[];
       expect(faq.map((q) => [q.name, q.acceptedAnswer.text])).toEqual(page.faq.map((f) => [f.q, f.a]));
     });

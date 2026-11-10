@@ -132,6 +132,6 @@ describe("SiteFooter", () => {
     expect(hrefs).toEqual(GUIDE_PAGES.map((g) => g.path));
     expect(row.textContent).toContain("Cambio fornitore");
     expect(row.textContent).not.toMatch(/offerte-/);
-    expect(container.textContent).toContain(`© VERSUS ${new Date().getFullYear()}`);
+    expect(container.textContent).toContain(`© VERSUS — comparatore luce e gas ${new Date().getFullYear()}`);
   });
 });
