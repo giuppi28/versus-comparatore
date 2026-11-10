@@ -65,12 +65,12 @@ test.describe("SEO (raw HTML)", () => {
     expect(body).toMatch(/Sitemap: https:\/\/\S+\/sitemap\.xml/);
   });
 
-  test("sitemap.xml lists the home and the 6 guides", async ({ request }) => {
+  test("sitemap.xml lists the home and the 7 guides", async ({ request }) => {
     const res = await request.get("/sitemap.xml");
     expect(res.status()).toBe(200);
     const body = await res.text();
-    expect(body.match(/<loc>/g)).toHaveLength(7);
-    expect(body.match(/<lastmod>/g)).toHaveLength(7); // home (latest offer update, floored) + the 6 guides
+    expect(body.match(/<loc>/g)).toHaveLength(8);
+    expect(body.match(/<lastmod>/g)).toHaveLength(8); // home (latest offer update, floored) + the 7 guides
     expect(body).toMatch(/<loc>https:\/\/[^<]+\/<\/loc>\s*<lastmod>20\d\d-\d\d-\d\d/);
   });
 

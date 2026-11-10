@@ -18,10 +18,10 @@ describe("buildLlmsTxt", () => {
     expect(t).toContain("- VERSUS opera come agente ed è remunerato dai venditori.");
   });
 
-  it("lists the 10 SEO pages under Pagine principali, without prices", () => {
+  it("lists the 11 SEO pages under Pagine principali, without prices", () => {
     const t = buildLlmsTxt(URL, null);
     const section = t.slice(t.indexOf("## Pagine principali"), t.indexOf("## Versione estesa"));
-    expect(ALL_SEO_PAGES).toHaveLength(10);
+    expect(ALL_SEO_PAGES).toHaveLength(11);
     for (const p of ALL_SEO_PAGES) expect(section).toContain(`(${URL}${p.path})`);
     expect(section).not.toMatch(/€|\d,\d{2,4}/);
   });
