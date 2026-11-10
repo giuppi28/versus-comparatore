@@ -33,7 +33,7 @@ export function buildSeoMetadata(page: SeoPage): Metadata {
     openGraph: {
       type: "website",
       locale: "it_IT",
-      siteName: "VERSUS",
+      siteName: "VERSUS — comparatore luce e gas",
       url: page.path,
       title: page.title,
       description: page.description,

@@ -1,7 +1,10 @@
 import { COMPANY } from "@/lib/legal/company";
+import { GUIDE_PAGES } from "@/content/seo/guides";
+import { HOME_CONTENT_UPDATED } from "./dates";
 import { ALL_SEO_PAGES } from "./pages";
 
-export const LLMS_LAST_UPDATE = "2026-11-09";
+/** Derived, never typed by hand: the later of the newest guide `reviewedOn` and the home content date. */
+export const LLMS_LAST_UPDATE = [HOME_CONTENT_UPDATED, ...GUIDE_PAGES.map((g) => g.reviewedOn)].reduce((a, b) => (b > a ? b : a));
 
 /** Pure builder of /llms.txt. `suppliers` = real suppliers with at least one active offer (null = unavailable: section omitted). */
 export function buildLlmsTxt(siteUrl: string, suppliers: string[] | null): string {

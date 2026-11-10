@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "it_IT",
-    siteName: "VERSUS",
+    siteName: "VERSUS — comparatore luce e gas",
     title: TITLE,
     description: DESCRIPTION,
   },

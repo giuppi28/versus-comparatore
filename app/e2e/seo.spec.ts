@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 // Raw HTML via the request fixture: no JavaScript runs, like a crawler.
 const TITLE = "Comparatore luce e gas: confronta le offerte gratis | VERSUS";
 const DESCRIPTION =
-  "Comparatore luce e gas gratuito per casa e partita IVA: rispondi a poche domande, confronta le offerte e attiva online quella che scegli.";
+  "VERSUS, comparatore luce e gas gratuito per casa e partita IVA: rispondi a poche domande, confronta le offerte e attiva online quella che scegli.";
 
 test.describe("SEO (raw HTML)", () => {
   test("home metadata and JSON-LD", async ({ request }) => {
@@ -21,7 +21,8 @@ test.describe("SEO (raw HTML)", () => {
     expect(m).not.toBeNull();
     const data = JSON.parse(m![1]);
     const types = data["@graph"].map((n: { "@type": string }) => n["@type"]);
-    expect(types).toEqual(["Organization", "WebSite", "Service", "FAQPage"]);
+    expect(types).toEqual(["Organization", "WebSite", "Service", "FAQPage", "WebPage"]);
+    expect(html).toContain('<meta property="og:site_name" content="VERSUS — comparatore luce e gas"');
     expect(m![1]).not.toContain("telephone");
     const org = data["@graph"][0];
     expect(org.logo.url).toMatch(/\/brand\/versus_icona\.png$/);
@@ -70,7 +71,7 @@ test.describe("SEO (raw HTML)", () => {
     expect(res.status()).toBe(200);
     const body = await res.text();
     expect(body.match(/<loc>/g)).toHaveLength(8);
-    expect(body.match(/<lastmod>/g)).toHaveLength(8); // home (latest offer update, floored) + the 7 guides
+    expect(body.match(/<lastmod>/g)).toHaveLength(8); // home (later of the home content date and the latest offer update) + the 7 guides
     expect(body).toMatch(/<loc>https:\/\/[^<]+\/<\/loc>\s*<lastmod>20\d\d-\d\d-\d\d/);
   });
 
@@ -80,7 +81,7 @@ test.describe("SEO (raw HTML)", () => {
     expect(res.headers()["content-type"]).toContain("text/plain");
     const body = await res.text();
     expect(body.startsWith("# VERSUS")).toBe(true);
-    expect(body).toContain("Ultimo aggiornamento: 2026-11-09");
+    expect(body).toContain("Ultimo aggiornamento: 2026-11-10");
     expect(body).toContain("KEHILA S.r.l.s.");
     expect(body).not.toMatch(/\+39|\b0\d{1,3}[ .]\d{3,4}[ .]\d{3,4}\b/);
   });

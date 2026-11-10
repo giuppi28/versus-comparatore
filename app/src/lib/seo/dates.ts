@@ -22,6 +22,9 @@ export function formatItalianDate(value: string): string {
 /** Floor for every "last updated" date shown or published (T19.4a/T19.4c): nothing earlier than the public launch of the freshness signals. */
 export const UPDATED_FLOOR = "2026-11-07";
 
+/** Last day the home text changed: bump when the home text changes / if the merge happens on a later day. Feeds the home dateModified, the home sitemap lastmod and llms.txt, never the offer-card dates. */
+export const HOME_CONTENT_UPDATED = "2026-11-10";
+
 /** Calendar day (YYYY-MM-DD, Europe/Rome) of a timestamp; null if unparseable. */
 function romeDay(value: string): string | null {
   const t = Date.parse(value);
@@ -47,6 +50,12 @@ export function latestUpdateDay(updatedAts: readonly (string | null | undefined)
     const d = flooredUpdateDay(v);
     return d > best ? d : best;
   }, UPDATED_FLOOR);
+}
+
+/** Home `dateModified` / sitemap `lastmod`: the later of HOME_CONTENT_UPDATED and the latest active-offer update. */
+export function homeModifiedDay(updatedAts: readonly (string | null | undefined)[]): string {
+  const latest = latestUpdateDay(updatedAts);
+  return latest > HOME_CONTENT_UPDATED ? latest : HOME_CONTENT_UPDATED;
 }
 
 /** "Aggiornata il 7 novembre 2026" for an offer card. */

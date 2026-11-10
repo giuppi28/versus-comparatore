@@ -15,7 +15,7 @@ describe("buildLlmsFullTxt", () => {
       expect(full).toContain(line);
     }
     expect(full.match(/^# /gm)).toHaveLength(1);
-    expect(full).toContain("Ultimo aggiornamento: 2026-11-09");
+    expect(full).toContain("Ultimo aggiornamento: 2026-11-10");
   });
 
   it("contains every home FAQ question, guide H1 and guide FAQ question", () => {
