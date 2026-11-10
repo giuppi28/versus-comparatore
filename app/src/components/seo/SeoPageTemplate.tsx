@@ -24,6 +24,26 @@ function CtaLink() {
   );
 }
 
+const BRAND_PHRASE = "VERSUS, comparatore luce e gas";
+
+/** The intro text is the single source: the brand phrase, when present, is rendered as a link to "/". */
+function IntroText({ text }: { text: string }) {
+  const i = text.indexOf(BRAND_PHRASE);
+  if (i < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, i)}
+      <Link
+        href="/"
+        className="font-medium text-brand-700 underline underline-offset-4 hover:text-brand-600"
+      >
+        {BRAND_PHRASE}
+      </Link>
+      {text.slice(i + BRAND_PHRASE.length)}
+    </>
+  );
+}
+
 /**
  * Shared template of the hidden SEO pages (guides and offers pages): breadcrumb, H1, answer-first
  * intro, optional `listings` slot, sections, FAQ, sources, related pages. Server-rendered, no JS.
@@ -46,7 +66,9 @@ export function SeoPageTemplate({
           <header className="flex flex-col gap-5 pb-8 pt-8 sm:pb-10 sm:pt-12">
             <Breadcrumb current={page.h1} />
             <h1 className="heading-wide text-display text-ink [overflow-wrap:anywhere]">{page.h1}</h1>
-            <p className="max-w-prose text-lg leading-relaxed text-ink-muted">{page.intro}</p>
+            <p className="max-w-prose text-lg leading-relaxed text-ink-muted">
+              <IntroText text={page.intro} />
+            </p>
             <div>
               <CtaLink />
             </div>

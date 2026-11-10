@@ -25,7 +25,7 @@ export function SiteFooter() {
           >
             Privacy e cookie
           </Link>
-          <p>© VERSUS {new Date().getFullYear()}</p>
+          <p>© VERSUS — comparatore luce e gas {new Date().getFullYear()}</p>
         </div>
       </div>
       <nav
