@@ -5,7 +5,7 @@ const COVERAGE =
 const AGENT = "VERSUS opera come agente ed è remunerato dai venditori.";
 const REVIEWED = "2026-11-07";
 const REVIEWED_NEW = "2026-11-07";
-const REVIEWED_COMPARATORE = "2026-11-09";
+const REVIEWED_COMPARATORE = "2026-11-10";
 
 const A = "https://www.arera.it/atlante-per-il-consumatore";
 
