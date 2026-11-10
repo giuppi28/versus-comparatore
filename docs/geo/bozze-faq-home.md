@@ -1,6 +1,6 @@
 # Drafts — home FAQ rows from People Also Ask (T23.3), 2026-11-10
 
-Status: **waiting for Giuseppe's approval of the text** (decision 2026-11-07: new FAQ rows are OK once the text is approved).
+Status: **approved by Giuseppe on 2026-11-10 ("Approvo tutte e 3")** (decision 2026-11-07: new FAQ rows are OK once the text is approved).
 
 Source of the questions: People Also Ask box of google.it for "comparatore luce e gas" (`docs/geo/panel-2026-11-09.md`). Facts: `canonical-facts.md` (free, coverage sentence, estimates IVA esclusa) and VERIFIED entries FG 5.9, FG 6.1 (Portale Offerte: public, free, covers luce, gas and dual fuel), FG 5.10, 5.11, 5.19 (cost depends on consumption, price type, bill items). No new fact. Answers are shorter than, and worded differently from, the guide `/guida/come-funziona-comparatore-luce-gas`.
 
